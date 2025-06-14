@@ -1,8 +1,10 @@
 {
-  "name": "mobile-persistent-terminal-sessions",
+  "name": "shelltender",
   "version": "1.0.0",
-  "description": "",
+  "description": "A web-based terminal manager that keeps your shell sessions alive and persistent",
   "main": "dist/index.js",
+  "license": "MIT",
+  "author": "Jeff Harris",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:client": "cd client && npm run dev",
