@@ -90,6 +90,8 @@ npm start
 - **Communication**: WebSocket for real-time bidirectional communication
 - **Session Management**: Each terminal runs as a persistent PTY process
 
+For detailed architecture and monorepo restructuring plans, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Configuration
 
 - HTTP Port: 3000 (or set PORT environment variable)
