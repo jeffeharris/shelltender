@@ -4,45 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A web-based persistent terminal system that maintains terminal sessions even when browser tabs are closed. Users can reconnect to running sessions, view scrollback history, and share sessions across multiple browser tabs.
+Shelltender is a web-based persistent terminal system that maintains terminal sessions even when browser tabs are closed. It's now structured as a monorepo with modular npm packages that can be used independently or combined.
+
+## Monorepo Structure
+
+```
+shelltender/
+├── packages/
+│   ├── @shelltender/core/     # Shared types and interfaces
+│   ├── @shelltender/server/   # Backend terminal management
+│   ├── @shelltender/client/   # React components and hooks
+│   └── shelltender/           # Combined package
+├── apps/
+│   └── demo/                  # Demo application
+└── docs/                      # Documentation
+```
 
 ## Development Setup
 
-1. Install dependencies:
+1. Install all dependencies (from root):
    ```bash
    npm install
-   cd client && npm install
    ```
 
-2. Run development servers:
+2. Run the demo application:
    ```bash
-   npm run dev:all  # Runs both backend and frontend
+   cd apps/demo
+   npm run dev
    ```
 
 ## Common Commands
 
+### Root Level Commands
+- `npm test` - Run all tests across all packages
+- `npm run build` - Build all packages
+- `npm run lint` - Lint all packages
+- `npm run typecheck` - Type check all packages
+- `npm run clean` - Clean all node_modules and build artifacts
+
+### Package-Specific Commands
+- `npm test -w @shelltender/core` - Test specific package
+- `npm run build -w @shelltender/server` - Build specific package
+- `npm run dev -w apps/demo` - Run demo in dev mode
+
+### Legacy Commands (still work from root)
 - `npm run dev` - Run backend server only
 - `npm run dev:client` - Run frontend only  
 - `npm run dev:all` - Run both backend and frontend concurrently
-- `npm run build` - Build both backend and frontend
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Check TypeScript types
-- `npm test` - Run all tests (backend + frontend)
 
 ## Testing
 
-The project uses Vitest for testing both backend and frontend code:
+The project uses Vitest for testing all packages:
 
-- Backend tests: `npm test` (from root directory)
-- Frontend tests: `cd client && npm test`
-- All tests: `npm test && cd client && npm test`
+- All tests: `npm test`
+- Specific package: `npm test -w @shelltender/core`
+- With coverage: `npm run test:coverage`
+- Watch mode: `npm run test:watch`
 
 Test coverage includes:
-- Backend services (SessionManager, BufferManager, RestrictedShell)
-- WebSocket integration
-- Frontend components (SessionManager, SessionTabs)
-- Frontend services (WebSocketService)
+- Core package: Type exports and constants
+- Server package: SessionManager, BufferManager, RestrictedShell, WebSocket integration
+- Client package: React components (Terminal, SessionManager, SessionTabs), WebSocketService
+- Combined package: Package structure validation
 
 ## Architecture
 

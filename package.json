@@ -1,28 +1,31 @@
 {
   "name": "shelltender",
   "version": "1.0.0",
+  "private": true,
   "description": "A web-based terminal manager that keeps your shell sessions alive and persistent",
   "main": "dist/index.js",
   "license": "MIT",
   "author": "Jeff Harris",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:client": "cd client && npm run dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:client\"",
-    "build": "tsc && cd client && npm run build",
+    "build": "npm run build:all",
+    "build:all": "npm run build --workspaces --if-present",
     "start": "node dist/index.js",
-    "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",
-    "test:client": "cd client && npm test",
-    "test:all": "npm test && npm run test:client"
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
   "engines": {
     "node": ">=18.0.0"

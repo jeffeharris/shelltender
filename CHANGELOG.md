@@ -1,0 +1,101 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0] - 2025-06-14
+
+### Added
+- **Monorepo Structure** - Complete transformation to modular npm packages
+  - `@shelltender/core` (0.1.0) - Shared types, interfaces, and constants with zero dependencies
+  - `@shelltender/server` (0.1.0) - Backend terminal session management  
+  - `@shelltender/client` (0.1.0) - React components and hooks for terminal UI
+  - `shelltender` (0.1.0) - Combined package for convenience
+- Demo application in `apps/demo` showcasing package usage
+- npm workspace configuration for efficient development
+- TypeScript project references for better build performance
+- Package-specific test suites (78 total tests across all packages)
+- Modular documentation with package-specific READMEs
+
+### Changed
+- **BREAKING**: Restructured entire codebase from single application to modular packages
+- All imports now use package names (`@shelltender/core`) instead of relative paths
+- Moved shared types from `src/shared/types.ts` to `@shelltender/core`
+- Separated server and client code into independent, publishable packages
+- Updated build system to support workspace builds
+- Enhanced test structure with package-specific test directories
+- Improved documentation to reflect monorepo structure
+
+### Technical Improvements
+- Zero dependencies in core package for maximum compatibility
+- Express as peer dependency in server package for flexibility
+- React 18/19 support in client package
+- Each package independently buildable and testable
+- Consistent versioning across all packages (0.1.0)
+
+## [Unreleased]
+
+### Added
+- Comprehensive testing framework using Vitest
+  - 68 total tests (34 backend + 34 frontend)
+  - Unit tests for SessionManager, BufferManager, RestrictedShell
+  - Integration tests for WebSocket communication
+  - Frontend component tests for SessionManager and SessionTabs
+  - WebSocket service tests with reconnection logic
+- RestrictedShell for sandboxed terminal sessions
+  - Filesystem access restrictions
+  - Command filtering capabilities
+  - Safe environment for untrusted code execution
+- Programmatic input methods for AI/automation
+  - `sendCommand()` - Send commands with automatic newline
+  - `sendRawInput()` - Send raw input without modification
+  - `sendKey()` - Send special keys (ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, arrows)
+- Session persistence across server restarts
+  - Sessions saved to `.sessions` directory
+  - Automatic restoration on server startup
+  - Maintains terminal state and buffer
+- Special key support including ctrl-r for reverse search
+- Monorepo architecture documentation
+  - Detailed package structure (@shelltender/core, server, client)
+  - Implementation strategy and timeline
+  - Testing and documentation guidelines
+- PocketDev integration documentation
+  - AI-initiated session workflows
+  - Git worktree integration patterns
+  - Task-based development model
+
+### Changed
+- Migrated from Jest to Vitest for better ESM support
+- Updated project name from "mobile-persistent-terminal-sessions" to "shelltender"
+- Enhanced SessionManager with new capabilities
+  - Support for custom commands on session creation
+  - Restricted session options
+  - Programmatic control methods
+
+### Fixed
+- ESM/CommonJS compatibility issues in test environment
+- WebSocket mock implementation for testing
+- Test assertions for buffer truncation behavior
+- Reconnection logic test expectations
+
+### Documentation
+- Created comprehensive ARCHITECTURE.md for monorepo plans
+- Added POCKETDEV_INTEGRATION.md for specific use case
+- Updated README.md with new features and testing instructions
+- Enhanced CLAUDE.md with project context
+
+## [0.0.1] - Initial Development
+
+### Added
+- Core terminal functionality with xterm.js
+- Persistent sessions that survive browser closure
+- Multi-tab synchronization via WebSocket
+- Session management UI (tabs and modal)
+- 10,000 line scrollback buffer
+- Automatic reconnection with exponential backoff
+- Paste support with multiple fallback methods
+- Basic session operations (create, connect, kill, resize)

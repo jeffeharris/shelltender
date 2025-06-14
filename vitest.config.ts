@@ -4,23 +4,18 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    setupFiles: ['./tests/setup.ts'],
+    // Run tests from all packages
+    include: ['packages/*/tests/**/*.test.ts', 'packages/*/src/**/*.test.ts', 'packages/*/src/**/*.test.tsx'],
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
         'dist/',
-        'client/',
         '**/*.d.ts',
         '**/*.config.*',
         '**/mockData.ts',
+        'apps/',
       ],
-    },
-  },
-  resolve: {
-    alias: {
-      '@': '/src',
     },
   },
 });
