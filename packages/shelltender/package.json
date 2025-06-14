@@ -1,0 +1,23 @@
+{
+  "name": "shelltender",
+  "version": "0.1.0",
+  "description": "All-in-one package combining @shelltender/core, @shelltender/server, and @shelltender/client",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shelltender/core": "^0.1.0",
+    "@shelltender/server": "^0.1.0",
+    "@shelltender/client": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3"
+  }
+}
