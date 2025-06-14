@@ -1,8 +1,9 @@
 import * as pty from 'node-pty';
 import { v4 as uuidv4 } from 'uuid';
-import { TerminalSession } from '../shared/types.js';
+import { TerminalSession, SessionOptions } from '../shared/types.js';
 import { BufferManager } from './BufferManager.js';
 import { SessionStore } from './SessionStore.js';
+import { RestrictedShell } from './RestrictedShell.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -96,7 +97,9 @@ export class SessionManager {
     });
   }
 
-  createSession(cols: number = 80, rows: number = 24): TerminalSession {
+  createSession(options: SessionOptions = {}): TerminalSession {
+    const cols = options.cols || 80;
+    const rows = options.rows || 24;
     const sessionId = uuidv4();
     const session: TerminalSession = {
       id: sessionId,
@@ -104,22 +107,40 @@ export class SessionManager {
       lastAccessedAt: new Date(),
       cols,
       rows,
+      command: options.command,
+      args: options.args,
+      locked: options.locked,
     };
 
+    // Set up shell command and environment
+    let command = options.command || '/bin/bash';
+    let args = options.args || [];
+    let cwd = options.cwd || process.env.HOME;
+    
     // Ensure UTF-8 locale
-    const env = {
+    let env = {
       ...process.env,
+      ...options.env,
       LANG: 'en_US.UTF-8',
       LC_ALL: 'en_US.UTF-8',
       LC_CTYPE: 'en_US.UTF-8',
       TERM: 'xterm-256color',
     } as { [key: string]: string };
 
-    const ptyProcess = pty.spawn('/bin/bash', [], {
+    // Apply restrictions if specified
+    if (options.restrictToPath || options.blockedCommands || options.readOnlyMode) {
+      const restrictedShell = new RestrictedShell(options);
+      const shellConfig = restrictedShell.getShellCommand();
+      command = shellConfig.command;
+      args = shellConfig.args;
+      env = { ...env, ...shellConfig.env };
+    }
+
+    const ptyProcess = pty.spawn(command, args, {
       name: 'xterm-256color',
       cols,
       rows,
-      cwd: process.env.HOME,
+      cwd,
       env,
     });
 
@@ -154,6 +175,37 @@ export class SessionManager {
       return true;
     }
     return false;
+  }
+
+  // Send a command to a session (adds newline automatically)
+  sendCommand(sessionId: string, command: string): boolean {
+    return this.writeToSession(sessionId, command + '\n');
+  }
+
+  // Send raw input without modification
+  sendRawInput(sessionId: string, data: string): boolean {
+    return this.writeToSession(sessionId, data);
+  }
+
+  // Send special keys
+  sendKey(sessionId: string, key: 'ctrl-c' | 'ctrl-d' | 'ctrl-z' | 'ctrl-r' | 'tab' | 'escape' | 'up' | 'down' | 'left' | 'right'): boolean {
+    const keyMap: Record<string, string> = {
+      'ctrl-c': '\x03',
+      'ctrl-d': '\x04',
+      'ctrl-z': '\x1a',
+      'ctrl-r': '\x12',
+      'tab': '\t',
+      'escape': '\x1b',
+      'up': '\x1b[A',
+      'down': '\x1b[B',
+      'left': '\x1b[D',
+      'right': '\x1b[C'
+    };
+    
+    const sequence = keyMap[key];
+    if (!sequence) return false;
+    
+    return this.writeToSession(sessionId, sequence);
   }
 
   resizeSession(sessionId: string, cols: number, rows: number): boolean {
