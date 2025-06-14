@@ -2,6 +2,7 @@
   "name": "shelltender-demo",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Demo application showcasing Shelltender packages",
   "license": "MIT",
   "scripts": {

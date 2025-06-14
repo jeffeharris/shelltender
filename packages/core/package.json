@@ -2,6 +2,7 @@
   "name": "@shelltender/core",
   "version": "0.1.0",
   "description": "Shared types, interfaces, and utilities for Shelltender",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
