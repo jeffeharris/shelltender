@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-06-14
+
+### Added
+- **Monorepo Structure** - Complete transformation to modular npm packages
+  - `@shelltender/core` (0.1.0) - Shared types, interfaces, and constants with zero dependencies
+  - `@shelltender/server` (0.1.0) - Backend terminal session management  
+  - `@shelltender/client` (0.1.0) - React components and hooks for terminal UI
+  - `shelltender` (0.1.0) - Combined package for convenience
+- Demo application in `apps/demo` showcasing package usage
+- npm workspace configuration for efficient development
+- TypeScript project references for better build performance
+- Package-specific test suites (78 total tests across all packages)
+- Modular documentation with package-specific READMEs
+
+### Changed
+- **BREAKING**: Restructured entire codebase from single application to modular packages
+- All imports now use package names (`@shelltender/core`) instead of relative paths
+- Moved shared types from `src/shared/types.ts` to `@shelltender/core`
+- Separated server and client code into independent, publishable packages
+- Updated build system to support workspace builds
+- Enhanced test structure with package-specific test directories
+- Improved documentation to reflect monorepo structure
+
+### Technical Improvements
+- Zero dependencies in core package for maximum compatibility
+- Express as peer dependency in server package for flexibility
+- React 18/19 support in client package
+- Each package independently buildable and testable
+- Consistent versioning across all packages (0.1.0)
+
+## [Unreleased]
+
 ### Added
 - Comprehensive testing framework using Vitest
   - 68 total tests (34 backend + 34 frontend)

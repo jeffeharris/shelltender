@@ -1,8 +1,59 @@
-# Web-Based Persistent Terminal
+# Shelltender - Web-Based Persistent Terminal
 
-A modern web-based terminal that maintains persistent sessions across browser closures with full scrollback history and multi-tab synchronization.
+A modern web-based terminal that maintains persistent sessions across browser closures with full scrollback history and multi-tab synchronization. Now available as modular npm packages!
 
-## Features
+## 📦 Packages
+
+Shelltender is now a monorepo with modular packages:
+
+- **[@shelltender/core](packages/core)** - Shared types and interfaces
+- **[@shelltender/server](packages/server)** - Backend terminal session management
+- **[@shelltender/client](packages/client)** - React components and hooks
+- **[shelltender](packages/shelltender)** - All-in-one package
+
+## 🚀 Quick Start
+
+### Using the Combined Package
+
+```bash
+npm install shelltender
+```
+
+```typescript
+import { SessionManager, Terminal } from 'shelltender';
+```
+
+### Using Individual Packages
+
+```bash
+# Server only
+npm install @shelltender/server
+
+# Client only
+npm install @shelltender/client
+
+# Types only
+npm install @shelltender/core
+```
+
+## 🛠️ Development
+
+```bash
+# Install all dependencies
+npm install
+
+# Run tests across all packages
+npm test
+
+# Build all packages
+npm run build
+
+# Run the demo application
+cd apps/demo
+npm run dev
+```
+
+## ✨ Features
 
 - **Persistent Sessions**: Terminal sessions continue running on the server when browser tabs are closed
 - **Scrollback Buffer**: Maintains up to 10,000 lines of history server-side
@@ -14,95 +65,82 @@ A modern web-based terminal that maintains persistent sessions across browser cl
 - **Automatic Reconnection**: Client automatically reconnects with exponential backoff
 - **Session Persistence**: Sessions are saved to disk and restored on server restart
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
-- **Paste Support**: Multiple methods for pasting text into the terminal
+- **Modular Architecture**: Use only the parts you need
 
-## Installation
+## 📖 Documentation
 
-```bash
-# Install backend dependencies
-npm install
+- [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
+- [Demo App](apps/demo) - Example implementation
+- [API Reference](#) - Coming soon
 
-# Install frontend dependencies
-cd client
-npm install
-cd ..
-```
-
-## Running the Application
-
-### Development Mode
-
-Run both backend and frontend in development mode:
+## 🧪 Testing
 
 ```bash
-npm run dev:all
-```
-
-Or run them separately:
-
-```bash
-# Backend only (port 3000 for HTTP, 8080 for WebSocket)
-npm run dev
-
-# Frontend only (port 5173)
-npm run dev:client
-```
-
-### Testing
-
-```bash
-# Run all tests
-npm test && cd client && npm test
-
-# Backend tests only
+# Test all packages
 npm test
 
-# Frontend tests only
-cd client && npm test
+# Test specific package
+npm test -w @shelltender/core
+npm test -w @shelltender/server
+npm test -w @shelltender/client
+
+# Test with coverage
+npm run test:coverage
 ```
 
-### Production Build
+## 📚 Example Usage
 
-```bash
-npm run build
-npm start
+### Server Setup
+
+```typescript
+import { SessionManager, WebSocketServer } from '@shelltender/server';
+
+const sessionManager = new SessionManager();
+const wsServer = new WebSocketServer(8080, sessionManager);
 ```
 
-## Usage
+### Client Setup
 
-1. Open http://localhost:5173 (development) or http://localhost:3000 (production)
-2. Click "New Terminal" to create a new session
-3. Use the terminal as you would any standard terminal
-4. Close the browser tab - your session continues running
-5. Reopen the app and click on your session to reconnect
-6. Open multiple tabs to the same session for synchronized views
+```typescript
+import { Terminal, SessionTabs } from '@shelltender/client';
 
-### Paste Support
+function App() {
+  return (
+    <>
+      <SessionTabs sessions={sessions} />
+      <Terminal sessionId={currentSession} />
+    </>
+  );
+}
+```
 
-- **Primary**: Use Ctrl+V (Windows/Linux) or Cmd+V (Mac)
-- **Fallback**: If clipboard access is denied, a prompt will appear
-- **Alternative**: Right-click in the terminal to paste
-
-## Architecture
-
-- **Backend**: Node.js with TypeScript, Express, node-pty, WebSocket
-- **Frontend**: React, TypeScript, Tailwind CSS, xterm.js
-- **Communication**: WebSocket for real-time bidirectional communication
-- **Session Management**: Each terminal runs as a persistent PTY process
-
-For detailed architecture and monorepo restructuring plans, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Configuration
-
-- HTTP Port: 3000 (or set PORT environment variable)
-- WebSocket Port: 8080 (or set WS_PORT environment variable)
-- Scrollback Buffer: 10,000 lines (configurable in BufferManager)
-- Session Storage: `.sessions` directory (created automatically)
-
-## Security Considerations
+## 🔒 Security Considerations
 
 This application provides full shell access on the server. In production:
 - Implement proper authentication and authorization
 - Run terminal sessions in isolated containers or VMs
 - Set resource limits per session
 - Use HTTPS and WSS for encrypted communication
+- Consider using the RestrictedShell for sandboxed sessions
+
+## 📝 License
+
+MIT
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit PRs to our GitHub repository.
+
+## 🏗️ Monorepo Structure
+
+```
+shelltender/
+├── packages/
+│   ├── @shelltender/core/     # Shared types and interfaces
+│   ├── @shelltender/server/   # Backend implementation
+│   ├── @shelltender/client/   # React components
+│   └── shelltender/           # Combined package
+├── apps/
+│   └── demo/                  # Demo application
+└── docs/                      # Documentation
+```
