@@ -270,40 +270,110 @@ apps/demo/
 - Can be used as a template for custom implementations
 - Contains E2E tests demonstrating full workflows
 
-## Migration Strategy
+## Implementation Strategy
 
-### Phase 1: Create Package Structure
-1. Set up Lerna/npm workspaces
-2. Create package directories
-3. Set up base package.json files
-4. Configure TypeScript project references
+### Core Principles
+- Keep it simple - no overengineering
+- Use modern standards (npm workspaces, ESM)
+- Test and document as we go
+- Ship working code at each phase
 
-### Phase 2: Extract Core Package
-1. Move shared types to @shelltender/core
-2. Update imports in existing code
-3. Ensure no circular dependencies
+### Phase 1: Foundation Setup (Week 1)
+1. **Configure npm workspaces**
+   ```json
+   // root package.json
+   {
+     "workspaces": ["packages/*", "apps/*"]
+   }
+   ```
 
-### Phase 3: Split Server and Client
-1. Move server code to @shelltender/server
-2. Move client code to @shelltender/client
-3. Update import paths
-4. Test inter-package dependencies
+2. **Create package structure**
+   ```bash
+   mkdir -p packages/{core,server,client,shelltender}
+   mkdir -p apps/demo
+   ```
 
-### Phase 4: Create Combined Package
-1. Create shelltender package
-2. Set up barrel exports
-3. Test combined package usage
+3. **Set up base package.json files**
+   - Use consistent versioning (0.1.0)
+   - Configure TypeScript project references
+   - Set up build scripts
 
-### Phase 5: Refactor Demo App
-1. Move current app to apps/demo
-2. Update to use packages
-3. Add examples of different usage patterns
+4. **Update root test configuration**
+   - Ensure tests can run across packages
+   - Update CI to test all packages
 
-### Phase 6: Publishing Preparation
-1. Add package documentation
-2. Set up CI/CD for publishing
-3. Add examples to README files
-4. Version packages appropriately
+### Phase 2: Extract Core Package (Week 1)
+1. **Move shared types**
+   - `src/shared/types.ts` → `packages/core/src/types/`
+   - Extract interfaces only (no runtime code)
+   - Zero dependencies
+
+2. **Create tests for core**
+   - Type validation tests
+   - Export verification
+
+3. **Update documentation**
+   - Create `packages/core/README.md`
+   - Document all exported types
+
+### Phase 3: Split Server and Client (Week 2)
+1. **Server package migration**
+   - Move `src/server/*` → `packages/server/src/`
+   - Update imports to use `@shelltender/core`
+   - Migrate server tests
+   - Create server README with examples
+
+2. **Client package migration**
+   - Move `client/src/*` → `packages/client/src/`
+   - Extract styles to optional CSS file
+   - Update imports to use `@shelltender/core`
+   - Migrate client tests
+   - Create client README with examples
+
+3. **Fix all imports**
+   - Use find/replace for import paths
+   - Run all tests to verify
+
+### Phase 4: Add Terminal Events & Combined Package (Week 3)
+1. **Implement terminal event system**
+   ```typescript
+   // In SessionManager
+   watch(sessionId: string, pattern: RegExp, callback: (match: string) => void): void;
+   getOutput(sessionId: string, options?: { lines?: number }): string;
+   ```
+   - Add tests for event system
+   - Document event API
+
+2. **Create combined package**
+   - Simple re-exports from all packages
+   - Test that imports work correctly
+   - Add combined package tests
+
+3. **Update demo app**
+   - Move current app to `apps/demo`
+   - Update to use new package imports
+   - Verify all functionality works
+
+### Phase 5: Polish and Publish (Week 4)
+1. **Documentation sweep**
+   - API docs using TypeDoc
+   - Update all READMEs
+   - Add migration notes (even though no users yet)
+
+2. **Final testing**
+   ```bash
+   # Test local installation
+   npm pack packages/core
+   cd test-project && npm install ../shelltender-core-0.1.0.tgz
+   ```
+
+3. **Publish to npm**
+   ```bash
+   npm publish packages/core
+   npm publish packages/server  
+   npm publish packages/client
+   npm publish packages/shelltender
+   ```
 
 ## Build and Development
 
@@ -353,22 +423,34 @@ npm run publish
 
 ### Testing Strategy
 
+**Key Principle**: Update tests alongside code changes in each phase.
+
+### Test Migration Plan
+1. **Phase 1**: Update root test config to handle workspaces
+2. **Phase 2**: Move type tests with core package
+3. **Phase 3**: Migrate server/client tests with their code
+4. **Phase 4**: Add new tests for terminal events
+5. **Phase 5**: Add integration tests for package imports
+
 ### Unit Tests
 - Each package contains its own unit tests
 - Tests are co-located with source files or in `__tests__` directories
 - Coverage targets: >80% for core logic
+- Run tests after each code move: `npm test`
 
 ### Integration Tests
 - Cross-package integration tests in each package's `tests/integration/`
 - Full-stack integration tests in `apps/demo/tests/integration/`
 - WebSocket communication tests
 - Session persistence tests
+- Terminal event system tests (new)
 
 ### E2E Tests
 - Located in `apps/demo/tests/e2e/`
 - Cover complete user workflows
 - Test multi-tab synchronization
 - Test session recovery scenarios
+- Verify package integration works end-to-end
 
 ### Test Structure Summary
 ```
@@ -381,11 +463,66 @@ shelltender/
 └── apps/demo/tests/                   # E2E and full-stack tests
 ```
 
-### Documentation
-- API documentation per package
-- Integration guide
-- Migration guide from current structure
-- Example applications
+### Continuous Testing Commands
+```bash
+# During development
+npm test                    # Run all tests
+npm test packages/core      # Test specific package
+npm run test:watch         # Watch mode
+
+# Before commits
+npm run test:coverage      # Ensure coverage maintained
+```
+
+### Documentation Strategy
+
+**Key Principle**: Document as you code - don't leave it for the end.
+
+### Documentation Updates by Phase
+1. **Phase 1**: Update main README with new structure
+2. **Phase 2**: Create core package README with type docs
+3. **Phase 3**: Create server/client READMEs with examples
+4. **Phase 4**: Document terminal event API
+5. **Phase 5**: Generate API docs with TypeDoc
+
+### Documentation Structure
+```
+shelltender/
+├── README.md                          # Main project overview
+├── docs/
+│   ├── ARCHITECTURE.md               # This file
+│   ├── POCKETDEV_INTEGRATION.md      # PocketDev use case
+│   └── API.md                        # Generated from TypeDoc
+├── packages/
+│   ├── core/README.md                # Type definitions & interfaces
+│   ├── server/README.md              # Server setup & API
+│   ├── client/README.md              # React components & hooks
+│   └── shelltender/README.md         # Combined usage
+└── apps/demo/README.md               # Example implementation
+```
+
+### README Template for Packages
+```markdown
+# @shelltender/[package-name]
+
+Brief description
+
+## Installation
+\`\`\`bash
+npm install @shelltender/[package-name]
+\`\`\`
+
+## Usage
+\`\`\`typescript
+// Example code
+\`\`\`
+
+## API
+[Key exports and methods]
+
+## Examples
+[Link to demo app]
+```
 
 ### Backwards Compatibility
 - The combined `shelltender` package maintains current API
@@ -405,13 +542,16 @@ shelltender/
 - `@shelltender/express` - Express middleware
 - `@shelltender/docker` - Containerized sessions
 
-## Questions to Resolve
+## Decisions Made
 
-1. **Monorepo Tool**: Lerna, npm workspaces, or pnpm?
-2. **Versioning Strategy**: Independent or synchronized versioning?
-3. **Build Tool**: Keep current setup or migrate to turborepo/nx?
-4. **CSS Strategy**: How to handle styles in @shelltender/client?
-5. **Bundle Size**: Optimization strategy for client package?
+1. **Monorepo Tool**: npm workspaces (simple, built-in)
+2. **Versioning Strategy**: Synchronized initially (0.1.0 for all)
+3. **Build Tool**: Keep current setup (add complexity later if needed)
+4. **CSS Strategy**: Optional import `@shelltender/client/styles.css`
+5. **Bundle Size**: Address in future versions (focus on working code first)
+6. **API Design**: Direct exports, no factories
+7. **Config**: Runtime only, no config files
+8. **Terminal Events**: Include basic version in v1
 
 ## Implementation Details
 
