@@ -28,19 +28,40 @@ A web-based persistent terminal system that maintains terminal sessions even whe
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Check TypeScript types
+- `npm test` - Run all tests (backend + frontend)
+
+## Testing
+
+The project uses Vitest for testing both backend and frontend code:
+
+- Backend tests: `npm test` (from root directory)
+- Frontend tests: `cd client && npm test`
+- All tests: `npm test && cd client && npm test`
+
+Test coverage includes:
+- Backend services (SessionManager, BufferManager, RestrictedShell)
+- WebSocket integration
+- Frontend components (SessionManager, SessionTabs)
+- Frontend services (WebSocketService)
 
 ## Architecture
 
 ### Backend (Node.js/TypeScript)
 - **SessionManager** (`src/server/SessionManager.ts`) - Manages PTY processes and session lifecycle
+  - Supports custom commands and restricted sessions
+  - Provides programmatic input methods (sendCommand, sendRawInput, sendKey)
 - **BufferManager** (`src/server/BufferManager.ts`) - Maintains scrollback buffers for each session
+- **RestrictedShell** (`src/server/RestrictedShell.ts`) - Provides filesystem-restricted shell sessions
 - **WebSocketServer** (`src/server/WebSocketServer.ts`) - Handles real-time communication with clients
+- **SessionStore** (`src/server/SessionStore.ts`) - Persists session state to disk
 - HTTP server on port 3000, WebSocket server on port 8080
 
 ### Frontend (React/TypeScript/Tailwind)
 - **Terminal Component** - xterm.js integration with WebSocket communication
-- **SessionList Component** - Displays and manages active sessions
-- Automatic reconnection on disconnect
+- **SessionTabs Component** - Tab interface for switching between sessions
+- **SessionManager Component** - Modal for managing all sessions (open and backgrounded)
+- **WebSocketService** - Handles WebSocket connection with automatic reconnection
+- Automatic reconnection on disconnect with exponential backoff
 - Multi-tab synchronization via shared WebSocket sessions
 
 ### Key Features
@@ -48,7 +69,9 @@ A web-based persistent terminal system that maintains terminal sessions even whe
 - Scrollback buffer maintained server-side (10,000 lines default)
 - Real-time synchronization across multiple tabs
 - Automatic reconnection with session restore
-- Session management UI
+- Session management UI with ability to kill sessions
+- Restricted shell sessions for sandboxed environments
+- Special key support (ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, arrow keys)
 
 ## Notes
 
@@ -56,3 +79,4 @@ A web-based persistent terminal system that maintains terminal sessions even whe
 - Each session spawns a real shell process on the server
 - WebSocket handles all real-time communication
 - Buffer is preserved even when no clients are connected
+- Sessions are saved to disk and restored on server restart
