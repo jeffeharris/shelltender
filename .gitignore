@@ -1,6 +1,6 @@
 node_modules
 dist
 .sessions
-.test-sessions
+.test-sessions*
 *.log
 .idea
