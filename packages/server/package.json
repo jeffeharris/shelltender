@@ -1,0 +1,33 @@
+{
+  "name": "@shelltender/server",
+  "version": "0.1.0",
+  "description": "Server-side terminal session management for Shelltender",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shelltender/core": "^0.1.0",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.2",
+    "uuid": "^11.1.0"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.23",
+    "@types/node": "^24.0.1",
+    "@types/ws": "^8.18.1",
+    "express": "^4.21.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3",
+    "supertest": "^7.1.1"
+  }
+}
