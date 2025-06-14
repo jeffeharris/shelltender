@@ -228,13 +228,14 @@ interface PocketdevProfile {
   worktrees: WorktreeConfig[];
 }
 
-// Worktree-aware sessions
-interface WorktreeSession extends TerminalSession {
+// Task-aware sessions (PocketDev hierarchy)
+interface TaskSession extends TerminalSession {
+  repoId: string;
   projectId: string;
-  worktreeId: string;
-  worktreePath: string;
+  taskId: string;
+  worktreePath: string;  // Each task gets its own worktree
   baseBranch: string;
-  featureBranch: string;
+  taskBranch: string;
   environment?: 'development' | 'staging' | 'production';
   quickActions: {
     commit: boolean;
@@ -244,61 +245,66 @@ interface WorktreeSession extends TerminalSession {
   };
 }
 
-// Session-to-worktree mapping
-interface SessionWorktreeMap {
+// Session-to-task mapping
+interface SessionTaskMap {
   sessionId: string;
-  worktreeId: string;
-  isPrimary: boolean; // Primary session for this worktree
+  taskId: string;
+  isPrimary: boolean; // Primary session for this task
   role: 'dev' | 'test' | 'build' | 'review' | 'debug';
 }
 ```
 
-### 5. Worktree Lifecycle Management
+### 5. Task Lifecycle Management
 
 ```typescript
-// Creating a worktree automatically spawns a primary session
-interface WorktreeCreation {
+// Creating a task automatically creates a worktree and spawns a primary session
+interface TaskCreation {
   create: (options: {
+    projectId: string;
+    taskName: string;
     baseBranch: string;
-    featureName: string;
     aiContext: string;
   }) => Promise<{
-    worktreeId: string;
+    taskId: string;
+    worktreePath: string;
     primarySessionId: string;
-    path: string;
   }>;
   
-  // Quick actions for the worktree
-  quickCommit: (worktreeId: string, message: string) => Promise<void>;
-  quickTest: (worktreeId: string) => Promise<TestResults>;
-  quickMerge: (worktreeId: string) => Promise<MergeResults>;
-  cleanup: (worktreeId: string) => Promise<void>;
+  // Quick actions for the task
+  quickCommit: (taskId: string, message: string) => Promise<void>;
+  quickTest: (taskId: string) => Promise<TestResults>;
+  quickMerge: (taskId: string) => Promise<MergeResults>;
+  cleanup: (taskId: string) => Promise<void>;
 }
 
-// Multiple sessions can exist in one worktree
-const devSession = await createSession({ worktreeId, role: 'dev' });
-const testSession = await createSession({ worktreeId, role: 'test' });
-const buildSession = await createSession({ worktreeId, role: 'build' });
+// Multiple sessions can exist in one task (same worktree)
+const devSession = await createSession({ taskId, role: 'dev' });
+const testSession = await createSession({ taskId, role: 'test' });
+const buildSession = await createSession({ taskId, role: 'build' });
 ```
 
 ## Git Worktree Integration
 
 PocketDev uses git worktrees to provide isolated workspaces for AI developers, enabling safe parallel development with quick merge actions.
 
-### Worktree-Aware Sessions
+### Task-Based Sessions (PocketDev Hierarchy: Repo > Project > Task > Session)
 
 ```typescript
-interface WorktreeSession extends TerminalSession {
-  worktreePath: string;
+interface TaskSession extends TerminalSession {
+  repoId: string;
+  projectId: string;
+  taskId: string;
+  worktreePath: string;  // Each task gets its own worktree
   baseBranch: string;
-  featureBranch: string;
-  linkedSessions: string[]; // Other sessions in same worktree
+  taskBranch: string;
+  linkedSessions: string[]; // Other sessions in same task
 }
 
-// Claude creates a new worktree for a feature
-const worktreeSession = await pocketdev.claude.createWorktreeSession({
+// Claude creates a new task with its worktree
+const taskSession = await pocketdev.claude.createTaskSession({
+  projectId: 'auth-feature',
+  taskName: 'implement-oauth2',
   baseBranch: 'main',
-  featureName: 'add-authentication',
   command: 'npm install && npm run dev',
   metadata: {
     purpose: 'implementation',
@@ -306,7 +312,7 @@ const worktreeSession = await pocketdev.claude.createWorktreeSession({
   }
 });
 
-// Quick git actions available in the session
+// Quick git actions available in the task
 interface QuickGitActions {
   'commit': (message: string) => Promise<void>;
   'push': () => Promise<void>;
@@ -318,66 +324,75 @@ interface QuickGitActions {
 
 ## Use Case Examples
 
-### 1. Claude Creating Feature Worktree
+### 1. Claude Creating Feature Task
 
 ```typescript
-// Claude starts a new feature in isolated worktree
-const authSession = await pocketdev.claude.spawnSession({
+// Claude starts a new feature task (creates worktree + primary session)
+const authTask = await pocketdev.claude.createTask({
+  projectId: 'mobile-app',
+  taskName: 'add-oauth2',
   type: 'feature',
-  worktree: {
-    base: 'main',
-    branch: 'feature/add-oauth',
-    path: '.worktrees/add-oauth'
-  },
-  command: 'npm run dev',
+  baseBranch: 'main',
   context: 'Implementing OAuth2 authentication'
 });
 
+// Primary dev session created automatically
+const devSession = authTask.primarySessionId;
+
 // Claude can quickly test changes
-await pocketdev.git.quickAction(authSession, 'test-merge');
+await pocketdev.git.quickAction(authTask.taskId, 'test-merge');
 
 // If tests pass, merge back
-await pocketdev.git.quickAction(authSession, 'merge-base');
+await pocketdev.git.quickAction(authTask.taskId, 'merge-base');
 ```
 
-### 2. Parallel Bug Fix in Separate Worktree
+### 2. Parallel Bug Fix Task
 
 ```typescript
-// While working on feature, Claude spawns bugfix in new worktree
-const bugfixSession = await pocketdev.claude.spawnSession({
+// While working on feature, Claude creates bugfix task
+const bugfixTask = await pocketdev.claude.createTask({
+  projectId: 'mobile-app',
+  taskName: 'fix-memory-leak',
   type: 'bugfix',
-  worktree: {
-    base: 'main',
-    branch: 'fix/memory-leak',
-    path: '.worktrees/fix-memory-leak'
-  },
-  command: 'npm test -- --detectLeaks',
+  baseBranch: 'main',
   context: 'Fixing memory leak without interrupting feature work'
 });
 
+// Create test session in the bugfix task
+const testSession = await pocketdev.claude.createSession({
+  taskId: bugfixTask.taskId,
+  role: 'test',
+  command: 'npm test -- --detectLeaks'
+});
+
 // Work happens in isolation
-sessionManager.sendCommand(bugfixSession, 'git status');
-// Output: "On branch fix/memory-leak, worktree .worktrees/fix-memory-leak"
+sessionManager.sendCommand(testSession, 'git status');
+// Output: "On branch task/fix-memory-leak, worktree .worktrees/task-fix-memory-leak"
 ```
 
-### 3. Code Review in Clean Worktree
+### 3. Code Review Task
 
 ```typescript
-// Claude spawns review session in fresh worktree
-const reviewSession = await pocketdev.claude.spawnSession({
+// Claude creates review task with its own worktree
+const reviewTask = await pocketdev.claude.createTask({
+  projectId: 'mobile-app',
+  taskName: 'review-pr-123',
   type: 'review',
-  worktree: {
-    base: 'develop',
-    branch: 'review/pr-123',
-    checkout: 'origin/feature/new-api'  // Review someone else's branch
-  },
-  command: 'npm test && npm run lint',
+  baseBranch: 'develop',
+  checkout: 'origin/feature/new-api',  // Review someone else's branch
   context: 'Reviewing PR #123 in isolated environment'
 });
 
-// Claude can make suggested fixes in the worktree
+// Run tests in review session
+const reviewSession = await pocketdev.claude.createSession({
+  taskId: reviewTask.taskId,
+  role: 'review',
+  command: 'npm test && npm run lint'
+});
+
+// Claude can make suggested fixes in the task's worktree
 sessionManager.sendCommand(reviewSession, 'git commit -am "Fix: typo in variable name"');
-sessionManager.sendCommand(reviewSession, 'git push origin review/pr-123');
+sessionManager.sendCommand(reviewSession, 'git push origin task/review-pr-123');
 ```
 
 ### 2. Parallel Documentation Generation
@@ -420,27 +435,32 @@ pocketdev.claude.watchSession(debugSession, {
 });
 ```
 
-## Worktree + Shelltender Benefits
+## Task-Based Development Benefits
 
-### 1. True Parallel Development
-- Claude can work on multiple features simultaneously without context switching
-- Each worktree has its own dependencies, build state, and running processes
+### 1. Clear Hierarchy (Repo > Project > Task > Session)
+- Each task gets its own isolated worktree
+- Multiple sessions can run within a task's context
+- Clean organization matches mental model
+
+### 2. True Parallel Development
+- Claude can work on multiple tasks simultaneously without context switching
+- Each task's worktree has its own dependencies, build state, and running processes
 - No need to stash/unstash or switch branches
 
-### 2. Safe Experimentation
-- AI can try risky changes in isolated worktrees
-- Quick rollback by simply deleting the worktree
-- Test merges without affecting main development
+### 3. Safe Task Experimentation
+- AI can try risky changes in isolated task worktrees
+- Quick rollback by simply deleting the task
+- Test merges without affecting other tasks
 
-### 3. Collaborative AI Workflows
-- Multiple Claude instances can work in different worktrees
-- One Claude on features, another on bugs, another on docs
-- All coordinated through Shelltender sessions
+### 4. Collaborative AI Workflows
+- Multiple Claude instances can work on different tasks
+- One Claude on feature tasks, another on bug tasks, another on docs
+- All coordinated through task-aware Shelltender sessions
 
-### 4. Mobile-Friendly Git Operations
+### 5. Mobile-Friendly Git Operations
 - Quick action buttons instead of complex git commands
-- Visual worktree status in session tabs
-- One-tap merge back to base branch
+- Visual task status in session tabs
+- One-tap merge from task back to base branch
 
 ## Success Metrics
 
