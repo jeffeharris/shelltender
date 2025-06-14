@@ -10,7 +10,13 @@
     "build": "tsc && cd client && npm run build",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "test:client": "cd client && npm test",
+    "test:all": "npm test && npm run test:client"
   },
   "keywords": [],
   "author": "",
@@ -20,15 +26,22 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/express": "^4.17.23",
     "@types/node": "^24.0.1",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
+    "@vitest/ui": "^3.2.3",
     "concurrently": "^9.1.2",
     "eslint": "^9.28.0",
+    "supertest": "^7.1.1",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3"
   },
   "dependencies": {
     "express": "^4.21.2",
