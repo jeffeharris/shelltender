@@ -54,7 +54,11 @@ export class WebSocketServer {
   private handleMessage(clientId: string, ws: any, data: TerminalData): void {
     switch (data.type) {
       case 'create':
-        const session = this.sessionManager.createSession(data.cols, data.rows);
+        const options = data.options || {};
+        if (data.cols) options.cols = data.cols;
+        if (data.rows) options.rows = data.rows;
+        
+        const session = this.sessionManager.createSession(options);
         this.sessionManager.addClient(session.id, clientId);
         ws.sessionId = session.id;
         

@@ -86,6 +86,14 @@ export class SessionStore {
     }
   }
 
+  async deleteAllSessions(): Promise<void> {
+    try {
+      await fs.rmdir(this.storePath, { recursive: true });
+    } catch (error) {
+      // Ignore if directory doesn't exist
+    }
+  }
+
   async updateSessionBuffer(sessionId: string, buffer: string): Promise<void> {
     const storedSession = await this.loadSession(sessionId);
     if (storedSession) {
