@@ -3,3 +3,4 @@ dist
 .sessions
 .test-sessions
 *.log
+.idea
