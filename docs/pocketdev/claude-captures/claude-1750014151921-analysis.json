@@ -1,0 +1,138 @@
+{
+  "startTime": "2025-06-15T19:02:31.922Z",
+  "totalBytes": 16114,
+  "lineCount": 174,
+  "ansiCodes": [
+    "\u001b[31m",
+    "\u001b[39m",
+    "\u001b[1m",
+    "\u001b[22m",
+    "\u001b[3m",
+    "\u001b[37m",
+    "\u001b[23m",
+    "\u001b[2m",
+    "\u001b[7m",
+    "\u001b[27m",
+    "\u001b[2K",
+    "\u001b[G",
+    "\u001b[38;5;246m"
+  ],
+  "potentialPrompts": [],
+  "clearScreenEvents": 0,
+  "cursorMovements": 13,
+  "timeGaps": [
+    {
+      "gap": 1727,
+      "afterOutput": "\u001b[31m╭────────────────────────────────────────────",
+      "timestamp": "2025-06-15T19:02:33.649Z"
+    },
+    {
+      "gap": 53191,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:26.941Z"
+    },
+    {
+      "gap": 1442,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:28.383Z"
+    },
+    {
+      "gap": 10865,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:39.248Z"
+    },
+    {
+      "gap": 1463,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:40.715Z"
+    },
+    {
+      "gap": 1526,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:42.241Z"
+    },
+    {
+      "gap": 3717,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:46.609Z"
+    },
+    {
+      "gap": 1199,
+      "afterOutput": "\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[",
+      "timestamp": "2025-06-15T19:03:47.808Z"
+    },
+    {
+      "gap": 31198,
+      "afterOutput": "\u001b[?25h",
+      "timestamp": "2025-06-15T19:04:19.006Z"
+    }
+  ],
+  "lastOutputTime": 1750014259007,
+  "userInputs": [
+    {
+      "input": "what can you tell me about shelltender?\n",
+      "timestamp": "2025-06-15T19:03:26.933Z",
+      "afterOutput": "─────╯\u001b[39m\u001b[22m\r\n  \u001b[2m? for shortcuts\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:28.378Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:39.244Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:39.246Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:40.711Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:42.238Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:42.454Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:42.601Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:42.765Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:42.889Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:46.605Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    },
+    {
+      "input": "\n",
+      "timestamp": "2025-06-15T19:03:47.804Z",
+      "afterOutput": "─────────────────────────────────╯\u001b[39m\u001b[22m\r\n\r\n\r\n"
+    }
+  ],
+  "endTime": "2025-06-15T19:04:19.027Z",
+  "exitCode": {
+    "exitCode": 0,
+    "signal": 1
+  }
+}
