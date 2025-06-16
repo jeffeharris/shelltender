@@ -11,6 +11,7 @@ import {
 } from '@shelltender/client';
 import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
+import { TestMobile } from './TestMobile';
 
 function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
