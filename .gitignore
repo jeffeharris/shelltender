@@ -4,3 +4,5 @@ dist
 .test-sessions*
 *.log
 .idea
+*.tsbuildinfo
+tsconfig.tsbuildinfo
