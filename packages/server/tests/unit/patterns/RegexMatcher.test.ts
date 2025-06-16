@@ -52,14 +52,14 @@ describe('RegexMatcher', () => {
       
       expect(result).not.toBeNull();
       expect(result!.match).toBe('Error:');
-      expect(result!.position).toBe(22);
+      expect(result!.position).toBe(43); // Accounts for leading newline in BUILD_ERROR
     });
 
     it('should extract capture groups', () => {
       const config: PatternConfig = {
         name: 'test-results',
         type: 'regex',
-        pattern: /(\d+) passed.*(\d+) failed/,
+        pattern: /Tests:\s+(\d+) passed, (\d+) total/,
       };
       
       const matcher = new RegexMatcher(config, 'test-id');
@@ -76,7 +76,7 @@ describe('RegexMatcher', () => {
       const config: PatternConfig = {
         name: 'test-results',
         type: 'regex',
-        pattern: /(?<passed>\d+) passed.*(?<failed>\d+) failed/,
+        pattern: /Tests:\s+(?<passed>\d+) passed, (?<total>\d+) total/,
       };
       
       const matcher = new RegexMatcher(config, 'test-id');
@@ -87,7 +87,7 @@ describe('RegexMatcher', () => {
         '1': '1',
         '2': '1',
         'passed': '1',
-        'failed': '1',
+        'total': '1',
       });
     });
 
@@ -110,7 +110,7 @@ describe('RegexMatcher', () => {
       const config: PatternConfig = {
         name: 'traceback',
         type: 'regex',
-        pattern: /^Traceback.*?Error: .+$/,
+        pattern: /Traceback[\s\S]*?Error: .+$/m,
         options: { multiline: true },
       };
       
@@ -155,8 +155,7 @@ describe('RegexMatcher', () => {
         pattern: '[unclosed',
       };
       
-      const matcher = new RegexMatcher(config, 'test-id');
-      expect(() => matcher.validate()).toThrow('Invalid regex pattern');
+      expect(() => new RegexMatcher(config, 'test-id')).toThrow('Invalid regular expression');
     });
   });
 

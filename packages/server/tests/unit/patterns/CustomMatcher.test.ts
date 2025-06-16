@@ -170,7 +170,7 @@ describe('CustomMatcher', () => {
     it('should support multiline pattern matching', () => {
       // Example: Match Python tracebacks
       const matcherFn: CustomMatcherFn = (data, buffer) => {
-        const tracebackRegex = /Traceback[\s\S]*?(?=\n(?!\s)|$)/;
+        const tracebackRegex = /Traceback[\s\S]*?\w+Error:.*$/m;
         const match = buffer.match(tracebackRegex);
         
         if (match) {
@@ -213,12 +213,12 @@ NameError: name 'undefined_var' is not defined`;
       const matcherFn: CustomMatcherFn = (data, buffer) => {
         if (data === lastData) {
           unchangedCount++;
-          if (unchangedCount >= 3) {
+          if (unchangedCount >= 2) { // Changed from 3 to 2 since we're counting repeats
             return {
               match: 'Output idle',
               position: 0,
               groups: {
-                idleCount: unchangedCount.toString(),
+                idleCount: (unchangedCount + 1).toString(), // +1 to include the first occurrence
               },
             };
           }

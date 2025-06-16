@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { EventManager } from '../../src/EventManager';
+import { EventManager } from '../../src/events/EventManager';
 import { BufferManager } from '../../src/BufferManager';
 import { SessionManager } from '../../src/SessionManager';
 import { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
@@ -43,7 +43,7 @@ describe('Event System Integration', () => {
     bufferManager = new BufferManager();
     
     // Enable event system in buffer manager
-    bufferManager.enableEventSystem(eventManager);
+    bufferManager.setEventManager(eventManager);
     
     // Collect all events
     eventManager.on('terminal-event', (event) => {
@@ -75,14 +75,11 @@ describe('Event System Integration', () => {
         pattern: /\$\s*$/,
       });
 
-      // Create buffer
-      bufferManager.createBuffer(sessionId);
-
       // Simulate terminal output
-      bufferManager.addData(sessionId, 'Building project...\n');
-      bufferManager.addData(sessionId, fixtures.BUILD_ERROR);
-      bufferManager.addData(sessionId, '\n');
-      bufferManager.addData(sessionId, fixtures.BASH_PROMPT);
+      bufferManager.addToBuffer(sessionId, 'Building project...\n');
+      bufferManager.addToBuffer(sessionId, fixtures.BUILD_ERROR);
+      bufferManager.addToBuffer(sessionId, '\n');
+      bufferManager.addToBuffer(sessionId, fixtures.BASH_PROMPT);
 
       // Wait for async processing
       await new Promise(resolve => setImmediate(resolve));
@@ -102,10 +99,9 @@ describe('Event System Integration', () => {
 
     it('should detect ANSI sequences in mixed output', async () => {
       const sessionId = 'test-session';
-      bufferManager.createBuffer(sessionId);
 
       // Add mixed output with ANSI
-      bufferManager.addData(sessionId, fixtures.MIXED_OUTPUT);
+      bufferManager.addToBuffer(sessionId, fixtures.MIXED_OUTPUT);
 
       // Wait for async processing
       await new Promise(resolve => setImmediate(resolve));
@@ -126,8 +122,6 @@ describe('Event System Integration', () => {
       const session1 = 'session-1';
       const session2 = 'session-2';
 
-      bufferManager.createBuffer(session1);
-      bufferManager.createBuffer(session2);
 
       // Register different patterns for each session
       await eventManager.registerPattern(session1, {
@@ -143,8 +137,8 @@ describe('Event System Integration', () => {
       });
 
       // Add data to both sessions
-      bufferManager.addData(session1, 'This is SESSION1 data');
-      bufferManager.addData(session2, 'This is SESSION2 data');
+      bufferManager.addToBuffer(session1, 'This is SESSION1 data');
+      bufferManager.addToBuffer(session2, 'This is SESSION2 data');
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -168,7 +162,6 @@ describe('Event System Integration', () => {
   describe('complex pattern scenarios', () => {
     it('should handle build output with progress detection', async () => {
       const sessionId = 'build-session';
-      bufferManager.createBuffer(sessionId);
 
       // Register build-related patterns
       await eventManager.registerPattern(sessionId, {
@@ -184,12 +177,12 @@ describe('Event System Integration', () => {
       });
 
       // Simulate build output
-      bufferManager.addData(sessionId, 'webpack 5.74.0 compiling...\n');
-      bufferManager.addData(sessionId, 'Progress: 25%\n');
-      bufferManager.addData(sessionId, 'Progress: 50%\n');
-      bufferManager.addData(sessionId, 'Progress: 75%\n');
-      bufferManager.addData(sessionId, 'Progress: 100%\n');
-      bufferManager.addData(sessionId, fixtures.BUILD_SUCCESS);
+      bufferManager.addToBuffer(sessionId, 'webpack 5.74.0 compiling...\n');
+      bufferManager.addToBuffer(sessionId, 'Progress: 25%\n');
+      bufferManager.addToBuffer(sessionId, 'Progress: 50%\n');
+      bufferManager.addToBuffer(sessionId, 'Progress: 75%\n');
+      bufferManager.addToBuffer(sessionId, 'Progress: 100%\n');
+      bufferManager.addToBuffer(sessionId, fixtures.BUILD_SUCCESS);
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -207,17 +200,16 @@ describe('Event System Integration', () => {
 
     it('should handle test output with result parsing', async () => {
       const sessionId = 'test-session';
-      bufferManager.createBuffer(sessionId);
 
       // Register test result pattern
       await eventManager.registerPattern(sessionId, {
         name: 'jest-results',
         type: 'regex',
-        pattern: /Tests:\s+(\d+) passed, (\d+) failed/,
+        pattern: /Tests:\s+(\d+) passed, (\d+) total/,
       });
 
       // Add test output
-      bufferManager.addData(sessionId, fixtures.JEST_OUTPUT);
+      bufferManager.addToBuffer(sessionId, fixtures.JEST_OUTPUT);
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -237,14 +229,14 @@ describe('Event System Integration', () => {
   describe('custom pattern use cases', () => {
     it('should support Python traceback detection', async () => {
       const sessionId = 'python-session';
-      bufferManager.createBuffer(sessionId);
 
       // Register custom pattern for tracebacks
       await eventManager.registerPattern(sessionId, {
         name: 'python-traceback',
         type: 'custom',
         pattern: (data, buffer) => {
-          const tracebackRegex = /Traceback[\s\S]*?(?:^\S|\Z)/m;
+          // Match from Traceback to the end of the error line
+          const tracebackRegex = /Traceback[\s\S]*?\w+Error:.*$/m;
           const match = buffer.match(tracebackRegex);
           
           if (match) {
@@ -260,7 +252,7 @@ describe('Event System Integration', () => {
       });
 
       // Add Python error output
-      bufferManager.addData(sessionId, fixtures.PYTHON_ERROR);
+      bufferManager.addToBuffer(sessionId, fixtures.PYTHON_ERROR);
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -277,7 +269,6 @@ describe('Event System Integration', () => {
 
     it('should support interactive prompt detection', async () => {
       const sessionId = 'interactive-session';
-      bufferManager.createBuffer(sessionId);
 
       let promptCount = 0;
       await eventManager.registerPattern(sessionId, {
@@ -297,11 +288,11 @@ describe('Event System Integration', () => {
       });
 
       // Simulate interactive prompts
-      bufferManager.addData(sessionId, 'Enter your name: ');
-      bufferManager.addData(sessionId, 'John\n');
-      bufferManager.addData(sessionId, 'Enter your age: ');
-      bufferManager.addData(sessionId, '25\n');
-      bufferManager.addData(sessionId, 'Continue? ');
+      bufferManager.addToBuffer(sessionId, 'Enter your name: ');
+      bufferManager.addToBuffer(sessionId, 'John\n');
+      bufferManager.addToBuffer(sessionId, 'Enter your age: ');
+      bufferManager.addToBuffer(sessionId, '25\n');
+      bufferManager.addToBuffer(sessionId, 'Continue? ');
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -319,7 +310,6 @@ describe('Event System Integration', () => {
   describe('performance and edge cases', () => {
     it('should handle large amounts of data efficiently', async () => {
       const sessionId = 'perf-session';
-      bufferManager.createBuffer(sessionId);
 
       // Register a simple pattern
       await eventManager.registerPattern(sessionId, {
@@ -333,7 +323,7 @@ describe('Event System Integration', () => {
       const largeOutput = Array(lines).fill('Test line output').join('\n');
 
       const startTime = performance.now();
-      bufferManager.addData(sessionId, largeOutput);
+      bufferManager.addToBuffer(sessionId, largeOutput);
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -348,12 +338,11 @@ describe('Event System Integration', () => {
 
     it('should handle partial ANSI sequences at chunk boundaries', async () => {
       const sessionId = 'ansi-boundary';
-      bufferManager.createBuffer(sessionId);
 
       // Split ANSI sequence across multiple data chunks
-      bufferManager.addData(sessionId, 'Text \x1b[');
-      bufferManager.addData(sessionId, '31m');
-      bufferManager.addData(sessionId, 'Red text');
+      bufferManager.addToBuffer(sessionId, 'Text \x1b[');
+      bufferManager.addToBuffer(sessionId, '31m');
+      bufferManager.addToBuffer(sessionId, 'Red text');
 
       // Wait for processing
       await new Promise(resolve => setImmediate(resolve));
@@ -365,7 +354,6 @@ describe('Event System Integration', () => {
 
     it('should handle patterns with debouncing', async () => {
       const sessionId = 'debounce-session';
-      bufferManager.createBuffer(sessionId);
 
       await eventManager.registerPattern(sessionId, {
         name: 'debounced-error',
@@ -375,9 +363,9 @@ describe('Event System Integration', () => {
       });
 
       // Rapid error messages
-      bufferManager.addData(sessionId, 'ERROR 1\n');
-      bufferManager.addData(sessionId, 'ERROR 2\n');
-      bufferManager.addData(sessionId, 'ERROR 3\n');
+      bufferManager.addToBuffer(sessionId, 'ERROR 1\n');
+      bufferManager.addToBuffer(sessionId, 'ERROR 2\n');
+      bufferManager.addToBuffer(sessionId, 'ERROR 3\n');
 
       // Wait for initial processing
       await new Promise(resolve => setImmediate(resolve));
@@ -391,7 +379,7 @@ describe('Event System Integration', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       // Add another error
-      bufferManager.addData(sessionId, 'ERROR 4\n');
+      bufferManager.addToBuffer(sessionId, 'ERROR 4\n');
       await new Promise(resolve => setImmediate(resolve));
 
       const allEvents = collectedEvents.filter(

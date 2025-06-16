@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { StringMatcher } from '../../../src/patterns/StringMatcher';
+import { RegexMatcher } from '../../../src/patterns/RegexMatcher';
 import { PatternConfig } from '@shelltender/core';
 import * as fixtures from '../../fixtures/terminal-outputs';
 
@@ -153,7 +154,6 @@ describe('StringMatcher', () => {
       };
       
       const stringMatcher = new StringMatcher(stringConfig, 'string-id');
-      const RegexMatcher = require('../../../src/patterns/RegexMatcher').RegexMatcher;
       const regexMatcher = new RegexMatcher(regexConfig, 'regex-id');
       
       const testData = fixtures.BUILD_ERROR.repeat(100); // Make it larger

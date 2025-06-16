@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { EventManager } from '../../src/EventManager';
+import { EventManager } from '../../src/events/EventManager';
 import { PatternConfig, PatternMatchEvent, AnsiSequenceEvent } from '@shelltender/core';
 import * as fs from 'fs/promises';
 
@@ -188,8 +188,12 @@ describe('EventManager', () => {
     });
 
     it('should handle pattern matching errors gracefully', async () => {
-      const errorFn = vi.fn(() => {
-        throw new Error('Match error');
+      // Create a custom matcher that only throws during actual matching, not validation
+      const errorFn = vi.fn((data: string) => {
+        if (data !== '') {
+          throw new Error('Match error');
+        }
+        return null;
       });
 
       await eventManager.registerPattern('session-1', {
@@ -203,6 +207,7 @@ describe('EventManager', () => {
         eventManager.processData('session-1', 'test', '');
       }).not.toThrow();
 
+      // Should handle the error and not emit any events
       expect(emittedEvents).toHaveLength(0);
     });
   });
