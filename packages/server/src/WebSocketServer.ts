@@ -1,23 +1,41 @@
 import { WebSocketServer as WSServer } from 'ws';
 import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
-import { TerminalData } from '@shelltender/core';
+import { EventManager } from './events/EventManager.js';
+import { 
+  TerminalData, 
+  WebSocketMessage,
+  RegisterPatternMessage,
+  UnregisterPatternMessage,
+  SubscribeEventsMessage,
+  UnsubscribeEventsMessage,
+  TerminalEventMessage
+} from '@shelltender/core';
 
 export class WebSocketServer {
   private wss: WSServer;
   private sessionManager: SessionManager;
   private bufferManager: BufferManager;
+  private eventManager?: EventManager;
   private clients: Map<string, any> = new Map();
+  private clientPatterns = new Map<string, Set<string>>();
+  private clientEventSubscriptions = new Map<string, Set<string>>();
 
-  constructor(port: number, sessionManager: SessionManager, bufferManager: BufferManager) {
+  constructor(port: number, sessionManager: SessionManager, bufferManager: BufferManager, eventManager?: EventManager) {
     this.sessionManager = sessionManager;
     this.bufferManager = bufferManager;
+    this.eventManager = eventManager;
     this.wss = new WSServer({ port });
 
     // Set up the broadcaster for the session manager
     this.sessionManager.setClientBroadcaster((sessionId: string, data: any) => {
       this.broadcastToSession(sessionId, data);
     });
+
+    // Set up event system if available
+    if (this.eventManager) {
+      this.setupEventSystem();
+    }
 
     this.setupWebSocketHandlers();
   }
@@ -29,7 +47,7 @@ export class WebSocketServer {
 
       ws.on('message', (message: string) => {
         try {
-          const data: TerminalData = JSON.parse(message);
+          const data: WebSocketMessage = JSON.parse(message);
           this.handleMessage(clientId, ws, data);
         } catch (error) {
           console.error('Error parsing message:', error);
@@ -42,7 +60,22 @@ export class WebSocketServer {
         for (const session of this.sessionManager.getAllSessions()) {
           this.sessionManager.removeClient(session.id, clientId);
         }
+        
+        // Clean up event subscriptions and patterns
+        if (this.eventManager) {
+          const patterns = this.clientPatterns.get(clientId);
+          if (patterns) {
+            for (const patternId of patterns) {
+              this.eventManager.unregisterPattern(patternId).catch(err => 
+                console.error('Error unregistering pattern:', err)
+              );
+            }
+          }
+        }
+        
         this.clients.delete(clientId);
+        this.clientPatterns.delete(clientId);
+        this.clientEventSubscriptions.delete(clientId);
       });
 
       ws.on('error', (error) => {
@@ -51,7 +84,7 @@ export class WebSocketServer {
     });
   }
 
-  private handleMessage(clientId: string, ws: any, data: TerminalData): void {
+  private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
     switch (data.type) {
       case 'create':
         const options = data.options || {};
@@ -117,6 +150,22 @@ export class WebSocketServer {
           ws.sessionId = undefined;
         }
         break;
+
+      case 'register-pattern':
+        this.handleRegisterPattern(clientId, ws, data as RegisterPatternMessage);
+        break;
+
+      case 'unregister-pattern':
+        this.handleUnregisterPattern(clientId, ws, data as UnregisterPatternMessage);
+        break;
+
+      case 'subscribe-events':
+        this.handleSubscribeEvents(clientId, ws, data as SubscribeEventsMessage);
+        break;
+
+      case 'unsubscribe-events':
+        this.handleUnsubscribeEvents(clientId, ws, data as UnsubscribeEventsMessage);
+        break;
     }
   }
 
@@ -126,5 +175,121 @@ export class WebSocketServer {
         ws.send(JSON.stringify(data));
       }
     });
+  }
+
+  private setupEventSystem(): void {
+    if (!this.eventManager) return;
+
+    // Listen for terminal events and broadcast to subscribed clients
+    this.eventManager.on('terminal-event', (event) => {
+      const message: TerminalEventMessage = {
+        type: 'terminal-event',
+        event
+      };
+
+      // Broadcast to clients subscribed to this event type
+      this.clients.forEach((ws, clientId) => {
+        const subscriptions = this.clientEventSubscriptions.get(clientId);
+        if (subscriptions && subscriptions.has(event.type) && ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify(message));
+        }
+      });
+    });
+  }
+
+  private async handleRegisterPattern(clientId: string, ws: any, message: RegisterPatternMessage): Promise<void> {
+    if (!this.eventManager) {
+      ws.send(JSON.stringify({ 
+        type: 'error', 
+        data: 'Event system not enabled',
+        requestId: message.requestId 
+      }));
+      return;
+    }
+
+    try {
+      const patternId = await this.eventManager.registerPattern(message.sessionId, message.config);
+      
+      // Track which client registered which patterns
+      if (!this.clientPatterns.has(clientId)) {
+        this.clientPatterns.set(clientId, new Set());
+      }
+      this.clientPatterns.get(clientId)!.add(patternId);
+
+      ws.send(JSON.stringify({
+        type: 'pattern-registered',
+        patternId,
+        requestId: message.requestId
+      }));
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: error instanceof Error ? error.message : 'Unknown error',
+        requestId: message.requestId
+      }));
+    }
+  }
+
+  private async handleUnregisterPattern(clientId: string, ws: any, message: UnregisterPatternMessage): Promise<void> {
+    if (!this.eventManager) {
+      ws.send(JSON.stringify({ 
+        type: 'error', 
+        data: 'Event system not enabled',
+        requestId: message.requestId 
+      }));
+      return;
+    }
+
+    try {
+      await this.eventManager.unregisterPattern(message.patternId);
+      
+      // Remove from client's pattern tracking
+      const patterns = this.clientPatterns.get(clientId);
+      if (patterns) {
+        patterns.delete(message.patternId);
+      }
+
+      ws.send(JSON.stringify({
+        type: 'pattern-unregistered',
+        patternId: message.patternId,
+        requestId: message.requestId
+      }));
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: error instanceof Error ? error.message : 'Unknown error',
+        requestId: message.requestId
+      }));
+    }
+  }
+
+  private handleSubscribeEvents(clientId: string, ws: any, message: SubscribeEventsMessage): void {
+    if (!this.clientEventSubscriptions.has(clientId)) {
+      this.clientEventSubscriptions.set(clientId, new Set());
+    }
+
+    const subscriptions = this.clientEventSubscriptions.get(clientId)!;
+    for (const eventType of message.eventTypes) {
+      subscriptions.add(eventType);
+    }
+
+    ws.send(JSON.stringify({
+      type: 'subscribed',
+      eventTypes: message.eventTypes
+    }));
+  }
+
+  private handleUnsubscribeEvents(clientId: string, ws: any, message: UnsubscribeEventsMessage): void {
+    const subscriptions = this.clientEventSubscriptions.get(clientId);
+    if (subscriptions) {
+      for (const eventType of message.eventTypes) {
+        subscriptions.delete(eventType);
+      }
+    }
+
+    ws.send(JSON.stringify({
+      type: 'unsubscribed',
+      eventTypes: message.eventTypes
+    }));
   }
 }
