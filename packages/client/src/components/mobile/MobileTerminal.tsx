@@ -1,0 +1,218 @@
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Terminal } from '../Terminal';
+import { useTerminalTouchGestures } from '../../hooks/useTouchGestures';
+import { useWebSocket } from '../../hooks/useWebSocket';
+
+interface MobileTerminalProps {
+  sessionId: string;
+  onSessionChange?: (direction: 'next' | 'prev') => void;
+  onShowVirtualKeyboard?: () => void;
+}
+
+export function MobileTerminal({ 
+  sessionId, 
+  onSessionChange,
+  onShowVirtualKeyboard 
+}: MobileTerminalProps) {
+  const containerRef = useRef<HTMLDivElement>(null!);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const { wsService } = useWebSocket();
+
+  // Handle copy operation
+  const handleCopy = useCallback(() => {
+    // For now, we'll use the browser's built-in selection
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      navigator.clipboard.writeText(selection);
+      showToast('Copied to clipboard');
+    }
+  }, []);
+
+  // Handle paste operation
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && wsService && sessionId) {
+        // Send paste command through WebSocket
+        wsService.send({
+          type: 'input',
+          sessionId,
+          data: text,
+        });
+        showToast('Pasted from clipboard');
+      }
+    } catch (err) {
+      console.error('Failed to paste:', err);
+      showToast('Paste failed - check permissions');
+    }
+  }, [sessionId, wsService]);
+
+  // Handle session navigation
+  const handleNextSession = useCallback(() => {
+    onSessionChange?.('next');
+  }, [onSessionChange]);
+
+  const handlePrevSession = useCallback(() => {
+    onSessionChange?.('prev');
+  }, [onSessionChange]);
+
+  // Handle context menu
+  const handleContextMenu = useCallback((x: number, y: number) => {
+    setContextMenuPosition({ x, y });
+    setShowContextMenu(true);
+  }, []);
+
+  // Setup touch gestures
+  useTerminalTouchGestures(containerRef, {
+    onCopy: handleCopy,
+    onPaste: handlePaste,
+    onNextSession: handleNextSession,
+    onPrevSession: handlePrevSession,
+    onContextMenu: handleContextMenu,
+  });
+
+  // Close context menu on tap outside
+  useEffect(() => {
+    const handleTap = (e: MouseEvent | TouchEvent) => {
+      if (showContextMenu) {
+        setShowContextMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleTap);
+    document.addEventListener('touchstart', handleTap);
+
+    return () => {
+      document.removeEventListener('click', handleTap);
+      document.removeEventListener('touchstart', handleTap);
+    };
+  }, [showContextMenu]);
+
+  // Handle terminal focus and keyboard
+  const handleTerminalTap = useCallback(() => {
+    // Focus will be handled by the Terminal component
+    onShowVirtualKeyboard?.();
+  }, [onShowVirtualKeyboard]);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="mobile-terminal-container relative h-full w-full mobile-no-zoom"
+      onClick={handleTerminalTap}
+    >
+      <Terminal 
+        sessionId={sessionId}
+      />
+
+      {/* Context Menu */}
+      {showContextMenu && (
+        <div 
+          className="absolute bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-2 z-50"
+          style={{ 
+            left: `${contextMenuPosition.x}px`, 
+            top: `${contextMenuPosition.y}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <button
+            className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
+            onClick={() => {
+              handleCopy();
+              setShowContextMenu(false);
+            }}
+          >
+            Copy
+          </button>
+          <button
+            className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
+            onClick={() => {
+              handlePaste();
+              setShowContextMenu(false);
+            }}
+          >
+            Paste
+          </button>
+          <button
+            className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
+            onClick={() => {
+              // Select all using keyboard shortcut
+              if (wsService && sessionId) {
+                wsService.send({
+                  type: 'input',
+                  sessionId,
+                  data: '\x01', // Ctrl+A
+                });
+              }
+              setShowContextMenu(false);
+            }}
+          >
+            Select All
+          </button>
+          <button
+            className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
+            onClick={() => {
+              // Clear using keyboard shortcut
+              if (wsService && sessionId) {
+                wsService.send({
+                  type: 'input',
+                  sessionId,
+                  data: '\x0c', // Ctrl+L
+                });
+              }
+              setShowContextMenu(false);
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Touch gesture hints */}
+      <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
+        <div className="bg-black bg-opacity-50 text-white text-xs p-2 rounded-lg flex flex-wrap gap-2 justify-center">
+          <span>Swipe ← → to switch sessions</span>
+          <span>•</span>
+          <span>2 fingers tap to copy</span>
+          <span>•</span>
+          <span>3 fingers tap to paste</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Simple toast notification
+let activeToasts: HTMLDivElement[] = [];
+
+function showToast(message: string) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  activeToasts.push(toast);
+
+  const removeToast = () => {
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast);
+    }
+    activeToasts = activeToasts.filter(t => t !== toast);
+  };
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(removeToast, 300);
+  }, 2000);
+}
+
+// Clean up any remaining toasts on unmount
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    activeToasts.forEach(toast => {
+      if (document.body.contains(toast)) {
+        document.body.removeChild(toast);
+      }
+    });
+    activeToasts = [];
+  });
+}

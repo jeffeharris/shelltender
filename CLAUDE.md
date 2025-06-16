@@ -64,7 +64,7 @@ The project uses Vitest for testing all packages:
 Test coverage includes:
 - Core package: Type exports and constants, event system types
 - Server package: SessionManager, BufferManager, RestrictedShell, WebSocket integration, EventManager, Pattern matchers
-- Client package: React components (Terminal, SessionManager, SessionTabs), WebSocketService
+- Client package: React components (Terminal, SessionManager, SessionTabs), WebSocketService, Mobile components and hooks
 - Combined package: Package structure validation
 
 ## Architecture
@@ -86,6 +86,12 @@ Test coverage includes:
 - **SessionTabs Component** - Tab interface for switching between sessions
 - **SessionManager Component** - Modal for managing all sessions (open and backgrounded)
 - **WebSocketService** - Handles WebSocket connection with automatic reconnection
+- **Mobile Support** - Touch gestures, responsive design, mobile-optimized components
+  - **MobileApp** - Wrapper component for mobile experience
+  - **MobileTerminal** - Touch-optimized terminal with multi-touch gestures
+  - **MobileSessionTabs** - Mobile-friendly session navigation
+  - **useMobileDetection** - Device detection and responsive state
+  - **useTouchGestures** - Comprehensive touch gesture support
 - Automatic reconnection on disconnect with exponential backoff
 - Multi-tab synchronization via shared WebSocket sessions
 
@@ -99,6 +105,8 @@ Test coverage includes:
 - Special key support (ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, arrow keys)
 - Terminal event system for pattern matching and output detection
 - Built-in ANSI sequence detection and parsing
+- Mobile support with multi-touch gestures (2-finger copy, 3-finger paste, swipe navigation)
+- Responsive design that adapts to phones, tablets, and desktops
 
 ## Notes
 
