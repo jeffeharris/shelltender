@@ -40,7 +40,7 @@ export class CustomMatcher extends PatternMatcher {
     try {
       this.matcherFn('', '');
     } catch (error) {
-      throw new Error(`Invalid custom matcher: ${error.message}`);
+      throw new Error(`Invalid custom matcher: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

@@ -113,14 +113,16 @@ export class AnsiMatcher extends PatternMatcher {
 
     // OSC sequence
     if (fullMatch.startsWith('\x1b]')) {
-      const code = match[3] || '';
-      const data = match[4] || '';
+      // For OSC sequences, extract from the full match
+      const oscMatch = fullMatch.match(/\x1b\](\d+);([^\x07]*)\x07/);
+      const code = oscMatch ? oscMatch[1] : '';
+      const data = oscMatch ? oscMatch[2] : '';
       
       return {
         type: 'osc',
         data: {
-          code: parseInt(code, 10),
-          data,
+          code: parseInt(code, 10) || 0,
+          data: data || '',
           raw: fullMatch,
         },
       };

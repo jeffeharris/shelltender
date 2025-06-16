@@ -6,7 +6,7 @@ import {
   AnsiSequenceEvent,
   TerminalEventMessage
 } from '@shelltender/core';
-import { PatternMatcher, PatternMatcherFactory } from './patterns';
+import { PatternMatcher, PatternMatcherFactory } from '../patterns/index.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -34,11 +34,13 @@ export class EventManager extends EventEmitter {
    * Register a new pattern
    */
   async registerPattern(sessionId: string, config: PatternConfig): Promise<string> {
-    // Validate the pattern configuration
-    try {
-      PatternMatcherFactory.validate(config);
-    } catch (error) {
-      throw new Error(`Invalid pattern configuration: ${error.message}`);
+    // Validate the pattern configuration for non-custom patterns
+    if (config.type !== 'custom') {
+      try {
+        PatternMatcherFactory.validate(config);
+      } catch (error) {
+        throw new Error(`Invalid pattern configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
 
     // Generate unique pattern ID
@@ -102,6 +104,10 @@ export class EventManager extends EventEmitter {
    * Process new terminal data for pattern matching
    */
   processData(sessionId: string, data: string, buffer: string): void {
+    // Always check for ANSI sequences (built-in detection)
+    this.checkAnsiSequences(sessionId, data);
+
+    // Check registered patterns
     const sessionPatternIds = this.sessionPatterns.get(sessionId);
     if (!sessionPatternIds || sessionPatternIds.size === 0) {
       return;
@@ -133,9 +139,6 @@ export class EventManager extends EventEmitter {
         console.error(`[EventManager] Error matching pattern ${patternId}:`, error);
       }
     }
-
-    // Also check for ANSI sequences if any ANSI matchers are registered
-    this.checkAnsiSequences(sessionId, data);
   }
 
   /**
@@ -319,7 +322,7 @@ export class EventManager extends EventEmitter {
       console.log(`[EventManager] Loaded ${this.patterns.size} persisted patterns`);
     } catch (error) {
       // File might not exist yet
-      if (error.code !== 'ENOENT') {
+      if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
         console.error('[EventManager] Failed to load persisted patterns:', error);
       }
     }

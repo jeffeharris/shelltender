@@ -120,7 +120,7 @@ export class RegexMatcher extends PatternMatcher {
       // Test the regex with an empty string to check validity
       this.regex.test('');
     } catch (error) {
-      throw new Error(`Invalid regex pattern: ${error.message}`);
+      throw new Error(`Invalid regex pattern: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

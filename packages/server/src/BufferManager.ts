@@ -1,9 +1,19 @@
+import { EventManager } from './events/EventManager.js';
+
 export class BufferManager {
   private buffers: Map<string, string> = new Map();
   private maxBufferSize: number;
+  private eventManager?: EventManager;
 
   constructor(maxBufferSize: number = 100000) {
     this.maxBufferSize = maxBufferSize;
+  }
+
+  /**
+   * Set the event manager for pattern matching
+   */
+  setEventManager(eventManager: EventManager): void {
+    this.eventManager = eventManager;
   }
 
   addToBuffer(sessionId: string, data: string): void {
@@ -20,6 +30,14 @@ export class BufferManager {
     }
 
     this.buffers.set(sessionId, buffer);
+
+    // Process events if event manager is set
+    if (this.eventManager) {
+      // Use setImmediate to avoid blocking terminal output
+      setImmediate(() => {
+        this.eventManager!.processData(sessionId, data, buffer);
+      });
+    }
   }
 
   getBuffer(sessionId: string): string {
