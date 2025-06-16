@@ -67,12 +67,13 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
     fitAddonRef.current = fitAddon;
 
     // Initialize WebSocket
-    const wsUrl = `ws://localhost:8282`;
-    const ws = new WebSocketService(wsUrl);
+    const ws = new WebSocketService(); // Uses constructor defaults
     wsRef.current = ws;
 
-    // Handle WebSocket messages
-    ws.onMessage((data: TerminalData) => {
+    // Handle terminal data messages
+    // All terminal-related messages come through with their specific types
+    // (output, create, connect, resize, error, etc.)
+    const handleTerminalMessage = (data: TerminalData) => {
       switch (data.type) {
         case 'create':
           if (data.sessionId) {
@@ -104,7 +105,16 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
           console.error('Terminal error:', data.data);
           break;
       }
-    });
+    };
+
+    // Register handlers for each terminal message type
+    ws.on('output', handleTerminalMessage);
+    ws.on('create', handleTerminalMessage);
+    ws.on('connect', handleTerminalMessage);
+    ws.on('resize', handleTerminalMessage);
+    ws.on('error', handleTerminalMessage);
+    ws.on('bell', handleTerminalMessage);
+    ws.on('exit', handleTerminalMessage);
 
     ws.onConnect(() => {
       setIsConnected(true);

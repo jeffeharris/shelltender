@@ -91,35 +91,443 @@ interface TerminalEventMessage {
 
 ## Phase 3: Client SDK
 
-### 3.1 Event Client Service
-**File**: `packages/client/src/services/TerminalEventService.ts`
+### 3.1 Update WebSocketService
+**File**: `packages/client/src/services/WebSocketService.ts`
+
+The existing WebSocketService needs to be updated to support multiple message handlers:
+- Change from single `onMessageHandler` to event emitter pattern
+- Support typed message handling for different message types
+- Update type from `TerminalData` to `WebSocketMessage` for broader support
+
 ```typescript
-export class TerminalEventService {
-  constructor(private ws: WebSocketService) {}
+import type { WebSocketMessage } from '@shelltender/core';
+
+type MessageHandler = (data: any) => void;
+
+export class WebSocketService {
+  private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
   
-  registerPattern(sessionId: string, config: PatternConfig): Promise<string>;
-  unregisterPattern(patternId: string): Promise<void>;
-  subscribe(eventTypes: string[], callback: EventCallback): () => void;
+  // Add event emitter methods
+  on(type: string, handler: MessageHandler): void {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type)!.add(handler);
+  }
+  
+  off(type: string, handler: MessageHandler): void {
+    this.messageHandlers.get(type)?.delete(handler);
+  }
+  
+  // Update message handling
+  private handleMessage(data: WebSocketMessage): void {
+    const handlers = this.messageHandlers.get(data.type);
+    if (handlers) {
+      handlers.forEach(handler => handler(data));
+    }
+  }
+  
+  // Update send method to accept WebSocketMessage
+  send(data: WebSocketMessage): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+    } else {
+      this.messageQueue.push(data);
+    }
+  }
 }
 ```
 
-### 3.2 React Hooks
-**File**: `packages/client/src/hooks/useTerminalEvents.ts`
+**Key Changes Needed:**
+1. Replace `onMessageHandler` with event emitter pattern using `Map<string, Set<MessageHandler>>`
+2. Add `on()` and `off()` methods for subscribing to specific message types
+3. Update `onmessage` handler to dispatch to registered handlers based on message type
+4. Change message type from `TerminalData` to `WebSocketMessage`
+5. Update `send()` method signature to accept `WebSocketMessage`
+
+### 3.2 TerminalEventService Implementation
+**File**: `packages/client/src/services/TerminalEventService.ts`
+
+Implement with request/response correlation and timeout handling:
+
 ```typescript
-export function useTerminalEvents(sessionId: string) {
-  const eventService = useContext(TerminalEventContext);
+import { WebSocketService } from './WebSocketService';
+import { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
+
+export type EventCallback = (event: AnyTerminalEvent) => void;
+export type UnsubscribeFn = () => void;
+
+export class TerminalEventService {
+  private eventSubscriptions = new Map<string, Set<EventCallback>>();
+  private patternRegistry = new Map<string, string>(); // patternId -> sessionId
+  private pendingRequests = new Map<string, {
+    resolve: (value: any) => void;
+    reject: (error: any) => void;
+  }>();
+
+  constructor(private ws: WebSocketService) {
+    this.setupMessageHandlers();
+  }
+
+  private setupMessageHandlers(): void {
+    // Listen for pattern registration responses
+    this.ws.on('pattern-registered', (data: any) => {
+      const request = this.pendingRequests.get(data.requestId);
+      if (request) {
+        request.resolve(data.patternId);
+        this.pendingRequests.delete(data.requestId);
+      }
+    });
+
+    // Listen for pattern unregistration responses
+    this.ws.on('pattern-unregistered', (data: any) => {
+      const request = this.pendingRequests.get(data.requestId);
+      if (request) {
+        request.resolve(true);
+        this.pendingRequests.delete(data.requestId);
+      }
+    });
+
+    // Listen for terminal events
+    this.ws.on('terminal-event', (data: any) => {
+      this.handleTerminalEvent(data.event);
+    });
+
+    // Handle errors
+    this.ws.on('error', (data: any) => {
+      const request = this.pendingRequests.get(data.requestId);
+      if (request) {
+        request.reject(new Error(data.data));
+        this.pendingRequests.delete(data.requestId);
+      }
+    });
+  }
   
-  const registerPattern = useCallback((config: PatternConfig) => {
-    return eventService.registerPattern(sessionId, config);
-  }, [sessionId]);
+  async registerPattern(sessionId: string, config: PatternConfig): Promise<string> {
+    const requestId = `req-${Date.now()}-${Math.random()}`;
+    
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(requestId, { resolve, reject });
+      
+      this.ws.send({
+        type: 'register-pattern',
+        sessionId,
+        config,
+        requestId
+      });
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (this.pendingRequests.has(requestId)) {
+          this.pendingRequests.delete(requestId);
+          reject(new Error('Pattern registration timeout'));
+        }
+      }, 10000);
+    });
+  }
+
+  async unregisterPattern(patternId: string): Promise<void> {
+    const requestId = `req-${Date.now()}-${Math.random()}`;
+    
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(requestId, { resolve, reject });
+      
+      this.ws.send({
+        type: 'unregister-pattern',
+        patternId,
+        requestId
+      });
+
+      setTimeout(() => {
+        if (this.pendingRequests.has(requestId)) {
+          this.pendingRequests.delete(requestId);
+          reject(new Error('Pattern unregistration timeout'));
+        }
+      }, 10000);
+    });
+  }
   
-  const subscribe = useCallback((eventTypes: string[], callback: EventCallback) => {
-    return eventService.subscribe(eventTypes, callback);
-  }, []);
-  
-  return { registerPattern, subscribe };
+  subscribe(eventTypes: string[], callback: EventCallback): UnsubscribeFn {
+    // Subscribe locally
+    eventTypes.forEach(type => {
+      if (!this.eventSubscriptions.has(type)) {
+        this.eventSubscriptions.set(type, new Set());
+      }
+      this.eventSubscriptions.get(type)!.add(callback);
+    });
+
+    // Tell server we want to receive events
+    this.ws.send({
+      type: 'subscribe-events',
+      eventTypes
+    });
+
+    // Return unsubscribe function
+    return () => {
+      eventTypes.forEach(type => {
+        this.eventSubscriptions.get(type)?.delete(callback);
+      });
+    };
+  }
+
+  private handleTerminalEvent(event: AnyTerminalEvent): void {
+    const callbacks = this.eventSubscriptions.get(event.type);
+    if (callbacks) {
+      callbacks.forEach(callback => {
+        try {
+          callback(event);
+        } catch (error) {
+          console.error('Error in event callback:', error);
+        }
+      });
+    }
+  }
+
+  // Helper method to subscribe to pattern matches for a specific session
+  subscribeToSession(sessionId: string, callback: EventCallback): UnsubscribeFn {
+    const wrappedCallback = (event: AnyTerminalEvent) => {
+      if (event.sessionId === sessionId) {
+        callback(event);
+      }
+    };
+
+    return this.subscribe(['pattern-match', 'ansi-sequence'], wrappedCallback);
+  }
 }
 ```
+
+**Key Features:**
+- Request/response correlation using `requestId`
+- Timeout handling (10 seconds) for async operations
+- Error handling with proper cleanup
+- Session-specific event filtering
+- Multiple event type subscriptions
+
+### 3.3 React Hook Implementation
+**File**: `packages/client/src/hooks/useTerminalEvents.ts`
+
+Hook with automatic cleanup and connection management:
+
+```typescript
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useWebSocket } from './useWebSocket';
+import { TerminalEventService } from '../services/TerminalEventService';
+import { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
+
+export interface UseTerminalEventsReturn {
+  events: AnyTerminalEvent[];
+  registerPattern: (config: PatternConfig) => Promise<string>;
+  unregisterPattern: (patternId: string) => Promise<void>;
+  clearEvents: () => void;
+  isConnected: boolean;
+}
+
+export function useTerminalEvents(sessionId: string): UseTerminalEventsReturn {
+  const { wsService, isConnected } = useWebSocket();
+  const [events, setEvents] = useState<AnyTerminalEvent[]>([]);
+  const eventServiceRef = useRef<TerminalEventService>();
+  const registeredPatterns = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!wsService || !isConnected) return;
+
+    // Create event service
+    const eventService = new TerminalEventService(wsService);
+    eventServiceRef.current = eventService;
+
+    // Subscribe to events for this session
+    const unsubscribe = eventService.subscribeToSession(sessionId, (event) => {
+      setEvents(prev => [...prev, event]);
+    });
+
+    return () => {
+      unsubscribe();
+      // Cleanup registered patterns
+      registeredPatterns.current.forEach(patternId => {
+        eventService.unregisterPattern(patternId).catch(console.error);
+      });
+      registeredPatterns.current.clear();
+    };
+  }, [wsService, isConnected, sessionId]);
+
+  const registerPattern = useCallback(async (config: PatternConfig) => {
+    if (!eventServiceRef.current) {
+      throw new Error('Event service not initialized');
+    }
+
+    const patternId = await eventServiceRef.current.registerPattern(sessionId, config);
+    registeredPatterns.current.add(patternId);
+    return patternId;
+  }, [sessionId]);
+
+  const unregisterPattern = useCallback(async (patternId: string) => {
+    if (!eventServiceRef.current) {
+      throw new Error('Event service not initialized');
+    }
+
+    await eventServiceRef.current.unregisterPattern(patternId);
+    registeredPatterns.current.delete(patternId);
+  }, []);
+
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+  }, []);
+
+  return {
+    events,
+    registerPattern,
+    unregisterPattern,
+    clearEvents,
+    isConnected
+  };
+}
+```
+
+**Key Features:**
+- Automatic cleanup on unmount
+- Pattern registry tracking
+- Connection state awareness
+- Error handling with service initialization checks
+- Session-specific event filtering
+
+### 3.4 Example Component Implementation
+**File**: `packages/client/src/components/TerminalEventMonitor.tsx`
+
+Fully functional monitoring component for demo/debugging:
+
+```typescript
+import React, { useEffect, useState } from 'react';
+import { useTerminalEvents } from '../../hooks/useTerminalEvents';
+import { PatternMatchEvent } from '@shelltender/core';
+
+interface Props {
+  sessionId: string;
+}
+
+export const TerminalEventMonitor: React.FC<Props> = ({ sessionId }) => {
+  const { events, registerPattern, clearEvents } = useTerminalEvents(sessionId);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+
+  useEffect(() => {
+    if (!isMonitoring) return;
+
+    const setupPatterns = async () => {
+      try {
+        // Register error pattern
+        await registerPattern({
+          name: 'error-detector',
+          type: 'regex',
+          pattern: /error:|failed:/i,
+          options: { debounce: 100 }
+        });
+
+        // Register success pattern
+        await registerPattern({
+          name: 'success-detector',
+          type: 'regex',
+          pattern: /success|completed|done/i,
+          options: { debounce: 100 }
+        });
+      } catch (error) {
+        console.error('Failed to register patterns:', error);
+      }
+    };
+
+    setupPatterns();
+  }, [isMonitoring, registerPattern]);
+
+  const errorEvents = events.filter(e => 
+    e.type === 'pattern-match' && 
+    (e as PatternMatchEvent).patternName === 'error-detector'
+  );
+
+  const successEvents = events.filter(e => 
+    e.type === 'pattern-match' && 
+    (e as PatternMatchEvent).patternName === 'success-detector'
+  );
+
+  return (
+    <div className="terminal-event-monitor">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Event Monitor</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsMonitoring(!isMonitoring)}
+            className={`px-3 py-1 rounded ${
+              isMonitoring ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+            }`}
+          >
+            {isMonitoring ? 'Stop' : 'Start'} Monitoring
+          </button>
+          <button
+            onClick={clearEvents}
+            className="px-3 py-1 bg-gray-500 text-white rounded"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="border rounded p-3">
+          <h4 className="font-semibold text-red-600 mb-2">
+            Errors ({errorEvents.length})
+          </h4>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {errorEvents.map((event, i) => (
+              <div key={i} className="text-sm">
+                {(event as PatternMatchEvent).match}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border rounded p-3">
+          <h4 className="font-semibold text-green-600 mb-2">
+            Success ({successEvents.length})
+          </h4>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {successEvents.map((event, i) => (
+              <div key={i} className="text-sm">
+                {(event as PatternMatchEvent).match}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+### 3.5 Integration Steps
+
+1. **Update WebSocketService**: 
+   - Modify existing service to support event emitter pattern
+   - Ensure backward compatibility with existing terminal data handling
+   - Test WebSocket reconnection with new message types
+
+2. **Export from Package**:
+   - Add exports to `packages/client/src/index.ts`:
+   ```typescript
+   export { TerminalEventService } from './services/TerminalEventService';
+   export { useTerminalEvents } from './hooks/useTerminalEvents';
+   export { TerminalEventMonitor } from './components/TerminalEventMonitor';
+   ```
+
+3. **Add to Terminal Component** (Optional):
+   - Integrate event monitor as collapsible panel
+   - Add toggle button in terminal header
+   - Store monitor state in localStorage
+
+4. **Update Type Exports**:
+   - Ensure all event types are exported from @shelltender/core
+   - Add WebSocketMessage union type for all message types
+
+5. **Documentation Updates**:
+   - Update TERMINAL_EVENTS_API.md to remove "coming soon" notices
+   - Add usage examples to package README files
+   - Create migration guide for WebSocketService changes
 
 ## Phase 4: Built-in Patterns
 

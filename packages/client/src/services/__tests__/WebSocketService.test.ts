@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { WebSocketService } from '../WebSocketService';
-import type { TerminalData } from '@shelltender/core';
+import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
 // Define WebSocket constants (these are standard values)
 const WS_CONNECTING = 0;
@@ -66,7 +66,7 @@ describe('WebSocketService', () => {
     // Mock console to avoid test output pollution
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    service = new WebSocketService('ws://localhost:8080');
+    service = new WebSocketService();
   });
 
   afterEach(() => {
@@ -82,7 +82,7 @@ describe('WebSocketService', () => {
       mockWebSocket = (service as any).ws as MockWebSocket;
       
       expect(mockWebSocket).toBeDefined();
-      expect(mockWebSocket.url).toBe('ws://localhost:8080');
+      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8080');
     });
 
     it('should call onConnect handler when connected', () => {
@@ -114,7 +114,7 @@ describe('WebSocketService', () => {
       mockWebSocket = (service as any).ws as MockWebSocket;
       mockWebSocket.simulateOpen();
       
-      const data: TerminalData = { type: 'input', data: 'test' };
+      const data: WebSocketMessage = { type: 'input', data: 'test' };
       service.send(data);
       
       expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify(data));
@@ -129,8 +129,8 @@ describe('WebSocketService', () => {
     });
 
     it('should flush message queue when connected', () => {
-      const data1: TerminalData = { type: 'input', data: 'test1' };
-      const data2: TerminalData = { type: 'input', data: 'test2' };
+      const data1: WebSocketMessage = { type: 'input', data: 'test1' };
+      const data2: WebSocketMessage = { type: 'input', data: 'test2' };
       
       // Queue messages before connection
       service.send(data1);
@@ -150,19 +150,6 @@ describe('WebSocketService', () => {
   });
 
   describe('message handling', () => {
-    it('should call onMessage handler when message received', () => {
-      const onMessageHandler = vi.fn();
-      service.onMessage(onMessageHandler);
-      service.connect();
-      
-      mockWebSocket = (service as any).ws as MockWebSocket;
-      mockWebSocket.simulateOpen();
-      
-      const data: TerminalData = { type: 'output', data: 'Hello World' };
-      mockWebSocket.simulateMessage(data);
-      
-      expect(onMessageHandler).toHaveBeenCalledWith(data);
-    });
 
     it('should handle JSON parse errors gracefully', () => {
       service.connect();
@@ -173,6 +160,85 @@ describe('WebSocketService', () => {
       }
       
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error parsing WebSocket message:', expect.any(Error));
+    });
+
+    it('should support event emitter pattern with on/off', () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+      
+      service.on('pattern-match', handler1);
+      service.on('pattern-match', handler2);
+      service.connect();
+      
+      mockWebSocket = (service as any).ws as MockWebSocket;
+      mockWebSocket.simulateOpen();
+      
+      const data: WebSocketMessage = { 
+        type: 'pattern-match', 
+        sessionId: 'session-1',
+        patternId: 'pattern-123',
+        patternName: 'test',
+        timestamp: Date.now(),
+        match: 'test match',
+        position: 0
+      };
+      mockWebSocket.simulateMessage(data);
+      
+      expect(handler1).toHaveBeenCalledWith(data);
+      expect(handler2).toHaveBeenCalledWith(data);
+      
+      // Remove one handler
+      service.off('pattern-match', handler1);
+      mockWebSocket.simulateMessage(data);
+      
+      expect(handler1).toHaveBeenCalledTimes(1); // Not called again
+      expect(handler2).toHaveBeenCalledTimes(2); // Called again
+    });
+
+    it('should handle multiple message types', () => {
+      const patternHandler = vi.fn();
+      const eventHandler = vi.fn();
+      const terminalHandler = vi.fn();
+      
+      service.on('pattern-registered', patternHandler);
+      service.on('terminal-event', eventHandler);
+      service.on('terminal-data', terminalHandler);
+      service.connect();
+      
+      mockWebSocket = (service as any).ws as MockWebSocket;
+      mockWebSocket.simulateOpen();
+      
+      const patternMsg: WebSocketMessage = { 
+        type: 'pattern-registered',
+        patternId: 'pattern-123',
+        requestId: 'req-123'
+      };
+      
+      const eventMsg: WebSocketMessage = {
+        type: 'terminal-event',
+        event: {
+          type: 'pattern-match',
+          sessionId: 'session-1',
+          patternId: 'pattern-123',
+          patternName: 'test',
+          timestamp: Date.now(),
+          match: 'test',
+          position: 0
+        }
+      };
+      
+      const terminalMsg: WebSocketMessage = {
+        type: 'terminal-data',
+        data: 'Hello'
+      };
+      
+      mockWebSocket.simulateMessage(patternMsg);
+      mockWebSocket.simulateMessage(eventMsg);
+      mockWebSocket.simulateMessage(terminalMsg);
+      
+      expect(patternHandler).toHaveBeenCalledWith(patternMsg);
+      expect(eventHandler).toHaveBeenCalledWith(eventMsg);
+      expect(terminalHandler).toHaveBeenCalledWith(terminalMsg);
     });
   });
 

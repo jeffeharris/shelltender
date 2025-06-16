@@ -55,6 +55,22 @@ export interface UnsubscribeEventsMessage {
   sessionId?: string;
 }
 
+export interface GetPatternsMessage {
+  type: 'get-patterns';
+  sessionId: string;
+  requestId?: string;
+}
+
+export interface PatternsListMessage {
+  type: 'patterns-list';
+  patterns: Array<{
+    patternId: string;
+    config: PatternConfig;
+    sessionId: string;
+  }>;
+  requestId?: string;
+}
+
 // Union type for all WebSocket messages
 export type WebSocketMessage = 
   | TerminalData 
@@ -64,4 +80,6 @@ export type WebSocketMessage =
   | PatternUnregisteredMessage 
   | TerminalEventMessage
   | SubscribeEventsMessage
-  | UnsubscribeEventsMessage;
+  | UnsubscribeEventsMessage
+  | GetPatternsMessage
+  | PatternsListMessage;

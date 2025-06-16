@@ -60,9 +60,17 @@ export interface CustomPatternEvent extends TerminalEvent {
 }
 
 /**
+ * Error event for general errors
+ */
+export interface ErrorEvent extends TerminalEvent {
+  type: 'error';
+  error: string | any;
+}
+
+/**
  * Union type of all terminal events
  */
-export type AnyTerminalEvent = PatternMatchEvent | OutputStateEvent | AnsiSequenceEvent | CustomPatternEvent;
+export type AnyTerminalEvent = PatternMatchEvent | OutputStateEvent | AnsiSequenceEvent | CustomPatternEvent | ErrorEvent;
 
 /**
  * Pattern matcher types

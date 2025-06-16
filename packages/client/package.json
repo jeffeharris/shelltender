@@ -5,8 +5,35 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "files": ["dist", "styles"],
   "license": "MIT",
+  "author": "Jeff Harris",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeffh/shelltender.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://github.com/jeffh/shelltender#readme",
+  "bugs": {
+    "url": "https://github.com/jeffh/shelltender/issues"
+  },
+  "keywords": [
+    "terminal",
+    "react",
+    "xterm",
+    "websocket",
+    "ui",
+    "shelltender"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest",

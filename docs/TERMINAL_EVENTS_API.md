@@ -11,7 +11,9 @@ The Terminal Event System provides real-time pattern matching and event detectio
 const eventManager = new EventManager();
 bufferManager.setEventManager(eventManager);
 
-// Client-side (coming soon)
+// Client-side
+import { TerminalEventService } from '@shelltender/client';
+
 const eventService = new TerminalEventService(wsService);
 
 // Register a pattern
@@ -210,3 +212,161 @@ await eventManager.registerPattern(sessionId, {
   }
 });
 ```
+
+## Client-Side Components
+
+### TerminalEventService
+
+The client-side service for managing pattern registration and event subscriptions:
+
+```typescript
+import { TerminalEventService } from '@shelltender/client';
+
+const eventService = new TerminalEventService(wsService);
+
+// Register patterns with request/response correlation
+const patternId = await eventService.registerPattern(sessionId, config);
+
+// Subscribe to events
+const unsubscribe = eventService.subscribe(['pattern-match'], (event) => {
+  console.log('Pattern matched:', event);
+});
+
+// Subscribe to session-specific events
+const unsubscribeSess = eventService.subscribeToSession(sessionId, (event) => {
+  console.log('Session event:', event);
+});
+```
+
+### useTerminalEvents Hook
+
+React hook for terminal events with automatic cleanup:
+
+```typescript
+import { useTerminalEvents } from '@shelltender/client';
+
+function MyComponent({ sessionId }) {
+  const { events, registerPattern, clearEvents, isConnected } = useTerminalEvents(sessionId);
+  
+  useEffect(() => {
+    // Patterns are automatically cleaned up on unmount
+    registerPattern({
+      name: 'error-detector',
+      type: 'regex',
+      pattern: /error:/i
+    });
+  }, []);
+  
+  return (
+    <div>
+      {events.map(event => (
+        <div key={event.timestamp}>{event.match}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### TerminalEventMonitor Component
+
+Pre-built UI component for monitoring terminal events:
+
+```typescript
+import { TerminalEventMonitor } from '@shelltender/client';
+
+function App() {
+  return (
+    <div>
+      <Terminal sessionId={sessionId} />
+      <TerminalEventMonitor sessionId={sessionId} />
+    </div>
+  );
+}
+```
+
+## WebSocket Service Updates
+
+The WebSocketService now supports event emitter pattern:
+
+```typescript
+// Listen for specific message types
+wsService.on('terminal-event', (data) => {
+  console.log('Received event:', data.event);
+});
+
+wsService.on('pattern-registered', (data) => {
+  console.log('Pattern registered:', data.patternId);
+});
+
+// Send typed messages
+wsService.send({
+  type: 'register-pattern',
+  sessionId: 'session-1',
+  config: patternConfig,
+  requestId: 'req-123'
+});
+
+// Remove handlers
+wsService.off('terminal-event', handler);
+```
+
+## Error Handling
+
+All async operations (pattern registration/unregistration) include:
+- Request/response correlation with `requestId`
+- 10-second timeout
+- Error propagation via promise rejection
+- Automatic cleanup on timeout
+
+## Configuration
+
+### WebSocket URL
+The WebSocket URL can be configured via environment variable:
+```bash
+REACT_APP_WS_URL=ws://localhost:8080 npm start
+```
+
+Default: `ws://localhost:8080`
+
+### Event History Limit
+The `useTerminalEvents` hook accepts options to limit event history:
+```typescript
+const { events } = useTerminalEvents(sessionId, { 
+  maxEvents: 500  // Default: 1000
+});
+```
+
+## Advanced Features
+
+### Pattern Persistence
+Patterns can be persisted to disk by setting the `persist` option:
+```typescript
+await registerPattern({
+  name: 'critical-error',
+  type: 'regex',
+  pattern: /CRITICAL|FATAL/i,
+  options: { persist: true }
+});
+```
+
+### Get Registered Patterns
+Retrieve all patterns for a session:
+```typescript
+const patterns = await eventService.getPatterns(sessionId);
+// Returns: Array<{ patternId, config, sessionId }>
+```
+
+### Pattern Validation
+Basic client-side validation is performed before sending to server:
+- Regex patterns are validated for syntax
+- String patterns must be strings
+- All patterns must have name and type
+
+## Testing
+
+The client implementation includes comprehensive test coverage:
+- Unit tests for TerminalEventService with mocked WebSocket
+- Hook tests with React Testing Library
+- Component tests for TerminalEventMonitor
+- WebSocket integration tests with event emitter pattern
+- Pattern validation tests

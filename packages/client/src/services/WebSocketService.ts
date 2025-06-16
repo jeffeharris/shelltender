@@ -1,4 +1,6 @@
-import type { TerminalData } from '@shelltender/core';
+import type { TerminalData, WebSocketMessage } from '@shelltender/core';
+
+type MessageHandler = (data: any) => void;
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
@@ -6,13 +8,13 @@ export class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private messageQueue: TerminalData[] = [];
-  private onMessageHandler: ((data: TerminalData) => void) | null = null;
+  private messageQueue: WebSocketMessage[] = [];
+  private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
   private onConnectHandler: (() => void) | null = null;
   private onDisconnectHandler: (() => void) | null = null;
 
-  constructor(url: string) {
-    this.url = url;
+  constructor(url?: string) {
+    this.url = url || process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
   }
 
   connect(): void {
@@ -39,10 +41,8 @@ export class WebSocketService {
 
     this.ws.onmessage = (event) => {
       try {
-        const data: TerminalData = JSON.parse(event.data);
-        if (this.onMessageHandler) {
-          this.onMessageHandler(data);
-        }
+        const data: WebSocketMessage = JSON.parse(event.data);
+        this.handleMessage(data);
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
       }
@@ -79,7 +79,7 @@ export class WebSocketService {
     }
   }
 
-  send(data: TerminalData): void {
+  send(data: WebSocketMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     } else {
@@ -87,9 +87,24 @@ export class WebSocketService {
     }
   }
 
-  onMessage(handler: (data: TerminalData) => void): void {
-    this.onMessageHandler = handler;
+  on(type: string, handler: MessageHandler): void {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type)!.add(handler);
   }
+
+  off(type: string, handler: MessageHandler): void {
+    this.messageHandlers.get(type)?.delete(handler);
+  }
+
+  private handleMessage(data: WebSocketMessage): void {
+    const handlers = this.messageHandlers.get(data.type);
+    if (handlers) {
+      handlers.forEach(handler => handler(data));
+    }
+  }
+
 
   onConnect(handler: () => void): void {
     this.onConnectHandler = handler;
