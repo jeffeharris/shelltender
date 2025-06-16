@@ -57,6 +57,7 @@ class EventManager {
 - Add EventManager instance
 - Call eventManager.processData() when new data arrives
 - Emit events through WebSocket
+- See [BufferManager Event Integration](./BUFFERMANAGER_EVENT_INTEGRATION.md) for detailed implementation
 
 ## Phase 2: WebSocket Protocol
 
