@@ -62,8 +62,8 @@ The project uses Vitest for testing all packages:
 - Watch mode: `npm run test:watch`
 
 Test coverage includes:
-- Core package: Type exports and constants
-- Server package: SessionManager, BufferManager, RestrictedShell, WebSocket integration
+- Core package: Type exports and constants, event system types
+- Server package: SessionManager, BufferManager, RestrictedShell, WebSocket integration, EventManager, Pattern matchers
 - Client package: React components (Terminal, SessionManager, SessionTabs), WebSocketService
 - Combined package: Package structure validation
 
@@ -77,6 +77,8 @@ Test coverage includes:
 - **RestrictedShell** (`src/server/RestrictedShell.ts`) - Provides filesystem-restricted shell sessions
 - **WebSocketServer** (`src/server/WebSocketServer.ts`) - Handles real-time communication with clients
 - **SessionStore** (`src/server/SessionStore.ts`) - Persists session state to disk
+- **EventManager** (`src/server/events/EventManager.ts`) - Pattern matching and event detection system
+- **Pattern Matchers** (`src/server/patterns/`) - Regex, String, ANSI, and Custom pattern matching
 - HTTP server on port 3000, WebSocket server on port 8080
 
 ### Frontend (React/TypeScript/Tailwind)
@@ -95,6 +97,8 @@ Test coverage includes:
 - Session management UI with ability to kill sessions
 - Restricted shell sessions for sandboxed environments
 - Special key support (ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, arrow keys)
+- Terminal event system for pattern matching and output detection
+- Built-in ANSI sequence detection and parsing
 
 ## Notes
 

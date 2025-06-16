@@ -64,14 +64,16 @@ npm run dev
 - **Special Key Support**: Full support for ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, and arrow keys
 - **Automatic Reconnection**: Client automatically reconnects with exponential backoff
 - **Session Persistence**: Sessions are saved to disk and restored on server restart
+- **Terminal Event System**: Pattern matching and event detection for terminal output
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 - **Modular Architecture**: Use only the parts you need
 
 ## 📖 Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
+- [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
+- [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
 - [Demo App](apps/demo) - Example implementation
-- [API Reference](#) - Coming soon
 
 ## 🧪 Testing
 
