@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Terminal, SessionTabs, SessionManager, TerminalEventMonitor } from '@shelltender/client';
+import { 
+  Terminal, 
+  SessionTabs, 
+  SessionManager, 
+  TerminalEventMonitor,
+  MobileApp,
+  MobileTerminal,
+  MobileSessionTabs,
+  useMobileDetection
+} from '@shelltender/client';
 import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
 
@@ -10,6 +19,7 @@ function App() {
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showEventMonitor, setShowEventMonitor] = useState(false);
   const [showEventDemo, setShowEventDemo] = useState(false);
+  const { isMobile } = useMobileDetection();
 
   // Fetch sessions periodically
   useEffect(() => {
@@ -92,6 +102,79 @@ function App() {
     }
   };
 
+  const handleSessionChange = (direction: 'next' | 'prev') => {
+    const currentIndex = openTabs.indexOf(currentSessionId || '');
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'next' 
+      ? (currentIndex + 1) % openTabs.length
+      : (currentIndex - 1 + openTabs.length) % openTabs.length;
+    
+    setCurrentSessionId(openTabs[newIndex]);
+  };
+
+  // Format sessions for mobile components
+  const mobileSessionsData = sessions.filter(s => openTabs.includes(s.id)).map(s => ({
+    id: s.id,
+    name: s.title || `Session ${s.id.substring(0, 8)}`
+  }));
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <MobileApp>
+        <div className="flex flex-col h-screen bg-gray-900">
+          <MobileSessionTabs
+            sessions={mobileSessionsData}
+            activeSessionId={currentSessionId}
+            onSelectSession={handleSelectSession}
+            onCreateSession={handleNewSession}
+            onManageSessions={() => setShowSessionManager(true)}
+          />
+          
+          <div className="flex-1 overflow-hidden">
+            {currentSessionId !== null ? (
+              currentSessionId ? (
+                <MobileTerminal
+                  sessionId={currentSessionId}
+                  onSessionChange={handleSessionChange}
+                />
+              ) : (
+                <Terminal 
+                  sessionId={undefined}
+                  onSessionCreated={handleSessionCreated}
+                />
+              )
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <p className="mb-4">No active session</p>
+                  <button
+                    onClick={handleNewSession}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                  >
+                    Create New Session
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {showSessionManager && (
+            <SessionManager
+              sessions={sessions}
+              openTabs={openTabs}
+              onOpenSession={handleOpenSession}
+              onKillSession={handleKillSession}
+              onClose={() => setShowSessionManager(false)}
+            />
+          )}
+        </div>
+      </MobileApp>
+    );
+  }
+
+  // Desktop layout (original)
   return (
     <div className="flex flex-col h-screen bg-gray-900">
       <SessionTabs
