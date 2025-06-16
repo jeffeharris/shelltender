@@ -16,7 +16,7 @@ const sessionStore = new SessionStore();
 const sessionManager = new SessionManager(bufferManager, sessionStore);
 
 // Initialize WebSocket server
-const wsPort = parseInt(process.env.WS_PORT || '8282');
+const wsPort = parseInt(process.env.WS_PORT || '8080');
 const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager);
 
 // Serve static files from the client build
