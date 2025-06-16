@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Terminal } from '../Terminal';
 import { useTerminalTouchGestures } from '../../hooks/useTouchGestures';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { MobileTerminalInput } from './MobileTerminalInput';
 
 interface MobileTerminalProps {
   sessionId: string;
@@ -89,20 +90,62 @@ export function MobileTerminal({
     };
   }, [showContextMenu]);
 
-  // Handle terminal focus and keyboard
-  const handleTerminalTap = useCallback(() => {
-    // Focus will be handled by the Terminal component
-    onShowVirtualKeyboard?.();
-  }, [onShowVirtualKeyboard]);
+  // Handle terminal input
+  const handleInput = useCallback((text: string) => {
+    if (wsService && sessionId) {
+      wsService.send({
+        type: 'input',
+        sessionId,
+        data: text,
+      });
+    }
+  }, [wsService, sessionId]);
+
+  // Handle special keys
+  const handleSpecialKey = useCallback((key: string) => {
+    if (!wsService || !sessionId) return;
+
+    const keyMap: Record<string, string> = {
+      'backspace': '\x7f',
+      'escape': '\x1b',
+      'up': '\x1b[A',
+      'down': '\x1b[B',
+      'left': '\x1b[D',
+      'right': '\x1b[C',
+      'ctrl-c': '\x03',
+      'ctrl-d': '\x04',
+      'ctrl-z': '\x1a',
+      'ctrl-l': '\x0c',
+      'ctrl-a': '\x01',
+      'ctrl-e': '\x05',
+      'ctrl-k': '\x0b',
+      'ctrl-u': '\x15',
+      'ctrl-w': '\x17',
+    };
+
+    const data = keyMap[key];
+    if (data) {
+      wsService.send({
+        type: 'input',
+        sessionId,
+        data,
+      });
+    }
+  }, [wsService, sessionId]);
 
   return (
     <div 
       ref={containerRef}
       className="mobile-terminal-container relative h-full w-full mobile-no-zoom"
-      onClick={handleTerminalTap}
     >
       <Terminal 
         sessionId={sessionId}
+      />
+      
+      {/* Hidden input for mobile keyboard */}
+      <MobileTerminalInput
+        onInput={handleInput}
+        onSpecialKey={handleSpecialKey}
       />
 
       {/* Context Menu */}
@@ -168,9 +211,24 @@ export function MobileTerminal({
         </div>
       )}
 
-      {/* Touch gesture hints */}
-      <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
-        <div className="bg-black bg-opacity-50 text-white text-xs p-2 rounded-lg flex flex-wrap gap-2 justify-center">
+      {/* Touch gesture hints and keyboard button */}
+      <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-2">
+        <button
+          onClick={() => {
+            const input = document.querySelector('textarea[aria-hidden="true"]') as HTMLTextAreaElement;
+            if (input) {
+              input.focus();
+            }
+          }}
+          className="bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 mobile-touch-target"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm3 1v2h2V6H6zm4 0v2h2V6h-2zm4 0v2h1V6h-1zM6 10v2h2v-2H6zm4 0v2h2v-2h-2zm4 0v2h1v-2h-1zM8 14v1H6v-1h2zm2 0v1h4v-1h-4z" clipRule="evenodd" />
+          </svg>
+          <span>Show Keyboard</span>
+        </button>
+        
+        <div className="bg-black bg-opacity-50 text-white text-xs p-2 rounded-lg flex flex-wrap gap-2 justify-center pointer-events-none">
           <span>Swipe ← → to switch sessions</span>
           <span>•</span>
           <span>2 fingers tap to copy</span>

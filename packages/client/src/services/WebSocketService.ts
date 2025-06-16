@@ -17,8 +17,8 @@ export class WebSocketService {
     // Use the current host for WebSocket connection
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = window.location.hostname;
-    const wsPort = process.env.REACT_APP_WS_PORT || '8080';
-    this.url = url || process.env.REACT_APP_WS_URL || `${wsProtocol}//${wsHost}:${wsPort}`;
+    const wsPort = '8081'; // Default WebSocket port
+    this.url = url || `${wsProtocol}//${wsHost}:${wsPort}`;
   }
 
   connect(): void {
