@@ -14,7 +14,11 @@ export class WebSocketService {
   private onDisconnectHandler: (() => void) | null = null;
 
   constructor(url?: string) {
-    this.url = url || process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
+    // Use the current host for WebSocket connection
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname;
+    const wsPort = process.env.REACT_APP_WS_PORT || '8282';
+    this.url = url || process.env.REACT_APP_WS_URL || `${wsProtocol}//${wsHost}:${wsPort}`;
   }
 
   connect(): void {

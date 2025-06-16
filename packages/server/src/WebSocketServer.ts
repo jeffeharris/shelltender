@@ -25,7 +25,7 @@ export class WebSocketServer {
     this.sessionManager = sessionManager;
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
-    this.wss = new WSServer({ port });
+    this.wss = new WSServer({ port, host: '0.0.0.0' });
 
     // Set up the broadcaster for the session manager
     this.sessionManager.setClientBroadcaster((sessionId: string, data: any) => {

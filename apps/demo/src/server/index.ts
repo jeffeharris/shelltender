@@ -50,7 +50,7 @@ app.get('*', (req, res) => {
 });
 
 const httpPort = parseInt(process.env.PORT || '3000');
-server.listen(httpPort, () => {
-  console.log(`HTTP server listening on port ${httpPort}`);
-  console.log(`WebSocket server listening on port ${wsPort}`);
+server.listen(httpPort, '0.0.0.0', () => {
+  console.log(`HTTP server listening on 0.0.0.0:${httpPort}`);
+  console.log(`WebSocket server listening on 0.0.0.0:${wsPort}`);
 });
