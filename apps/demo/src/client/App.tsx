@@ -7,11 +7,11 @@ import {
   MobileApp,
   MobileTerminal,
   MobileSessionTabs,
-  useMobileDetection
+  useMobileDetection,
+  useWebSocket
 } from '@shelltender/client';
 import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
-import { TestMobile } from './TestMobile';
 
 function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -21,6 +21,7 @@ function App() {
   const [showEventMonitor, setShowEventMonitor] = useState(false);
   const [showEventDemo, setShowEventDemo] = useState(false);
   const { isMobile } = useMobileDetection();
+  const { wsService } = useWebSocket();
 
   // Fetch sessions periodically
   useEffect(() => {

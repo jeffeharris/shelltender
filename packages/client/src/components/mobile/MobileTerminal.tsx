@@ -20,6 +20,11 @@ export function MobileTerminal({
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const { wsService } = useWebSocket();
 
+  // Debug log
+  useEffect(() => {
+    console.log('MobileTerminal mounted with sessionId:', sessionId);
+  }, [sessionId]);
+
   // Handle copy operation
   const handleCopy = useCallback(() => {
     // For now, we'll use the browser's built-in selection
