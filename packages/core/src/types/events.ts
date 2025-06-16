@@ -106,58 +106,6 @@ export interface PatternMatch {
  */
 export type CustomMatcher = (data: string, buffer: string) => PatternMatch | null;
 
-/**
- * WebSocket message types for event system
- */
-
-/** Client -> Server: Register a new pattern */
-export interface RegisterPatternMessage {
-  type: 'register-pattern';
-  sessionId: string;
-  config: PatternConfig;
-  requestId?: string; // For client correlation
-}
-
-/** Server -> Client: Pattern registration successful */
-export interface PatternRegisteredMessage {
-  type: 'pattern-registered';
-  patternId: string;
-  requestId?: string;
-}
-
-/** Client -> Server: Unregister a pattern */
-export interface UnregisterPatternMessage {
-  type: 'unregister-pattern';
-  patternId: string;
-  requestId?: string;
-}
-
-/** Server -> Client: Pattern unregistered */
-export interface PatternUnregisteredMessage {
-  type: 'pattern-unregistered';
-  patternId: string;
-  requestId?: string;
-}
-
-/** Server -> Client: Terminal event occurred */
-export interface TerminalEventMessage {
-  type: 'terminal-event';
-  event: AnyTerminalEvent;
-}
-
-/** Client -> Server: Subscribe to event types */
-export interface SubscribeEventsMessage {
-  type: 'subscribe-events';
-  eventTypes: string[];
-  sessionId?: string; // Optional: filter by session
-}
-
-/** Client -> Server: Unsubscribe from events */
-export interface UnsubscribeEventsMessage {
-  type: 'unsubscribe-events';
-  eventTypes: string[];
-  sessionId?: string;
-}
 
 /**
  * Built-in pattern definitions

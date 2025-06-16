@@ -9,10 +9,3 @@ export interface TerminalSession {
   args?: string[];
   locked?: boolean;
 }
-
-export interface TerminalEvent {
-  type: 'bell' | 'output-match' | 'exit' | 'error';
-  sessionId: string;
-  timestamp: Date;
-  data?: any;
-}
