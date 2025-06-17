@@ -1,190 +1,215 @@
 # Mobile Support
 
-Shelltender now includes comprehensive mobile support with touch gestures, responsive design, and mobile-optimized UI components.
+Shelltender provides comprehensive mobile support with touch-optimized interfaces and a custom virtual keyboard system designed specifically for terminal usage on mobile devices.
 
-## Features
-
-### Touch Gestures
-- **2-finger tap**: Copy selected text to clipboard
-- **3-finger tap**: Paste from clipboard
-- **Swipe left/right**: Navigate between terminal sessions
-- **Long press**: Show context menu with copy, paste, select all, and clear options
-- **Swipe down on tabs**: Expand session menu
+## 📱 Features
 
 ### Mobile Detection
-The `useMobileDetection` hook provides detailed device information:
-- Device type (phone, tablet, desktop)
-- OS detection (iOS, Android)
-- Orientation (portrait, landscape)
-- Touch support
-- Screen dimensions
-- Virtual keyboard detection
+- Automatic device detection (phones, tablets, iOS, Android)
+- Responsive breakpoints with Tailwind CSS utilities
+- Orientation detection and adaptation
+- Touch capability detection
 
-### Responsive Design
-- Mobile-optimized layouts for phones and tablets
-- Safe area support for devices with notches
-- Touch-friendly UI elements (minimum 44x44px tap targets)
-- Reduced scrollback buffer for better performance
-- Smooth animations and transitions
+### Touch Gestures
+- **Swipe Left/Right**: Navigate between terminal sessions
+- **2-Finger Tap**: Copy selected text
+- **3-Finger Tap**: Paste from clipboard
+- **Long Press**: Open context menu for additional actions
+- **Pinch to Zoom**: Disabled to prevent accidental zooming
 
-## Usage
+### Mobile-Optimized Components
+- **MobileApp**: Wrapper with proper viewport configuration
+- **MobileTerminal**: Touch-enabled terminal with gesture support
+- **MobileSessionTabs**: Swipeable session navigation
+- **EnhancedVirtualKeyboard**: Custom keyboard for terminal operations
+
+### Virtual Keyboard System
+
+#### Predefined Key Sets
+1. **Quick**: Common keys (Tab, Enter, Esc, Ctrl+C, arrows)
+2. **Navigation**: Cursor movement (Home, End, PgUp/PgDn)
+3. **Control**: Terminal control keys (Ctrl+A through Ctrl+Z)
+4. **Unix**: Common Unix commands (ls, cd, pwd, grep)
+5. **Git**: Git commands (status, commit, push, pull)
+6. **Function**: F1-F12 keys
+
+#### Custom Key Sets
+- Create your own key sets through the KeySetEditor
+- Support for text, special keys, commands, and macros
+- Persistent storage in localStorage
+- Customizable key width and styling
+
+## 🚀 Usage
 
 ### Basic Setup
 
 ```typescript
 import { 
-  MobileApp, 
-  MobileTerminal, 
+  MobileApp,
+  MobileTerminal,
   MobileSessionTabs,
+  EnhancedVirtualKeyboard,
   useMobileDetection 
 } from '@shelltender/client';
 
 function App() {
   const { isMobile } = useMobileDetection();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-
-  if (!isMobile) {
-    return <DesktopApp />;
-  }
-
-  return (
-    <MobileApp>
-      <div className="flex flex-col h-screen">
-        <MobileSessionTabs
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={setActiveSessionId}
-          onCreateSession={handleCreateSession}
-          onManageSessions={() => setShowManager(true)}
+  
+  if (isMobile) {
+    return (
+      <MobileApp>
+        <MobileSessionTabs {...props} />
+        <MobileTerminal sessionId={sessionId} />
+        <EnhancedVirtualKeyboard
+          isVisible={true}
+          onInput={handleInput}
+          onCommand={handleCommand}
+          onMacro={handleMacro}
         />
-        
-        <div className="flex-1">
-          <MobileTerminal
-            sessionId={activeSessionId}
-            onSessionChange={(direction) => {
-              // Handle session navigation
-              const currentIndex = sessions.findIndex(s => s.id === activeSessionId);
-              const nextIndex = direction === 'next' 
-                ? (currentIndex + 1) % sessions.length
-                : (currentIndex - 1 + sessions.length) % sessions.length;
-              setActiveSessionId(sessions[nextIndex]?.id);
-            }}
-          />
-        </div>
-      </div>
-    </MobileApp>
-  );
-}
-```
-
-### Mobile Detection
-
-```typescript
-import { useMobileDetection } from '@shelltender/client';
-
-function Component() {
-  const {
-    isMobile,
-    isPhone,
-    isTablet,
-    isIOS,
-    isAndroid,
-    isPortrait,
-    isLandscape,
-    screenWidth,
-    screenHeight,
-    hasTouch
-  } = useMobileDetection();
-
-  // Conditionally render based on device
-  if (isPhone && isPortrait) {
-    return <PhonePortraitLayout />;
+      </MobileApp>
+    );
   }
   
-  if (isTablet) {
-    return <TabletLayout />;
-  }
-  
-  return <DesktopLayout />;
+  // Desktop layout...
 }
 ```
 
-### Custom Touch Gestures
+### Mobile Detection Hook
 
 ```typescript
-import { useTouchGestures } from '@shelltender/client';
-
-function CustomComponent() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  useTouchGestures(containerRef, {
-    onSwipeLeft: () => console.log('Swiped left'),
-    onSwipeRight: () => console.log('Swiped right'),
-    onLongPress: (x, y) => console.log('Long press at', x, y),
-    onTwoFingerTap: (x, y) => console.log('Two finger tap'),
-    onPinchMove: (scale) => console.log('Pinch scale:', scale),
-    swipeThreshold: 50,
-    longPressDelay: 500
-  });
-  
-  return <div ref={containerRef}>Touch me!</div>;
-}
+const {
+  isMobile,
+  isPhone,
+  isTablet,
+  isIOS,
+  isAndroid,
+  orientation,
+  hasTouch
+} = useMobileDetection();
 ```
 
-### Responsive Breakpoints
+### Touch Gestures Hook
 
 ```typescript
-import { useBreakpoint } from '@shelltender/client';
+const gestures = useTerminalTouchGestures(terminalRef, {
+  onCopy: () => handleCopy(),
+  onPaste: () => handlePaste(),
+  onNextSession: () => navigateSession('next'),
+  onPrevSession: () => navigateSession('prev'),
+  onContextMenu: (x, y) => showContextMenu(x, y)
+});
+```
 
-function ResponsiveComponent() {
-  const { isXs, isSm, isMd, isLg, isXl } = useBreakpoint();
-  
-  return (
-    <div className={`
-      ${isXs ? 'text-sm' : ''}
-      ${isSm ? 'text-base' : ''}
-      ${isMd ? 'text-lg' : ''}
-      ${isLg ? 'text-xl' : ''}
-      ${isXl ? 'text-2xl' : ''}
-    `}>
-      Responsive text
-    </div>
-  );
+### Virtual Keyboard Integration
+
+```typescript
+<EnhancedVirtualKeyboard
+  isVisible={showKeyboard}
+  onInput={(text) => {
+    // Send regular text input
+    wsService.send({ type: 'input', data: text });
+  }}
+  onCommand={(command) => {
+    // Send command with newline
+    wsService.send({ type: 'input', data: command + '\r' });
+  }}
+  onMacro={(keys) => {
+    // Execute macro sequence
+    keys.forEach(key => {
+      const data = typeof key === 'string' 
+        ? key 
+        : SPECIAL_KEY_SEQUENCES[key];
+      wsService.send({ type: 'input', data });
+    });
+  }}
+  onHeightChange={setKeyboardHeight}
+/>
+```
+
+## 🎨 Responsive Design
+
+### CSS Utilities
+- `.mobile-touch-target`: 44px minimum touch target
+- `.mobile-no-zoom`: Prevents pinch zoom
+- `.mobile-safe-area`: Respects device safe areas
+
+### Breakpoints
+- `sm`: 640px (phones in landscape)
+- `md`: 768px (tablets in portrait)
+- `lg`: 1024px (tablets in landscape)
+- `xl`: 1280px (desktop)
+
+## 🧪 Testing on Mobile
+
+### Local Network Testing
+1. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+2. Configure servers to bind to all interfaces:
+   - HTTP server binds to `0.0.0.0:3000`
+   - WebSocket server binds to `0.0.0.0:8080`
+
+3. Access from mobile device:
+   - Find your computer's IP: `ifconfig` or `ipconfig`
+   - Navigate to `http://[YOUR_IP]:3000`
+
+### Device Testing Checklist
+- [ ] Touch targets are at least 44px
+- [ ] Keyboard doesn't cover terminal content
+- [ ] Gestures work smoothly
+- [ ] Session switching is intuitive
+- [ ] Copy/paste functionality works
+- [ ] Landscape/portrait transitions smooth
+- [ ] No accidental zooming
+- [ ] Virtual keyboard responsive
+
+## 🔧 Configuration
+
+### Keyboard Preferences
+```typescript
+interface KeyboardPreferences {
+  defaultKeySetId: string;    // Default: 'quick'
+  showHints: boolean;         // Default: true
+  keyboardHeight: number;     // Default: 12rem
+  hapticFeedback: boolean;    // Default: true
+  customKeySets: KeySet[];    // User-created key sets
 }
 ```
 
-## CSS Classes
+### Creating Custom Keys
+```typescript
+const customKey: KeyDefinition = {
+  label: 'Deploy',
+  type: 'command',
+  value: 'npm run deploy',
+  style: 'success',
+  width: 2
+};
+```
 
-The mobile implementation includes utility CSS classes:
+## 📝 Best Practices
 
-- `.mobile-no-select` - Disable text selection
-- `.mobile-no-zoom` - Prevent double-tap zoom
-- `.mobile-smooth-scroll` - Enable smooth scrolling
-- `.mobile-touch-target` - Ensure minimum touch target size
-- `.mobile-safe-padding` - Add safe area padding
-- `.mobile-no-bounce` - Prevent iOS bounce effect
-- `.mobile-hide-scrollbar` - Hide scrollbars on mobile
-- `.mobile-gpu` - Enable GPU acceleration
-- `.mobile-reduce-motion` - Reduce animation for performance
+1. **Touch Targets**: Keep all interactive elements at least 44px
+2. **Visual Feedback**: Provide immediate feedback for touch interactions
+3. **Gesture Hints**: Display gesture instructions for first-time users
+4. **Keyboard Height**: Adjust terminal padding based on keyboard height
+5. **Performance**: Use `touchAction: 'manipulation'` to prevent delays
+6. **Accessibility**: Ensure sufficient color contrast and text size
 
-## Browser Support
+## 🚨 Known Limitations
 
-- iOS Safari 12+
-- Chrome for Android 80+
-- Samsung Internet 10+
-- Mobile Firefox 68+
+- Native keyboard integration varies by device/browser
+- Some terminal features may require desktop for full functionality
+- Clipboard access requires HTTPS in production
+- Haptic feedback only available on supported devices
 
-## Performance Considerations
+## 🔮 Future Enhancements
 
-- Terminal scrollback is reduced to 5000 lines on mobile
-- Touch events use passive listeners where possible
-- Animations are optimized for 60fps
-- GPU acceleration is used for transforms
-
-## Accessibility
-
-- All interactive elements meet minimum touch target guidelines (44x44px)
-- Focus indicators are enhanced for mobile
-- Context menus are keyboard accessible
-- Screen reader support for all UI elements
+- [ ] Gesture customization
+- [ ] More predefined key sets
+- [ ] Keyboard themes
+- [ ] Voice input integration
+- [ ] External keyboard detection
+- [ ] PWA support with offline mode

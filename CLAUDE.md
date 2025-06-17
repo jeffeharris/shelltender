@@ -90,8 +90,11 @@ Test coverage includes:
   - **MobileApp** - Wrapper component for mobile experience
   - **MobileTerminal** - Touch-optimized terminal with multi-touch gestures
   - **MobileSessionTabs** - Mobile-friendly session navigation
+  - **EnhancedVirtualKeyboard** - Custom virtual keyboard with predefined key sets
+  - **KeySetEditor** - UI for creating custom key sets
   - **useMobileDetection** - Device detection and responsive state
   - **useTouchGestures** - Comprehensive touch gesture support
+  - **useCustomKeySets** - Manage custom keyboard configurations
 - Automatic reconnection on disconnect with exponential backoff
 - Multi-tab synchronization via shared WebSocket sessions
 
@@ -105,8 +108,11 @@ Test coverage includes:
 - Special key support (ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, arrow keys)
 - Terminal event system for pattern matching and output detection
 - Built-in ANSI sequence detection and parsing
-- Mobile support with multi-touch gestures (2-finger copy, 3-finger paste, swipe navigation)
-- Responsive design that adapts to phones, tablets, and desktops
+- **Mobile support** with touch gestures and virtual keyboard
+  - Multi-touch gestures (2-finger copy, 3-finger paste, swipe navigation)
+  - Enhanced virtual keyboard with terminal-specific key sets
+  - Custom key set creation and persistence
+  - Responsive design that adapts to phones, tablets, and desktops
 
 ## Notes
 
