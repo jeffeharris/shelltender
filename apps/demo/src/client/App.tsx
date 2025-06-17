@@ -7,11 +7,19 @@ import {
   MobileApp,
   MobileTerminal,
   MobileSessionTabs,
+  EnhancedVirtualKeyboard,
   useMobileDetection,
-  useWebSocket
+  useWebSocket,
+  SpecialKeyType,
+  SPECIAL_KEY_SEQUENCES
 } from '@shelltender/client';
 import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
+
+// Helper to get special key sequence
+function getSpecialKeySequence(key: SpecialKeyType): string {
+  return SPECIAL_KEY_SEQUENCES[key] || '';
+}
 
 function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -20,6 +28,7 @@ function App() {
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showEventMonitor, setShowEventMonitor] = useState(false);
   const [showEventDemo, setShowEventDemo] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { isMobile } = useMobileDetection();
   const { wsService } = useWebSocket();
 
@@ -134,7 +143,7 @@ function App() {
             onManageSessions={() => setShowSessionManager(true)}
           />
           
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden" style={{ paddingBottom: `${keyboardHeight}px` }}>
             {currentSessionId !== null ? (
               currentSessionId ? (
                 <MobileTerminal
@@ -171,6 +180,45 @@ function App() {
               onClose={() => setShowSessionManager(false)}
             />
           )}
+          
+          {/* Enhanced Virtual Keyboard */}
+          <EnhancedVirtualKeyboard
+            isVisible={!!currentSessionId}
+            onInput={(text) => {
+              if (wsService && currentSessionId) {
+                wsService.send({
+                  type: 'input',
+                  sessionId: currentSessionId,
+                  data: text
+                });
+              }
+            }}
+            onCommand={(command) => {
+              if (wsService && currentSessionId) {
+                wsService.send({
+                  type: 'input',
+                  sessionId: currentSessionId,
+                  data: command + '\r'
+                });
+              }
+            }}
+            onMacro={(keys) => {
+              if (wsService && currentSessionId) {
+                // Send each key in the macro sequence
+                keys.forEach((key, index) => {
+                  setTimeout(() => {
+                    const data = typeof key === 'string' ? key : getSpecialKeySequence(key);
+                    wsService.send({
+                      type: 'input',
+                      sessionId: currentSessionId,
+                      data
+                    });
+                  }, index * 50); // Small delay between keys
+                });
+              }
+            }}
+            onHeightChange={setKeyboardHeight}
+          />
         </div>
       </MobileApp>
     );
