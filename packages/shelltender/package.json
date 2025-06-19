@@ -1,6 +1,6 @@
 {
   "name": "shelltender",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "All-in-one package combining @shelltender/core, @shelltender/server, and @shelltender/client",
   "type": "module",
   "main": "dist/index.js",
@@ -39,9 +39,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shelltender/core": "^0.1.0",
-    "@shelltender/server": "^0.1.0",
-    "@shelltender/client": "^0.1.0"
+    "@shelltender/core": "^0.2.0",
+    "@shelltender/server": "^0.2.0",
+    "@shelltender/client": "^0.2.0"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

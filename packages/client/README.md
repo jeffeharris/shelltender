@@ -1,6 +1,6 @@
 # @shelltender/client
 
-React components and hooks for building web-based terminal interfaces with Shelltender. This package provides a complete set of UI components for creating persistent terminal sessions with features like tabs, session management, and automatic reconnection.
+React components and hooks for building web-based terminal interfaces with Shelltender. This package provides a complete set of UI components for creating persistent terminal sessions with features like tabs, session management, automatic reconnection, and comprehensive mobile support.
 
 ## Installation
 
@@ -132,6 +132,95 @@ import { SessionManager } from '@shelltender/client';
 - Click to open backgrounded sessions
 - Keyboard accessible
 
+### Mobile Components
+
+#### MobileApp
+
+Wrapper component that provides mobile-optimized layout and context.
+
+```tsx
+import { MobileApp } from '@shelltender/client';
+
+<MobileApp desktopComponent={<DesktopLayout />}>
+  <MobileTerminalLayout />
+</MobileApp>
+```
+
+#### MobileTerminal
+
+Touch-optimized terminal with gesture support.
+
+```tsx
+import { MobileTerminal } from '@shelltender/client';
+
+<MobileTerminal
+  sessionId={currentSessionId}
+  onSessionChange={(direction) => {
+    // Handle swipe navigation
+  }}
+/>
+```
+
+##### Features
+- Swipe left/right to switch sessions
+- 2-finger tap to copy
+- 3-finger tap to paste
+- Long press for context menu
+- Touch-friendly interaction
+
+#### MobileSessionTabs
+
+Mobile-optimized session tabs.
+
+```tsx
+import { MobileSessionTabs } from '@shelltender/client';
+
+<MobileSessionTabs
+  sessions={sessions}
+  currentSessionId={currentSessionId}
+  onSelectSession={setCurrentSessionId}
+  onNewSession={() => setCurrentSessionId('')}
+  onManageSessions={() => setShowManager(true)}
+/>
+```
+
+#### EnhancedVirtualKeyboard
+
+Customizable virtual keyboard with predefined and custom key sets.
+
+```tsx
+import { EnhancedVirtualKeyboard } from '@shelltender/client';
+
+<EnhancedVirtualKeyboard
+  isVisible={keyboardVisible}
+  onInput={(text) => handleInput(text)}
+  onCommand={(cmd) => handleCommand(cmd)}
+  onMacro={(keys) => handleMacro(keys)}
+  onHeightChange={setKeyboardHeight}
+/>
+```
+
+##### Features
+- Multiple key sets (QWERTY, Numbers, Quick, Navigation, Control, Unix, Git, Function)
+- Custom key set creation and persistence
+- Haptic feedback support
+- Responsive layout
+- Settings panel
+
+#### KeySetEditor
+
+UI for creating and editing custom key sets.
+
+```tsx
+import { KeySetEditor } from '@shelltender/client';
+
+<KeySetEditor
+  keySet={customKeySet}
+  onSave={(keySet) => saveKeySet(keySet)}
+  onCancel={() => setShowEditor(false)}
+/>
+```
+
 ### SessionList
 
 Sidebar component with auto-refreshing session list.
@@ -157,6 +246,78 @@ import { SessionList } from '@shelltender/client';
 - Loading state
 
 ## Services
+
+### Hooks
+
+#### useMobileDetection
+
+Detects mobile device characteristics.
+
+```tsx
+import { useMobileDetection } from '@shelltender/client';
+
+function Component() {
+  const { isMobile, isTablet, isIOS, isAndroid, orientation } = useMobileDetection();
+  
+  if (isMobile) {
+    return <MobileLayout />;
+  }
+  return <DesktopLayout />;
+}
+```
+
+#### useTouchGestures
+
+Provides touch gesture handling for mobile interactions.
+
+```tsx
+import { useTouchGestures } from '@shelltender/client';
+
+function Component() {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  useTouchGestures(ref, {
+    onSwipeLeft: () => console.log('Swiped left'),
+    onSwipeRight: () => console.log('Swiped right'),
+    onLongPress: (x, y) => showContextMenu(x, y),
+    onMultiTouch: (fingerCount) => {
+      if (fingerCount === 2) handleCopy();
+      if (fingerCount === 3) handlePaste();
+    }
+  });
+  
+  return <div ref={ref}>Touch me!</div>;
+}
+```
+
+#### useCustomKeySets
+
+Manages custom keyboard key sets with localStorage persistence.
+
+```tsx
+import { useCustomKeySets } from '@shelltender/client';
+
+function KeyboardSettings() {
+  const {
+    preferences,
+    customKeySets,
+    createKeySet,
+    updateKeySet,
+    deleteKeySet
+  } = useCustomKeySets();
+  
+  // Create a new custom key set
+  const newKeySet = {
+    name: 'My Commands',
+    keys: [
+      { label: 'Build', type: 'command', value: 'npm run build' },
+      { label: 'Test', type: 'command', value: 'npm test' }
+    ]
+  };
+  
+  createKeySet(newKeySet);
+}
+```
 
 ### WebSocketService
 
@@ -245,6 +406,69 @@ Components use standard CSS classes that can be overridden:
 /* Active tab */
 .session-tab.active {
   border-bottom-color: #007acc;
+}
+```
+
+## Mobile Integration Example
+
+```tsx
+import React, { useState } from 'react';
+import { 
+  MobileApp,
+  MobileTerminal,
+  MobileSessionTabs,
+  EnhancedVirtualKeyboard,
+  useMobileDetection 
+} from '@shelltender/client';
+
+function App() {
+  const { isMobile } = useMobileDetection();
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  
+  if (!isMobile) {
+    return <DesktopApp />;
+  }
+  
+  return (
+    <MobileApp>
+      <div className="flex flex-col h-full">
+        <MobileSessionTabs
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onSelectSession={setCurrentSessionId}
+          onNewSession={() => setCurrentSessionId('')}
+        />
+        
+        <div className="flex-1" style={{ paddingBottom: keyboardHeight }}>
+          <MobileTerminal
+            sessionId={currentSessionId}
+            onSessionChange={(direction) => {
+              // Handle session navigation
+              const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
+              if (direction === 'next' && currentIndex < sessions.length - 1) {
+                setCurrentSessionId(sessions[currentIndex + 1].id);
+              } else if (direction === 'prev' && currentIndex > 0) {
+                setCurrentSessionId(sessions[currentIndex - 1].id);
+              }
+            }}
+          />
+        </div>
+        
+        <EnhancedVirtualKeyboard
+          isVisible={!!currentSessionId}
+          onInput={(text) => {
+            // Send via WebSocket
+          }}
+          onCommand={(cmd) => {
+            // Send command with newline
+          }}
+          onHeightChange={setKeyboardHeight}
+        />
+      </div>
+    </MobileApp>
+  );
 }
 ```
 
@@ -358,6 +582,14 @@ import type { TerminalSession, SessionOptions } from '@shelltender/core';
 - Use `key` prop on Terminal when switching sessions for clean remounts
 - Limit number of concurrent open sessions
 - Consider virtualizing session lists for many sessions
+- On mobile, minimize DOM updates during keyboard animations
+
+### Mobile Optimization
+- Always test on real devices, not just browser DevTools
+- Use touch-friendly tap targets (minimum 44px)
+- Implement haptic feedback for better UX
+- Consider battery usage with WebSocket connections
+- Handle both portrait and landscape orientations
 
 ### Accessibility
 - SessionManager and SessionTabs are keyboard navigable

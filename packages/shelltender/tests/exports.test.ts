@@ -31,9 +31,9 @@ describe('Shelltender Combined Package', () => {
     expect(pkg.files).toContain('dist');
     
     // Check dependencies
-    expect(pkg.dependencies).toHaveProperty('@shelltender/core', '^0.1.0');
-    expect(pkg.dependencies).toHaveProperty('@shelltender/server', '^0.1.0');
-    expect(pkg.dependencies).toHaveProperty('@shelltender/client', '^0.1.0');
+    expect(pkg.dependencies).toHaveProperty('@shelltender/core', '^0.2.0');
+    expect(pkg.dependencies).toHaveProperty('@shelltender/server', '^0.2.0');
+    expect(pkg.dependencies).toHaveProperty('@shelltender/client', '^0.2.0');
   });
 
   it('should have valid TypeScript configuration', () => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { WebSocketService } from '../services/WebSocketService';
+import { WebSocketService, WebSocketServiceConfig } from '../services/WebSocketService';
+import { useWebSocketConfig } from '../context/WebSocketContext';
 
 let sharedWsService: WebSocketService | null = null;
 let connectionCount = 0;
@@ -7,11 +8,12 @@ let connectionCount = 0;
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const wsServiceRef = useRef<WebSocketService | null>(null);
+  const { config } = useWebSocketConfig();
 
   useEffect(() => {
     // Use shared WebSocket instance
     if (!sharedWsService) {
-      sharedWsService = new WebSocketService(); // Uses constructor defaults
+      sharedWsService = new WebSocketService(config);
       sharedWsService.connect();
     }
 

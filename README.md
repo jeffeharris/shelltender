@@ -65,6 +65,11 @@ npm run dev
 - **Automatic Reconnection**: Client automatically reconnects with exponential backoff
 - **Session Persistence**: Sessions are saved to disk and restored on server restart
 - **Terminal Event System**: Pattern matching and event detection for terminal output
+- **📱 Mobile Support**: 
+  - Touch-optimized interface with gesture support (swipe to switch sessions, multi-touch copy/paste)
+  - Enhanced virtual keyboard with customizable key sets
+  - Responsive design for phones and tablets
+  - Mobile-specific session navigation
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 - **Modular Architecture**: Use only the parts you need
 
@@ -73,7 +78,10 @@ npm run dev
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
-- [Demo App](apps/demo) - Example implementation
+- [Mobile Support Plan](docs/MOBILE_SUPPORT_PLAN.md) - Complete mobile implementation roadmap
+- [Mobile Implementation Guide](docs/MOBILE_IMPLEMENTATION_GUIDE.md) - Detailed implementation instructions
+- [Mobile Custom Keys](docs/MOBILE_CUSTOM_KEYS.md) - Virtual keyboard customization
+- [Demo App](apps/demo) - Example implementation with mobile support
 
 ## 🧪 Testing
 

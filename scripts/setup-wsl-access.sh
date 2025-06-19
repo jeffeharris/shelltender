@@ -1,0 +1,30 @@
+#!/bin/bash
+# WSL2 Access Setup Script
+
+echo "WSL2 Network Information:"
+echo "========================"
+echo "WSL2 IP Address: $(hostname -I | awk '{print $1}')"
+echo "Windows Host IP: $(ip route show | grep default | awk '{print $3}')"
+echo ""
+
+echo "Services Status:"
+echo "==============="
+echo "Port 5173 (Vite): $(ss -tlnp 2>/dev/null | grep :5173 || echo 'Not running')"
+echo "Port 3000 (API): $(ss -tlnp 2>/dev/null | grep :3000 || echo 'Not running')"
+echo "Port 8080 (WebSocket): $(ss -tlnp 2>/dev/null | grep :8080 || echo 'Not running')"
+echo ""
+
+echo "To access from external devices:"
+echo "==============================="
+echo "1. Run the PowerShell script as Administrator in Windows:"
+echo "   powershell.exe -ExecutionPolicy Bypass -File \"$(wslpath -w $(pwd)/scripts/wsl-port-forward.ps1)\""
+echo ""
+echo "2. Find your Windows machine's IP address:"
+echo "   - Run 'ipconfig' in Windows Command Prompt"
+echo "   - Look for your network adapter's IPv4 address"
+echo ""
+echo "3. Access the application from your mobile device:"
+echo "   - Use: http://<Windows-IP>:5173"
+echo "   - Example: http://192.168.1.100:5173"
+echo ""
+echo "4. Make sure Windows Defender Firewall allows the connection"
