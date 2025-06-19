@@ -120,45 +120,27 @@ export function MobileTerminalInput({ onInput, onSpecialKey }: MobileTerminalInp
   };
 
   return (
-    <>
-      <textarea
-        ref={inputRef}
-        value={inputValue}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
-        className="mobile-terminal-input"
-        style={{
-          position: 'fixed',
-          bottom: '10px',
-          left: '10px',
-          width: '200px',
-          height: '40px',
-          fontSize: '16px',
-          zIndex: 9999,
-          background: 'white',
-          color: 'black',
-          border: '2px solid blue',
-          opacity: 0.8,
-        }}
-        placeholder="Tap here to type"
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-      />
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        left: '10px',
-        background: 'yellow',
-        color: 'black',
-        padding: '5px',
-        zIndex: 9999,
-        fontSize: '12px',
-      }}>
-        Debug: Input value = "{inputValue}"
-      </div>
-    </>
+    <textarea
+      ref={inputRef}
+      value={inputValue}
+      onChange={handleInput}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      className="mobile-terminal-input"
+      style={{
+        position: 'absolute',
+        left: '-9999px',
+        top: '-9999px',
+        width: '1px',
+        height: '1px',
+        opacity: 0,
+        pointerEvents: 'none',
+      }}
+      aria-hidden="true"
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="off"
+      spellCheck={false}
+    />
   );
 }

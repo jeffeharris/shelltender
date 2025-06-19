@@ -92,6 +92,11 @@ export function useTouchGestures(
       const touches = e.touches;
       const center = getTouchCenter(touches);
       
+      // Prevent default to avoid text selection and other browser behaviors
+      if (touches.length === 1) {
+        e.preventDefault();
+      }
+      
       touchState.current = {
         startX: center.x,
         startY: center.y,
@@ -110,14 +115,20 @@ export function useTouchGestures(
       // Handle different touch counts
       if (touches.length === 1) {
         // Single touch - set up long press detection
+        // Store the touch coordinates for the timer
+        const touchX = touches[0].clientX;
+        const touchY = touches[0].clientY;
+        
         longPressTimer.current = setTimeout(() => {
           if (!touchState.current.isMoving) {
             touchState.current.isLongPress = true;
+            
             if (onLongPress) {
-              onLongPress(touches[0].clientX, touches[0].clientY);
+              console.log('Long press detected at:', touchX, touchY);
+              onLongPress(touchX, touchY);
             }
             if (onSelectionStart) {
-              onSelectionStart(touches[0].clientX, touches[0].clientY);
+              onSelectionStart(touchX, touchY);
             }
           }
         }, longPressDelay);
@@ -130,6 +141,11 @@ export function useTouchGestures(
     const handleTouchMove = (e: TouchEvent) => {
       const touches = e.touches;
       const center = getTouchCenter(touches);
+      
+      // Prevent scrolling when dragging
+      if (touchState.current.isLongPress || touches.length > 1) {
+        e.preventDefault();
+      }
       
       const deltaX = center.x - touchState.current.startX;
       const deltaY = center.y - touchState.current.startY;
@@ -246,12 +262,19 @@ export function useTouchGestures(
     element.addEventListener('touchmove', handleTouchMove, options);
     element.addEventListener('touchend', handleTouchEnd, options);
     element.addEventListener('touchcancel', handleTouchCancel, options);
+    
+    // Prevent default context menu
+    const handleContextMenu = (e: Event) => {
+      e.preventDefault();
+    };
+    element.addEventListener('contextmenu', handleContextMenu, options);
 
     return () => {
       element.removeEventListener('touchstart', handleTouchStart);
       element.removeEventListener('touchmove', handleTouchMove);
       element.removeEventListener('touchend', handleTouchEnd);
       element.removeEventListener('touchcancel', handleTouchCancel);
+      element.removeEventListener('contextmenu', handleContextMenu);
       
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);

@@ -1,6 +1,110 @@
 import { KeySet } from '../types/keyboard';
 
 /**
+ * QWERTY keyboard layout
+ */
+export const QWERTY_KEYS: KeySet = {
+  id: 'qwerty',
+  name: 'ABC',
+  readonly: true,
+  keys: [
+    // First row
+    { label: 'q', type: 'text', value: 'q' },
+    { label: 'w', type: 'text', value: 'w' },
+    { label: 'e', type: 'text', value: 'e' },
+    { label: 'r', type: 'text', value: 'r' },
+    { label: 't', type: 'text', value: 't' },
+    { label: 'y', type: 'text', value: 'y' },
+    { label: 'u', type: 'text', value: 'u' },
+    { label: 'i', type: 'text', value: 'i' },
+    { label: 'o', type: 'text', value: 'o' },
+    { label: 'p', type: 'text', value: 'p' },
+    
+    // Second row
+    { label: 'a', type: 'text', value: 'a' },
+    { label: 's', type: 'text', value: 's' },
+    { label: 'd', type: 'text', value: 'd' },
+    { label: 'f', type: 'text', value: 'f' },
+    { label: 'g', type: 'text', value: 'g' },
+    { label: 'h', type: 'text', value: 'h' },
+    { label: 'j', type: 'text', value: 'j' },
+    { label: 'k', type: 'text', value: 'k' },
+    { label: 'l', type: 'text', value: 'l' },
+    { label: '⌫', type: 'special', value: 'backspace' },
+    
+    // Third row
+    { label: '⇧', type: 'special', value: 'shift' },
+    { label: 'z', type: 'text', value: 'z' },
+    { label: 'x', type: 'text', value: 'x' },
+    { label: 'c', type: 'text', value: 'c' },
+    { label: 'v', type: 'text', value: 'v' },
+    { label: 'b', type: 'text', value: 'b' },
+    { label: 'n', type: 'text', value: 'n' },
+    { label: 'm', type: 'text', value: 'm' },
+    { label: 'Enter', type: 'special', value: 'enter', width: 2 },
+    
+    // Fourth row
+    { label: '123', type: 'special', value: 'numbers' },
+    { label: ',', type: 'text', value: ',' },
+    { label: 'Space', type: 'text', value: ' ', width: 4 },
+    { label: '.', type: 'text', value: '.' },
+    { label: '/', type: 'text', value: '/' },
+  ]
+};
+
+/**
+ * Number and symbol keys
+ */
+export const NUMBER_KEYS: KeySet = {
+  id: 'numbers',
+  name: '123',
+  readonly: true,
+  keys: [
+    // First row - numbers
+    { label: '1', type: 'text', value: '1' },
+    { label: '2', type: 'text', value: '2' },
+    { label: '3', type: 'text', value: '3' },
+    { label: '4', type: 'text', value: '4' },
+    { label: '5', type: 'text', value: '5' },
+    { label: '6', type: 'text', value: '6' },
+    { label: '7', type: 'text', value: '7' },
+    { label: '8', type: 'text', value: '8' },
+    { label: '9', type: 'text', value: '9' },
+    { label: '0', type: 'text', value: '0' },
+    
+    // Second row - common symbols
+    { label: '-', type: 'text', value: '-' },
+    { label: '/', type: 'text', value: '/' },
+    { label: ':', type: 'text', value: ':' },
+    { label: ';', type: 'text', value: ';' },
+    { label: '(', type: 'text', value: '(' },
+    { label: ')', type: 'text', value: ')' },
+    { label: '$', type: 'text', value: '$' },
+    { label: '&', type: 'text', value: '&' },
+    { label: '@', type: 'text', value: '@' },
+    { label: '⌫', type: 'special', value: 'backspace' },
+    
+    // Third row - more symbols
+    { label: '#+=', type: 'special', value: 'symbols' },
+    { label: '.', type: 'text', value: '.' },
+    { label: ',', type: 'text', value: ',' },
+    { label: '?', type: 'text', value: '?' },
+    { label: '!', type: 'text', value: '!' },
+    { label: "'", type: 'text', value: "'" },
+    { label: '"', type: 'text', value: '"' },
+    { label: '_', type: 'text', value: '_' },
+    { label: 'Enter', type: 'special', value: 'enter', width: 2 },
+    
+    // Fourth row
+    { label: 'ABC', type: 'special', value: 'qwerty' },
+    { label: '*', type: 'text', value: '*' },
+    { label: 'Space', type: 'text', value: ' ', width: 4 },
+    { label: '=', type: 'text', value: '=' },
+    { label: '+', type: 'text', value: '+' },
+  ]
+};
+
+/**
  * Quick access keys - most commonly used
  */
 export const QUICK_KEYS: KeySet = {
@@ -148,6 +252,8 @@ export const FUNCTION_KEYS: KeySet = {
  * All predefined key sets
  */
 export const PREDEFINED_KEY_SETS: KeySet[] = [
+  QWERTY_KEYS,
+  NUMBER_KEYS,
   QUICK_KEYS,
   NAVIGATION_KEYS,
   CONTROL_KEYS,
@@ -160,7 +266,7 @@ export const PREDEFINED_KEY_SETS: KeySet[] = [
  * Default keyboard preferences
  */
 export const DEFAULT_KEYBOARD_PREFERENCES = {
-  defaultKeySetId: 'quick',
+  defaultKeySetId: 'qwerty',
   showHints: true,
   keyboardHeight: 12, // rem
   hapticFeedback: true,

@@ -28,7 +28,8 @@ export function useMobileDetection(): MobileDetection {
     // Size-based detection
     const isPhone = width < 768;
     const isTablet = width >= 768 && width < 1024;
-    const isMobile = isPhone || isTablet || hasTouch;
+    // Only consider it mobile if it's a small screen OR it's actually iOS/Android
+    const isMobile = isPhone || isTablet || (hasTouch && (isIOS || isAndroid));
     
     // Orientation
     const isPortrait = height > width;
@@ -61,7 +62,8 @@ export function useMobileDetection(): MobileDetection {
       
       const isPhone = width < 768;
       const isTablet = width >= 768 && width < 1024;
-      const isMobile = isPhone || isTablet || hasTouch;
+      // Only consider it mobile if it's a small screen OR it's actually iOS/Android
+      const isMobile = isPhone || isTablet || (hasTouch && (isIOS || isAndroid));
       
       const isPortrait = height > width;
       const isLandscape = width > height;

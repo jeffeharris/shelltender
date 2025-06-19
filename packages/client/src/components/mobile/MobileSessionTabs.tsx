@@ -42,15 +42,16 @@ export function MobileSessionTabs({
       {/* Compact tab bar */}
       <div className="flex items-center h-12 px-2">
         {/* Session indicator dots */}
-        <div className="flex items-center gap-1 mr-3">
+        <div className="session-dots">
           {sessions.map((session, index) => (
             <button
               key={session.id}
-              onClick={() => onSelectSession(session.id)}
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                session.id === activeSessionId
-                  ? 'bg-blue-500 w-3 h-3'
-                  : 'bg-gray-500 hover:bg-gray-400'
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onSelectSession(session.id);
+              }}
+              className={`session-dot ${
+                session.id === activeSessionId ? 'active' : ''
               }`}
               aria-label={`Session ${index + 1}`}
             />
@@ -65,8 +66,12 @@ export function MobileSessionTabs({
         {/* Actions */}
         <div className="flex items-center gap-2">
           <button
-            onClick={onCreateSession}
-            className="text-gray-400 hover:text-white p-2 mobile-touch-target"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              console.log('New session button pointer down');
+              onCreateSession();
+            }}
+            className="icon-button mobile-action-button"
             aria-label="New session"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,8 +80,11 @@ export function MobileSessionTabs({
           </button>
           
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="text-gray-400 hover:text-white p-2 mobile-touch-target"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            className="icon-button mobile-action-button"
             aria-label="Toggle menu"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,14 +102,13 @@ export function MobileSessionTabs({
             {sessions.map((session, index) => (
               <button
                 key={session.id}
-                onClick={() => {
+                onPointerDown={(e) => {
+                  e.stopPropagation();
                   onSelectSession(session.id);
                   setShowMenu(false);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors mobile-touch-target ${
-                  session.id === activeSessionId
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                className={`mobile-session-item ${
+                  session.id === activeSessionId ? 'active' : ''
                 }`}
               >
                 {session.name}
@@ -109,8 +116,11 @@ export function MobileSessionTabs({
             ))}
             
             <button
-              onClick={onManageSessions}
-              className="px-4 py-2 bg-gray-700 text-gray-300 hover:bg-gray-600 rounded-lg text-sm whitespace-nowrap mobile-touch-target"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onManageSessions();
+              }}
+              className="mobile-button secondary"
             >
               Manage All
             </button>

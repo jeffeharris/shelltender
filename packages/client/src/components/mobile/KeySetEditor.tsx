@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { KeySet, KeyDefinition, KeySetEditorProps } from '../../types/keyboard';
 import { useCustomKeySets } from '../../hooks/useCustomKeySets';
-import './KeySetEditor.css';
 
 export function KeySetEditor({ keySet, onSave, onCancel }: KeySetEditorProps) {
   const { generateKeySetId } = useCustomKeySets();

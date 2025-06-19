@@ -37,8 +37,10 @@ export function MobileTerminal({
 
   // Handle paste operation
   const handlePaste = useCallback(async () => {
+    console.log('Paste button clicked', { wsService: !!wsService, sessionId });
     try {
       const text = await navigator.clipboard.readText();
+      console.log('Clipboard text:', text);
       if (text && wsService && sessionId) {
         // Send paste command through WebSocket
         wsService.send({
@@ -47,6 +49,8 @@ export function MobileTerminal({
           data: text,
         });
         showToast('Pasted from clipboard');
+      } else {
+        console.log('Missing requirements:', { hasText: !!text, hasWsService: !!wsService, sessionId });
       }
     } catch (err) {
       console.error('Failed to paste:', err);
@@ -65,8 +69,38 @@ export function MobileTerminal({
 
   // Handle context menu
   const handleContextMenu = useCallback((x: number, y: number) => {
-    setContextMenuPosition({ x, y });
+    console.log('Context menu triggered at:', x, y, 'window size:', window.innerWidth, window.innerHeight);
+    
+    // Menu dimensions
+    const menuWidth = 200;
+    const menuHeight = 180; // 4 items * ~45px each
+    const margin = 10;
+    
+    // Simple positioning - show menu at touch point
+    const adjustedX = Math.min(Math.max(margin, x), window.innerWidth - margin);
+    const adjustedY = Math.min(Math.max(margin, y), window.innerHeight - menuHeight - margin);
+    
+    console.log('Adjusted position:', adjustedX, adjustedY);
+    console.log('Setting showContextMenu to true');
+    
+    setContextMenuPosition({ x: adjustedX, y: adjustedY });
     setShowContextMenu(true);
+  }, []);
+  
+  // Debug effect
+  useEffect(() => {
+    console.log('MobileTerminal state:', { showContextMenu, contextMenuPosition });
+  }, [showContextMenu, contextMenuPosition]);
+  
+  // Debug ref attachment
+  useEffect(() => {
+    console.log('MobileTerminal containerRef.current:', containerRef.current);
+    if (containerRef.current) {
+      console.log('Container element:', {
+        className: containerRef.current.className,
+        hasEventListeners: containerRef.current.ontouchstart !== null
+      });
+    }
   }, []);
 
   // Setup touch gestures
@@ -75,23 +109,45 @@ export function MobileTerminal({
     onPaste: handlePaste,
     onNextSession: handleNextSession,
     onPrevSession: handlePrevSession,
-    onContextMenu: handleContextMenu,
+    onContextMenu: (x, y) => {
+      console.log('onContextMenu callback called with:', x, y);
+      handleContextMenu(x, y);
+    },
   });
 
   // Close context menu on tap outside
   useEffect(() => {
-    const handleTap = (e: MouseEvent | TouchEvent) => {
-      if (showContextMenu) {
-        setShowContextMenu(false);
-      }
-    };
+    if (!showContextMenu) return;
+    
+    // Add a small delay before listening for close events
+    // to prevent immediate closure after long press
+    const timer = setTimeout(() => {
+      const handleTap = (e: MouseEvent | TouchEvent) => {
+        // Check if the tap is on the menu itself
+        const target = e.target as HTMLElement;
+        const isMenuClick = target.closest('.context-menu');
+        
+        if (!isMenuClick) {
+          setShowContextMenu(false);
+        }
+      };
 
-    document.addEventListener('click', handleTap);
-    document.addEventListener('touchstart', handleTap);
+      document.addEventListener('click', handleTap);
+      document.addEventListener('touchstart', handleTap);
+
+      // Store cleanup function
+      (window as any)._menuCleanup = () => {
+        document.removeEventListener('click', handleTap);
+        document.removeEventListener('touchstart', handleTap);
+      };
+    }, 100); // Small delay to prevent immediate closure
 
     return () => {
-      document.removeEventListener('click', handleTap);
-      document.removeEventListener('touchstart', handleTap);
+      clearTimeout(timer);
+      if ((window as any)._menuCleanup) {
+        (window as any)._menuCleanup();
+        delete (window as any)._menuCleanup;
+      }
     };
   }, [showContextMenu]);
 
@@ -155,17 +211,34 @@ export function MobileTerminal({
 
       {/* Context Menu */}
       {showContextMenu && (
-        <div 
-          className="absolute bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-2 z-50"
-          style={{ 
-            left: `${contextMenuPosition.x}px`, 
-            top: `${contextMenuPosition.y}px`,
-            transform: 'translate(-50%, -100%)',
-          }}
-        >
+        <>
+          {/* Backdrop to close menu */}
+          <div 
+            className="fixed inset-0" 
+            style={{ zIndex: 9999 }}
+            onClick={(e) => {
+              console.log('Backdrop clicked');
+              setShowContextMenu(false);
+            }}
+          />
+          
+          {/* Menu */}
+          <div 
+            className="context-menu fixed bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-2"
+            style={{ 
+              left: `${contextMenuPosition.x}px`, 
+              top: `${contextMenuPosition.y}px`,
+              zIndex: 10000,
+              minWidth: '200px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
           <button
             className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
-            onClick={() => {
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Copy button pointer down!');
               handleCopy();
               setShowContextMenu(false);
             }}
@@ -174,7 +247,10 @@ export function MobileTerminal({
           </button>
           <button
             className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
-            onClick={() => {
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Paste button pointer down!');
               handlePaste();
               setShowContextMenu(false);
             }}
@@ -183,7 +259,10 @@ export function MobileTerminal({
           </button>
           <button
             className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
-            onClick={() => {
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Select All button pointer down!');
               // Select all using keyboard shortcut
               if (wsService && sessionId) {
                 wsService.send({
@@ -191,6 +270,7 @@ export function MobileTerminal({
                   sessionId,
                   data: '\x01', // Ctrl+A
                 });
+                console.log('Select All command sent');
               }
               setShowContextMenu(false);
             }}
@@ -199,7 +279,10 @@ export function MobileTerminal({
           </button>
           <button
             className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target"
-            onClick={() => {
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Clear button pointer down!', { wsService: !!wsService, sessionId });
               // Clear using keyboard shortcut
               if (wsService && sessionId) {
                 wsService.send({
@@ -207,6 +290,7 @@ export function MobileTerminal({
                   sessionId,
                   data: '\x0c', // Ctrl+L
                 });
+                console.log('Clear command sent');
               }
               setShowContextMenu(false);
             }}
@@ -214,6 +298,7 @@ export function MobileTerminal({
             Clear
           </button>
         </div>
+        </>
       )}
 
       {/* Touch gesture hints */}

@@ -10,6 +10,7 @@ export { MobileApp, MobileTerminal, MobileSessionTabs, MobileBottomTabs, Enhance
 
 // Export services
 export { WebSocketService } from './services/WebSocketService';
+export type { WebSocketServiceConfig } from './services/WebSocketService';
 export { TerminalEventService } from './services/TerminalEventService';
 export type { EventCallback, UnsubscribeFn } from './services/TerminalEventService';
 
@@ -25,6 +26,7 @@ export type { TouchGestureOptions } from './hooks/useTouchGestures';
 
 // Export context
 export { MobileProvider, useMobile } from './context/MobileContext';
+export { WebSocketProvider, useWebSocketConfig } from './context/WebSocketContext';
 
 // Export keyboard types
 export type { 

@@ -2,6 +2,12 @@ import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
 type MessageHandler = (data: any) => void;
 
+export interface WebSocketServiceConfig {
+  url?: string;
+  port?: string;
+  protocol?: 'ws' | 'wss';
+}
+
 export class WebSocketService {
   private ws: WebSocket | null = null;
   private url: string;
@@ -13,12 +19,15 @@ export class WebSocketService {
   private onConnectHandler: (() => void) | null = null;
   private onDisconnectHandler: (() => void) | null = null;
 
-  constructor(url?: string) {
-    // Use the current host for WebSocket connection
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.hostname;
-    const wsPort = process.env.REACT_APP_WS_PORT || '8080'; // Default WebSocket port
-    this.url = url || `${wsProtocol}//${wsHost}:${wsPort}`;
+  constructor(config: WebSocketServiceConfig = {}) {
+    if (config.url) {
+      this.url = config.url;
+    } else {
+      const protocol = config.protocol || (window.location.protocol === 'https:' ? 'wss' : 'ws');
+      const host = window.location.hostname;
+      const port = config.port || '8081';
+      this.url = `${protocol}://${host}:${port}`;
+    }
   }
 
   connect(): void {
