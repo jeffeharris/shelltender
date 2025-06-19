@@ -1,0 +1,8 @@
+/* Import xterm styles */
+@import '@xterm/xterm/css/xterm.css';
+
+/* Import terminal styles */
+@import './terminal.css';
+
+/* Import mobile styles */
+@import './mobile.css';

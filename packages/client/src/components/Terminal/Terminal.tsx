@@ -3,8 +3,6 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import '@xterm/xterm/css/xterm.css';
-import '../../styles/terminal.css';
 import { WebSocketService } from '../../services/WebSocketService';
 import type { TerminalData } from '@shelltender/core';
 

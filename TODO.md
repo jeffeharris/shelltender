@@ -91,6 +91,62 @@ This file tracks remaining documentation tasks for the Shelltender monorepo.
   - Event handling patterns
   - Use cases for AI integration
 
+## Mobile Support Implementation
+
+### High Priority
+
+- [ ] Implement mobile detection and responsive infrastructure
+  - useMobileDetection hook
+  - Viewport configuration
+  - Touch event handling
+  - Responsive breakpoints
+
+- [ ] Create mobile UI components
+  - MobileTerminal component
+  - MobileSessionTabs component
+  - MobileApp wrapper
+  - Touch-optimized styles
+
+- [ ] Add touch gesture support
+  - useTouchGestures hook
+  - Swipe between sessions
+  - Long press context menu
+  - Touch-friendly text selection
+
+- [ ] Implement virtual keyboard system
+  - EnhancedVirtualKeyboard component
+  - Predefined key sets (Navigation, Unix, Vim, Git)
+  - Custom key set creation
+  - Modifier key support
+  - Persistence to localStorage
+
+### Medium Priority
+
+- [ ] PWA support
+  - Web app manifest
+  - App icons
+  - Standalone mode
+  - Theme configuration
+
+- [ ] Performance optimization
+  - Reduced scrollback on mobile
+  - Debounced resize events
+  - Optimized re-renders
+
+- [ ] Device testing
+  - iOS Safari testing
+  - Android Chrome testing
+  - Tablet layouts
+  - Landscape/portrait modes
+
+### Low Priority
+
+- [ ] Advanced features
+  - Import/export key sets
+  - Contextual keyboards
+  - Accessibility enhancements
+  - Performance monitoring
+
 ## Templates
 
 ### Package README Template
