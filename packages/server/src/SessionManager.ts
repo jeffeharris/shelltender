@@ -1,9 +1,10 @@
 import * as pty from 'node-pty';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter } from 'events';
 import { TerminalSession, SessionOptions } from '@shelltender/core';
-import { BufferManager } from './BufferManager.js';
 import { SessionStore } from './SessionStore.js';
 import { RestrictedShell } from './RestrictedShell.js';
+import { ISessionManager } from './interfaces/ISessionManager.js';
 
 interface PtyProcess {
   pty: pty.IPty;
@@ -11,14 +12,15 @@ interface PtyProcess {
   clients: Set<string>;
 }
 
-export class SessionManager {
+export class SessionManager extends EventEmitter implements ISessionManager {
   private sessions: Map<string, PtyProcess> = new Map();
-  private bufferManager: BufferManager;
   private sessionStore: SessionStore;
+  private restoredSessions: Set<string> = new Set();
 
-  constructor(bufferManager: BufferManager, sessionStore: SessionStore) {
-    this.bufferManager = bufferManager;
+  constructor(sessionStore: SessionStore) {
+    super();
     this.sessionStore = sessionStore;
+    this.setMaxListeners(100);
     this.restoreSessions();
   }
 
@@ -28,9 +30,6 @@ export class SessionManager {
     
     for (const [sessionId, storedSession] of savedSessions) {
       try {
-        // Restore the buffer
-        this.bufferManager.addToBuffer(sessionId, storedSession.buffer);
-        
         // Create a new PTY process
         const env = {
           ...process.env,
@@ -61,10 +60,18 @@ export class SessionManager {
           clients: new Set(),
         });
 
-        // Set up PTY handlers
+        // Set up PTY handlers first
         this.setupPtyHandlers(sessionId, ptyProcess);
+        
+        // Mark this as a restored session AFTER handlers are set up
+        this.restoredSessions.add(sessionId);
+        
+        // Emit the saved buffer data if any
+        if (storedSession.buffer) {
+          this.emit('data', sessionId, storedSession.buffer, { source: 'restored' });
+        }
 
-        console.log(`Restored session ${sessionId}`);
+        console.log(`Restored session ${sessionId} with ${storedSession.buffer.length} bytes of history`);
       } catch (error) {
         console.error(`Failed to restore session ${sessionId}:`, error);
         await this.sessionStore.deleteSession(sessionId);
@@ -73,26 +80,27 @@ export class SessionManager {
   }
 
   private setupPtyHandlers(sessionId: string, ptyProcess: pty.IPty): void {
+    let saveTimer: NodeJS.Timeout | null = null;
+    let hasReceivedOutput = false;
+    
     ptyProcess.onData((data: string) => {
-      // Store in buffer
-      this.bufferManager.addToBuffer(sessionId, data);
+      // Emit data event for observers
+      this.emit('data', sessionId, data, { source: 'pty' });
       
-      // Save to disk periodically
-      this.sessionStore.updateSessionBuffer(sessionId, this.bufferManager.getBuffer(sessionId));
-      
-      // Broadcast to all connected clients
-      const processInfo = this.sessions.get(sessionId);
-      if (processInfo) {
-        this.broadcastToClients(sessionId, {
-          type: 'output',
-          sessionId,
-          data,
-        });
+      // For restored sessions, only start saving after we receive new output
+      // This prevents re-saving the same buffer that was just restored
+      if (this.restoredSessions.has(sessionId) && !hasReceivedOutput) {
+        hasReceivedOutput = true;
+        this.restoredSessions.delete(sessionId); // No longer need to track
       }
     });
 
     ptyProcess.onExit(() => {
+      // Emit session end event
+      this.emit('sessionEnd', sessionId);
+      
       this.sessions.delete(sessionId);
+      this.restoredSessions.delete(sessionId);
       this.sessionStore.deleteSession(sessionId);
     });
   }
@@ -246,8 +254,8 @@ export class SessionManager {
       // Remove from sessions map
       this.sessions.delete(sessionId);
       
-      // Clear the buffer
-      this.bufferManager.clearBuffer(sessionId);
+      // Emit session end event
+      this.emit('sessionEnd', sessionId);
       
       // Delete from store
       this.sessionStore.deleteSession(sessionId);
@@ -257,12 +265,18 @@ export class SessionManager {
     return false;
   }
 
-  private broadcastToClients(sessionId: string, data: any): void {
-    // This will be implemented by the WebSocket server
-    // We'll emit an event that the WebSocket server can listen to
+  // Implement IDataEmitter interface methods
+  onData(callback: (sessionId: string, data: string, metadata?: any) => void): () => void {
+    this.on('data', callback);
+    return () => this.off('data', callback);
   }
 
-  setClientBroadcaster(broadcaster: (sessionId: string, data: any) => void): void {
-    this.broadcastToClients = broadcaster;
+  onSessionEnd(callback: (sessionId: string) => void): () => void {
+    this.on('sessionEnd', callback);
+    return () => this.off('sessionEnd', callback);
+  }
+
+  getActiveSessionIds(): string[] {
+    return Array.from(this.sessions.keys());
   }
 }

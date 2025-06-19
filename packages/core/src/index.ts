@@ -1,5 +1,5 @@
 // Export all types
-export * from './types/index';
+export * from './types/index.js';
 
 // Export constants
-export * from './constants/index';
+export * from './constants/index.js';

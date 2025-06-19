@@ -27,11 +27,6 @@ export class WebSocketServer {
     this.eventManager = eventManager;
     this.wss = new WSServer({ port, host: '0.0.0.0' });
 
-    // Set up the broadcaster for the session manager
-    this.sessionManager.setClientBroadcaster((sessionId: string, data: any) => {
-      this.broadcastToSession(sessionId, data);
-    });
-
     // Set up event system if available
     if (this.eventManager) {
       this.setupEventSystem();
@@ -169,7 +164,7 @@ export class WebSocketServer {
     }
   }
 
-  private broadcastToSession(sessionId: string, data: any): void {
+  public broadcastToSession(sessionId: string, data: any): void {
     this.clients.forEach((ws, clientId) => {
       if (ws.sessionId === sessionId && ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify(data));

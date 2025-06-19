@@ -22,7 +22,7 @@ vi.mock('node-pty', () => {
 });
 
 // Mock SessionStore to prevent file operations
-vi.mock('../../src/server/SessionStore.js', () => {
+vi.mock('../../src/SessionStore.js', () => {
   const mockStore = {
     loadAllSessions: vi.fn().mockResolvedValue(new Map()),
     saveSession: vi.fn().mockResolvedValue(undefined),
@@ -50,7 +50,7 @@ describe('WebSocket Integration', () => {
     
     bufferManager = new BufferManager();
     sessionStore = new SessionStore('.test-sessions-' + Date.now());
-    sessionManager = new SessionManager(bufferManager, sessionStore);
+    sessionManager = new SessionManager(sessionStore);
     
     // Wait for session manager to initialize
     await new Promise(resolve => setTimeout(resolve, 100));

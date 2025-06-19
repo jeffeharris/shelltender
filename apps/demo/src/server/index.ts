@@ -3,7 +3,17 @@ import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import minimist from 'minimist';
-import { SessionManager, BufferManager, SessionStore, WebSocketServer } from '@shelltender/server';
+import { 
+  SessionManager, 
+  BufferManager, 
+  SessionStore, 
+  WebSocketServer, 
+  EventManager,
+  TerminalDataPipeline,
+  PipelineIntegration,
+  CommonProcessors,
+  CommonFilters
+} from '@shelltender/server';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,14 +29,48 @@ const argv = minimist(process.argv.slice(2), {
 const app = express();
 const server = createServer(app);
 
-// Initialize managers
+// Initialize core components
 const bufferManager = new BufferManager();
 const sessionStore = new SessionStore();
-const sessionManager = new SessionManager(bufferManager, sessionStore);
+const sessionManager = new SessionManager(sessionStore); // Note: removed bufferManager dependency
+const eventManager = new EventManager();
+
+// Initialize pipeline
+const pipeline = new TerminalDataPipeline({
+  enableAudit: process.env.ENABLE_AUDIT === 'true',
+  enableMetrics: process.env.ENABLE_METRICS === 'true'
+});
+
+// Configure pipeline processors
+pipeline.addProcessor('security', CommonProcessors.securityFilter([
+  /password["\s]*[:=]\s*["']?[^"'\s]+["']?/gi,
+  /api[_-]?key["\s]*[:=]\s*["']?[^"'\s]+["']?/gi,
+  /token["\s]*[:=]\s*["']?[^"'\s]+["']?/gi,
+  /secret["\s]*[:=]\s*["']?[^"'\s]+["']?/gi,
+]), 10);
+
+pipeline.addProcessor('credit-card', CommonProcessors.creditCardRedactor(), 15);
+pipeline.addProcessor('rate-limit', CommonProcessors.rateLimiter(1024 * 1024), 20);
+pipeline.addProcessor('line-endings', CommonProcessors.lineEndingNormalizer(), 30);
+
+// Configure pipeline filters
+pipeline.addFilter('no-binary', CommonFilters.noBinary());
+pipeline.addFilter('max-size', CommonFilters.maxDataSize(10 * 1024)); // 10KB max per chunk
 
 // Initialize WebSocket server
 const wsPort = argv['ws-port'];
-const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager);
+const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager, eventManager);
+
+// Set up integration
+const integration = new PipelineIntegration(
+  pipeline,
+  sessionManager,
+  bufferManager,
+  wsServer,
+  sessionStore,
+  eventManager
+);
+integration.setup();
 
 // Serve static files from the client build
 app.use(express.static(path.join(__dirname, '../../client/dist')));
@@ -53,6 +97,18 @@ app.delete('/api/sessions/:id', (req, res) => {
   }
 });
 
+// Pipeline status endpoint
+app.get('/api/pipeline/status', (req, res) => {
+  res.json({
+    processors: pipeline.getProcessorNames(),
+    filters: pipeline.getFilterNames(),
+    options: {
+      audit: pipeline.options.enableAudit || false,
+      metrics: pipeline.options.enableMetrics || false
+    }
+  });
+});
+
 // Serve the React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
@@ -65,4 +121,17 @@ server.listen(httpPort, '0.0.0.0', () => {
   console.log(`\nUsage: tsx src/server/index.ts [options]`);
   console.log(`  --port <port>     HTTP server port (default: 3000)`);
   console.log(`  --ws-port <port>  WebSocket server port (default: 8081)`);
+  console.log(`\nPipeline Configuration:`);
+  console.log(`  Processors: ${pipeline.getProcessorNames().join(', ')}`);
+  console.log(`  Filters: ${pipeline.getFilterNames().join(', ')}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  integration.teardown();
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
 });
