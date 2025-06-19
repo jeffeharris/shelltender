@@ -74,11 +74,14 @@
 .keyboard-keys {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0.2rem;
   padding: 0.4rem;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .keyboard-key {
@@ -97,6 +100,8 @@
   transition: all 0.1s;
   position: relative;
   overflow: hidden;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .keyboard-key:active {
@@ -212,7 +217,7 @@
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .keyboard-keys {
-    grid-template-columns: repeat(auto-fit, minmax(2rem, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
   }
   
   .keyboard-key {
