@@ -1,6 +1,7 @@
 import { WebSocketServer as WSServer } from 'ws';
 import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
+import { SessionStore } from './SessionStore.js';
 import { EventManager } from './events/EventManager.js';
 import { 
   TerminalData, 
@@ -16,15 +17,23 @@ export class WebSocketServer {
   private wss: WSServer;
   private sessionManager: SessionManager;
   private bufferManager: BufferManager;
+  private sessionStore?: SessionStore;
   private eventManager?: EventManager;
   private clients: Map<string, any> = new Map();
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
 
-  constructor(port: number, sessionManager: SessionManager, bufferManager: BufferManager, eventManager?: EventManager) {
+  constructor(
+    port: number, 
+    sessionManager: SessionManager, 
+    bufferManager: BufferManager, 
+    eventManager?: EventManager,
+    sessionStore?: SessionStore
+  ) {
     this.sessionManager = sessionManager;
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
+    this.sessionStore = sessionStore;
     this.wss = new WSServer({ port, host: '0.0.0.0' });
 
     // Set up event system if available

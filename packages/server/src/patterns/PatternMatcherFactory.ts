@@ -1,9 +1,9 @@
 import { PatternConfig } from '@shelltender/core';
-import { PatternMatcher } from './PatternMatcher';
-import { RegexMatcher } from './RegexMatcher';
-import { StringMatcher } from './StringMatcher';
-import { AnsiMatcher } from './AnsiMatcher';
-import { CustomMatcher } from './CustomMatcher';
+import { PatternMatcher } from './PatternMatcher.js';
+import { RegexMatcher } from './RegexMatcher.js';
+import { StringMatcher } from './StringMatcher.js';
+import { AnsiMatcher } from './AnsiMatcher.js';
+import { CustomMatcher } from './CustomMatcher.js';
 
 /**
  * Factory for creating pattern matchers based on configuration

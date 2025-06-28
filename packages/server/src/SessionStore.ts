@@ -1,12 +1,13 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { TerminalSession } from '@shelltender/core';
+import { TerminalSession, PatternConfig } from '@shelltender/core';
 
 export interface StoredSession {
   session: TerminalSession;
   buffer: string;
   cwd?: string;
   env?: Record<string, string>;
+  patterns?: PatternConfig[];
 }
 
 export class SessionStore {
@@ -88,17 +89,47 @@ export class SessionStore {
 
   async deleteAllSessions(): Promise<void> {
     try {
-      await fs.rmdir(this.storePath, { recursive: true });
+      await fs.rm(this.storePath, { recursive: true, force: true });
     } catch (error) {
       // Ignore if directory doesn't exist
     }
   }
 
   async updateSessionBuffer(sessionId: string, buffer: string): Promise<void> {
-    const storedSession = await this.loadSession(sessionId);
-    if (storedSession) {
-      storedSession.buffer = buffer;
-      await this.saveSession(sessionId, storedSession.session, buffer, storedSession.cwd);
+    try {
+      const filePath = path.join(this.storePath, `${sessionId}.json`);
+      const data = await fs.readFile(filePath, 'utf-8');
+      const storedSession: StoredSession = JSON.parse(data);
+      
+      // Only update if buffer has actually changed to avoid unnecessary writes
+      if (storedSession.buffer !== buffer) {
+        storedSession.buffer = buffer;
+        await fs.writeFile(filePath, JSON.stringify(storedSession, null, 2), 'utf-8');
+      }
+    } catch (error) {
+      // Session might not exist yet, ignore
+    }
+  }
+
+  async saveSessionPatterns(sessionId: string, patterns: PatternConfig[]): Promise<void> {
+    try {
+      const filePath = path.join(this.storePath, `${sessionId}.json`);
+      const data = await fs.readFile(filePath, 'utf-8');
+      const storedSession: StoredSession = JSON.parse(data);
+      
+      storedSession.patterns = patterns;
+      await fs.writeFile(filePath, JSON.stringify(storedSession, null, 2), 'utf-8');
+    } catch (error) {
+      console.error(`Error saving patterns for session ${sessionId}:`, error);
+    }
+  }
+
+  async getSessionPatterns(sessionId: string): Promise<PatternConfig[]> {
+    try {
+      const session = await this.loadSession(sessionId);
+      return session?.patterns || [];
+    } catch (error) {
+      return [];
     }
   }
 }
