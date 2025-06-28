@@ -1,6 +1,6 @@
-# Shelltender Release Guide
+# Shelltender Release Guide for Claude
 
-This guide is designed for Claude to execute release procedures. Follow these steps exactly to create and publish a new release.
+This guide provides exact instructions for Claude to execute release procedures autonomously. Every decision point has explicit criteria.
 
 ## Prerequisites
 
@@ -22,6 +22,59 @@ To check if a release has already been created:
 ```bash
 git tag -l "v*" | tail -5  # Show last 5 version tags
 ```
+
+## Claude Tool Usage Pattern
+
+Execute this release using these specific tool patterns:
+
+1. **Start with TodoWrite** - Create these 11 release steps:
+   ```
+   - Step 1: Check current version and branch
+   - Step 2: Run pre-release checks
+   - Step 3: Update version numbers
+   - Step 4: Update CHANGELOG
+   - Step 5: Rebuild and test
+   - Step 6: Commit version changes
+   - Step 7: Create and push tag
+   - Step 8: Publish to npm
+   - Step 9: Create GitHub release
+   - Step 10: Verify release
+   - Step 11: Update release guide
+   ```
+
+2. **Use MultiEdit** for simultaneous updates:
+   - Update all 4 package.json files in ONE operation
+   - Never edit package.json files individually
+
+3. **Use Bash tool** with exact commands:
+   - Copy commands exactly as shown
+   - Never use interactive flags (-i, --interactive)
+   - Always check command success before proceeding
+
+4. **State tracking** - Initialize and maintain throughout:
+   ```typescript
+   // Claude: Initialize these at the start
+   const releaseState = {
+     CURRENT_VERSION: "",      // Set from: grep '"version"' packages/core/package.json
+     NEW_VERSION: "",          // Calculate based on RELEASE_TYPE
+     BRANCH_NAME: "",          // Set from: git branch --show-current
+     RELEASE_TYPE: "",         // PATCH|MINOR|MAJOR - determined from commits
+     STEPS_COMPLETED: [],      // Track: ["step1", "step2", ...]
+     ERRORS_ENCOUNTERED: [],   // Log all errors with step number
+     TEST_RESULTS: {
+       passed: false,
+       failures: 0,
+       criticalFailures: []
+     },
+     BUILD_METRICS: {
+       time: 0,              // Build time in seconds
+       bundleSize: 0,        // Largest bundle in MB
+       warnings: []
+     }
+   };
+   
+   // Update TodoWrite with current state after each step
+   ```
 
 ## Branch Strategy
 
@@ -131,25 +184,61 @@ If tests fail, evaluate their severity:
 - Linting warnings (not errors)
 - Minor styling test failures
 
-**When in doubt:**
-```bash
-# Run failed tests individually for more detail
-npm test -- path/to/failing.test.ts
-
-# Ask the user: "I found [X] test failures. They appear to be [critical/non-critical] because [reason]. Should I proceed with the release?"
+**Claude Test Failure Decision Logic:**
+```javascript
+// Exact logic for Claude to follow
+const analyzeTestFailures = (output) => {
+  const failures = output.match(/FAIL.*\.test\.(ts|tsx)/g) || [];
+  
+  for (const failure of failures) {
+    // Critical patterns - MUST STOP
+    if (failure.includes('SessionManager') || 
+        failure.includes('BufferManager') ||
+        failure.includes('integration') ||
+        failure.includes('WebSocket')) {
+      return {
+        action: 'STOP',
+        message: `Critical test failure detected: ${failure}. Core functionality is broken.`
+      };
+    }
+  }
+  
+  // Non-critical patterns - can proceed
+  const nonCritical = failures.filter(f => 
+    f.includes('act()') || 
+    f.includes('.css') || 
+    f.includes('snapshot')
+  );
+  
+  if (nonCritical.length === failures.length) {
+    return {
+      action: 'PROCEED',
+      message: `Only UI/styling test failures (${failures.length} total). These are non-critical.`
+    };
+  }
+  
+  // Unknown failures - ask user
+  return {
+    action: 'ASK',
+    message: `Found ${failures.length} test failures: ${failures.join(', ')}. These don't match known patterns. Should I proceed?`
+  };
+};
 ```
 
 ### Handling Build Warnings
 
-**Acceptable warnings:**
-- Chunk size warnings (unless extreme)
-- Peer dependency warnings (if documented)
-- Source map warnings
+**Claude Decision Matrix:**
 
-**Unacceptable warnings:**
-- Security vulnerabilities
-- License compatibility issues
-- Missing dependencies
+| Warning Type | Action |
+|-------------|--------|
+| Chunk size < 1MB | ✅ Proceed |
+| Chunk size 1-2MB | ⚠️ Proceed but note in release: "Large bundle size (XMB)" |
+| Chunk size > 2MB | 🛑 Stop - Ask user: "Bundle size is XMB. This exceeds the 2MB threshold. Should I proceed?" |
+| Peer dependency warnings | ✅ Proceed if package.json documents them |
+| Source map warnings | ✅ Proceed |
+| Security vulnerability (any) | 🛑 Stop - Report exact vulnerability |
+| License compatibility | 🛑 Stop - Report exact license conflict |
+| Missing dependencies | 🛑 Stop - Cannot proceed without deps |
 
 ## Step 3: Update Version Numbers
 
@@ -310,19 +399,46 @@ npx tsx examples/minimal-integration.ts
 Complete these final tasks after the release:
 
 ```bash
-# 1. Update this guide's Current Release Status section
-# Edit RELEASE_GUIDE.md and update:
-# - Current version: X.Y.Z → new version
-# - Last release notes summary
+# Claude: Execute these verification commands
+npm view @shelltender/core version     # Should show X.Y.Z
+npm view @shelltender/server version   # Should show X.Y.Z
+npm view @shelltender/client version   # Should show X.Y.Z
+npm view shelltender version           # Should show X.Y.Z
+
+gh release view vX.Y.Z                 # Should show release details
+git tag -l | grep vX.Y.Z              # Should show the tag
 ```
 
-**Checklist:**
-- [ ] All packages show correct version on npm
-- [ ] GitHub release is visible at github.com/jeffh/shelltender/releases
-- [ ] Tag is visible in git: `git tag -l | grep vX.Y.Z`
-- [ ] CI/CD passed on the release tag (if applicable)
-- [ ] Updated Current Release Status in this guide
-- [ ] Notified relevant teams/users (if applicable)
+**Claude-Executable Checklist:**
+```typescript
+// Use this exact check sequence
+const postReleaseChecks = {
+  npmPackages: {
+    command: "npm view @shelltender/core version",
+    expected: NEW_VERSION,
+    action: "✅ Confirmed" || "❌ Failed - version mismatch"
+  },
+  githubRelease: {
+    command: "gh release view v" + NEW_VERSION,
+    expected: "shows release",
+    action: "✅ Confirmed" || "❌ Failed - release not found"
+  },
+  gitTag: {
+    command: "git tag -l | grep v" + NEW_VERSION,
+    expected: "v" + NEW_VERSION,
+    action: "✅ Confirmed" || "❌ Failed - tag not found"
+  },
+  guideUpdate: {
+    task: "Update RELEASE_GUIDE.md Current Release Status to " + NEW_VERSION,
+    action: "Use MultiEdit tool"
+  }
+};
+```
+
+**Human-Only Tasks (Claude: Skip these):**
+- ~~Notify teams/users~~
+- ~~Monitor CI/CD~~
+- ~~Social media announcements~~
 
 **Optional: Create announcement**
 ```markdown
@@ -355,14 +471,43 @@ All packages must have the same version number:
 - `@shelltender/client` (also update its dependency on core)
 - `shelltender` (update all three dependencies)
 
-## Common Issues and Solutions
+## Claude Error Response Templates
 
-1. **Tests failing**: Don't proceed with release. Investigate failures first.
-2. **Build errors**: Usually means TypeScript errors. Check recent changes.
-3. **npm publish fails**: 
-   - 403 error: User needs to login with `npm login`
-   - 409 error: Version already exists, bump version number
-4. **Git push rejected**: User may need to pull latest changes first
+Use these exact responses for common errors:
+
+### npm publish errors:
+```typescript
+if (error.includes("403")) {
+  return "I encountered a 403 error during npm publish. This means you need to authenticate. Please run `npm login` and let me know when you're ready to continue.";
+}
+
+if (error.includes("409")) {
+  return "I encountered a 409 error - this version already exists on npm. I need to bump to a higher version. Current version is " + CURRENT_VERSION + ". Should I increment to the next patch version?";
+}
+
+if (error.includes("E404")) {
+  return "I encountered a 404 error. This might mean the package hasn't been published before. Should I proceed with `npm publish --access public`?";
+}
+```
+
+### Git errors:
+```typescript
+if (error.includes("rejected")) {
+  return "Git push was rejected. This usually means:\n1. You need to pull latest changes: `git pull origin " + BRANCH_NAME + "`\n2. Or force push (dangerous): `git push --force`\nWhich would you prefer?";
+}
+
+if (error.includes("Permission denied")) {
+  return "Git operation failed with permission denied. Please check:\n1. SSH key is configured: `ssh -T git@github.com`\n2. You have push access to the repository";
+}
+```
+
+### Test failures:
+```typescript
+if (testResult.failures > 0) {
+  const analysis = analyzeTestFailures(testResult.output);
+  return `I found ${testResult.failures} test failures:\n\n${analysis.details}\n\nMy assessment: ${analysis.message}\n\n${analysis.action === 'STOP' ? 'I cannot proceed.' : 'Should I proceed?'}`;
+}
+```
 
 ## Example First Message to User
 
@@ -386,8 +531,13 @@ If you discover versions in package.json that were never published to npm:
 
 1. **Verify what's on npm:**
    ```bash
-   npm view @shelltender/core versions --json
-   npm view shelltender versions --json | jq '.[-5:]'  # Last 5 versions
+   # Check if jq is available first
+   which jq > /dev/null 2>&1
+   if [ $? -eq 0 ]; then
+     npm view shelltender versions --json | jq '.[-5:]'  # Last 5 versions with jq
+   else
+     npm view shelltender versions --json | tail -10      # Fallback without jq
+   fi
    ```
 
 2. **Update CHANGELOG.md:**
@@ -416,36 +566,49 @@ If you discover versions in package.json that were never published to npm:
    git push --delete origin v0.2.3
    ```
 
-## Common Assumptions and Decisions
+## Claude Decision Rules
 
-This section clarifies assumptions Claude should make when not explicitly specified:
+Apply these exact rules without deviation:
 
-### NPM Registry
-- **Default**: Use the public npm registry (registry.npmjs.org)
-- **Private registries**: User will specify with `--registry` flag
-- **Scoped packages**: Follow npm config for @shelltender scope
+### Version Bumping Logic
+```typescript
+const determineVersionBump = (commits: string[]) => {
+  if (commits.some(c => c.includes('BREAKING'))) return 'MAJOR';
+  if (commits.some(c => c.match(/^feat|^feature/))) return 'MINOR';
+  return 'PATCH';
+};
+```
 
-### Build Warnings
-- **Chunk size warnings**: Acceptable up to 1MB, flag if larger
-- **Dependency warnings**: Note but don't block release
-- **TypeScript strict mode warnings**: Should be fixed before release
+### NPM Registry Decision
+```typescript
+const getNpmRegistry = () => {
+  // Never ask - use these defaults
+  return {
+    registry: 'https://registry.npmjs.org/',
+    access: 'public',
+    dryRun: true  // ALWAYS do dry run first
+  };
+};
+```
 
-### Git Workflow
-- **PR-based releases**: If prompted about PR, ask user preference
-- **Direct push**: Acceptable for tags, ask for branch pushes
-- **Default branch**: Assume 'main' unless specified
+### Build Performance Thresholds
+| Metric | Green | Yellow | Red (Stop) |
+|--------|-------|--------|------------|
+| Build time | < 3 min | 3-5 min | > 5 min |
+| Bundle size | < 1MB | 1-2MB | > 2MB |
+| Test coverage drop | < 2% | 2-5% | > 5% |
+| Package size increase | < 10% | 10-20% | > 20% |
 
-### Release Formats
-- **Tag format**: Always `vX.Y.Z` (with 'v' prefix)
-- **Release title**: "vX.Y.Z - [First major change category]"
-- **Pre-releases**: Use `-beta.N` or `-rc.N` suffix
+### Git Push Rules
+```typescript
+const gitPushRules = {
+  tags: "ALWAYS push tags directly",
+  branches: "ONLY push if on main/master, otherwise ask",
+  force: "NEVER force push without explicit user confirmation"
+};
+```
 
-### Testing Thresholds
-- **Coverage drop**: Warn if coverage drops >5%
-- **Performance**: Flag if build time >5 minutes
-- **Package size**: Warn if package grows >20% from last version
-
-### Communication
-- **Confirmation points**: Always confirm before npm publish
-- **Error handling**: Stop and ask for guidance on unexpected errors
-- **Progress updates**: Report completion of each major step
+### Communication Checkpoints
+1. **MUST confirm before**: npm publish, git push to main, force operations
+2. **MUST report after**: each step completion, any warning, any error
+3. **MUST ask when**: unknown error, ambiguous situation, missing permissions
