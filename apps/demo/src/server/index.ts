@@ -57,8 +57,7 @@ pipeline.addProcessor('rate-limit', CommonProcessors.rateLimiter(1024 * 1024), 2
 pipeline.addProcessor('line-endings', CommonProcessors.lineEndingNormalizer(), 30);
 
 // Configure pipeline filters
-// TEMPORARILY DISABLED to test if this is causing session crashes
-// pipeline.addFilter('no-binary', CommonFilters.noBinary());
+pipeline.addFilter('no-binary', CommonFilters.noBinary());
 pipeline.addFilter('max-size', CommonFilters.maxDataSize(10 * 1024)); // 10KB max per chunk
 
 // Initialize WebSocket server
@@ -75,16 +74,6 @@ const integration = new PipelineIntegration(
   eventManager
 );
 integration.setup();
-
-// Add logging for blocked data
-pipeline.on('data:blocked', (event) => {
-  console.log('[Pipeline] Data blocked by filter:', {
-    sessionId: event.sessionId,
-    filter: event.filter,
-    data: Buffer.from(event.data).toString('hex'),
-    chars: event.data.split('').map((c: string) => `${c} (0x${c.charCodeAt(0).toString(16)})`)
-  });
-});
 
 // Serve static files from the client build
 app.use(express.static(path.join(__dirname, '../../client/dist')));

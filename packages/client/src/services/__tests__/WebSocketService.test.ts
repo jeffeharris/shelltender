@@ -82,7 +82,7 @@ describe('WebSocketService', () => {
       mockWebSocket = (service as any).ws as MockWebSocket;
       
       expect(mockWebSocket).toBeDefined();
-      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8080');
+      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8081');
     });
 
     it('should call onConnect handler when connected', () => {

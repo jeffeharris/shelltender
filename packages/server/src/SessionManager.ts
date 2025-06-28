@@ -95,22 +95,7 @@ export class SessionManager extends EventEmitter implements ISessionManager {
       }
     });
 
-    ptyProcess.onExit((exitCode) => {
-      console.log(`[SessionManager] PTY process exited for session ${sessionId} with code:`, exitCode);
-      
-      // Get session info for debugging
-      const sessionInfo = this.sessions.get(sessionId);
-      if (sessionInfo) {
-        console.log(`[SessionManager] Session details:`, {
-          id: sessionId,
-          command: sessionInfo.session.command,
-          args: sessionInfo.session.args,
-          createdAt: sessionInfo.session.createdAt,
-          lastAccessedAt: sessionInfo.session.lastAccessedAt,
-          clientCount: sessionInfo.clients.size
-        });
-      }
-      
+    ptyProcess.onExit(() => {
       // Emit session end event
       this.emit('sessionEnd', sessionId);
       
@@ -159,16 +144,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
       env = { ...env, ...shellConfig.env };
     }
 
-    console.log(`[SessionManager] Creating new session ${sessionId}:`, {
-      command,
-      args,
-      cwd,
-      cols,
-      rows,
-      restrictToPath: options.restrictToPath,
-      blockedCommands: options.blockedCommands,
-      readOnlyMode: options.readOnlyMode
-    });
 
     let ptyProcess;
     try {
@@ -180,7 +155,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
         env,
       });
     } catch (error) {
-      console.error(`[SessionManager] Failed to spawn PTY for session ${sessionId}:`, error);
       throw error;
     }
 
@@ -196,8 +170,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
     // Save the new session with the actual cwd
     this.sessionStore.saveSession(sessionId, session, '', cwd);
 
-    console.log(`[SessionManager] Session ${sessionId} created successfully`);
-    
     return session;
   }
 
@@ -217,17 +189,9 @@ export class SessionManager extends EventEmitter implements ISessionManager {
         processInfo.pty.write(data);
         return true;
       } catch (error) {
-        console.error(`[SessionManager] Error writing to session ${sessionId}:`, error);
-        // Check if PTY is still alive
-        if (processInfo.pty.pid) {
-          console.log(`[SessionManager] PTY process ${processInfo.pty.pid} appears to be running`);
-        } else {
-          console.log(`[SessionManager] PTY process for session ${sessionId} has no PID - may be dead`);
-        }
         return false;
       }
     }
-    console.warn(`[SessionManager] Session ${sessionId} not found for write`);
     return false;
   }
 

@@ -96,7 +96,6 @@ export class WebSocketServer {
           if (data.cols) options.cols = data.cols;
           if (data.rows) options.rows = data.rows;
           
-          console.log(`[WebSocketServer] Creating session with options:`, options);
           
           const session = this.sessionManager.createSession(options);
           this.sessionManager.addClient(session.id, clientId);
@@ -108,7 +107,6 @@ export class WebSocketServer {
             session,
           }));
           
-          console.log(`[WebSocketServer] Session ${session.id} created successfully`);
         } catch (error) {
           console.error('[WebSocketServer] Error creating session:', error);
           ws.send(JSON.stringify({
@@ -144,10 +142,8 @@ export class WebSocketServer {
 
       case 'input':
         if (data.sessionId && data.data) {
-          console.log(`[WebSocketServer] Input received for session ${data.sessionId}: ${data.data.length} bytes`);
           const success = this.sessionManager.writeToSession(data.sessionId, data.data);
           if (!success) {
-            console.error(`[WebSocketServer] Failed to write to session ${data.sessionId}`);
             ws.send(JSON.stringify({
               type: 'error',
               data: 'Failed to write to session - session may be disconnected',
