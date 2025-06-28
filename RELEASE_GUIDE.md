@@ -76,6 +76,34 @@ Execute this release using these specific tool patterns:
    // Update TodoWrite with current state after each step
    ```
 
+## Claude Must NEVER
+
+These are absolute prohibitions with no exceptions:
+
+1. **NEVER force push without explicit user confirmation**
+   - Even if suggested, always ask: "This requires force push. Are you absolutely sure?"
+
+2. **NEVER skip the dry run for npm publish**
+   - Always run `--dry-run` first, no matter what
+
+3. **NEVER delete git tags without user confirmation**
+   - Deleting tags is destructive and irreversible
+
+4. **NEVER proceed with MAJOR version bump without listing breaking changes**
+   - Always show: "This is a MAJOR version bump. Breaking changes detected: [list]"
+
+5. **NEVER use sudo or elevated permissions**
+   - If permission denied, ask user to fix permissions
+
+6. **NEVER modify git configuration**
+   - No `git config` commands, ever
+
+7. **NEVER publish to npm if tests are failing**
+   - Even if user says to proceed, remind them of the failing tests
+
+8. **NEVER commit with --no-verify**
+   - Pre-commit hooks exist for a reason
+
 ## Branch Strategy
 
 Before proceeding with a release, ensure you're on the appropriate branch:
@@ -332,11 +360,28 @@ npm publish --dry-run -w @shelltender/server
 npm publish --dry-run -w @shelltender/client
 npm publish --dry-run -w shelltender
 
-# If dry runs look good, publish for real
-npm publish -w @shelltender/core
-npm publish -w @shelltender/server
-npm publish -w @shelltender/client
-npm publish -w shelltender
+# If dry runs look good, publish for real with error tracking
+PUBLISHED=()
+FAILED=()
+
+# Publish each package and track results
+for pkg in "@shelltender/core" "@shelltender/server" "@shelltender/client" "shelltender"; do
+  echo "Publishing $pkg..."
+  if npm publish -w "$pkg" 2>&1; then
+    PUBLISHED+=("$pkg")
+  else
+    FAILED+=("$pkg")
+  fi
+done
+
+# Report results
+if [ ${#FAILED[@]} -gt 0 ]; then
+  echo "⚠️ PARTIAL PUBLISH - Action required!"
+  echo "✅ Published: ${PUBLISHED[*]}"
+  echo "❌ Failed: ${FAILED[*]}"
+  echo "Run 'npm view [package] version' to verify state before retrying"
+  echo "To retry failed packages only: npm publish -w [package-name]"
+fi
 ```
 
 ## Step 9: Create GitHub Release
@@ -357,9 +402,10 @@ awk -v ver="$VERSION" '
 # Review the extracted notes
 cat release_notes.md
 
-# Create the release
+# Create the release (with fallback for title extraction)
+TITLE=$(head -n1 release_notes.md | sed 's/^### //' || echo "Release updates")
 gh release create "v$VERSION" \
-  --title "v$VERSION - $(head -n1 release_notes.md | sed 's/^### //')" \
+  --title "v$VERSION - $TITLE" \
   --notes-file release_notes.md
 
 # Clean up
@@ -531,13 +577,8 @@ If you discover versions in package.json that were never published to npm:
 
 1. **Verify what's on npm:**
    ```bash
-   # Check if jq is available first
-   which jq > /dev/null 2>&1
-   if [ $? -eq 0 ]; then
-     npm view shelltender versions --json | jq '.[-5:]'  # Last 5 versions with jq
-   else
-     npm view shelltender versions --json | tail -10      # Fallback without jq
-   fi
+   # Simpler jq check with inline fallback
+   which jq >/dev/null 2>&1 && npm view shelltender versions --json | jq '.[-5:]' || npm view shelltender versions | tail -5
    ```
 
 2. **Update CHANGELOG.md:**
