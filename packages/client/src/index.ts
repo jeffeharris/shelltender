@@ -1,32 +1,32 @@
 // Export components
-export { Terminal } from './components/Terminal/index';
-export { SessionManager } from './components/SessionManager/index';
-export { SessionTabs } from './components/SessionTabs/index';
-export { SessionList } from './components/SessionList';
-export { TerminalEventMonitor } from './components/TerminalEventMonitor';
+export { Terminal } from './components/Terminal/index.js';
+export { SessionManager } from './components/SessionManager/index.js';
+export { SessionTabs } from './components/SessionTabs/index.js';
+export { SessionList } from './components/SessionList.js';
+export { TerminalEventMonitor } from './components/TerminalEventMonitor.js';
 
 // Export mobile components
-export { MobileApp, MobileTerminal, MobileSessionTabs, MobileBottomTabs, EnhancedVirtualKeyboard, KeySetEditor } from './components/mobile';
+export { MobileApp, MobileTerminal, MobileSessionTabs, MobileBottomTabs, EnhancedVirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
 
 // Export services
-export { WebSocketService } from './services/WebSocketService';
-export type { WebSocketServiceConfig } from './services/WebSocketService';
-export { TerminalEventService } from './services/TerminalEventService';
-export type { EventCallback, UnsubscribeFn } from './services/TerminalEventService';
+export { WebSocketService } from './services/WebSocketService.js';
+export type { WebSocketServiceConfig } from './services/WebSocketService.js';
+export { TerminalEventService } from './services/TerminalEventService.js';
+export type { EventCallback, UnsubscribeFn } from './services/TerminalEventService.js';
 
 // Export hooks
-export { useTerminalEvents } from './hooks/useTerminalEvents';
-export { useWebSocket } from './hooks/useWebSocket';
-export { useMobileDetection, useBreakpoint } from './hooks/useMobileDetection';
-export { useTouchGestures, useTerminalTouchGestures } from './hooks/useTouchGestures';
-export { useCustomKeySets } from './hooks/useCustomKeySets';
-export type { UseTerminalEventsReturn, UseTerminalEventsOptions } from './hooks/useTerminalEvents';
-export type { MobileDetection } from './hooks/useMobileDetection';
-export type { TouchGestureOptions } from './hooks/useTouchGestures';
+export { useTerminalEvents } from './hooks/useTerminalEvents.js';
+export { useWebSocket } from './hooks/useWebSocket.js';
+export { useMobileDetection, useBreakpoint } from './hooks/useMobileDetection.js';
+export { useTouchGestures, useTerminalTouchGestures } from './hooks/useTouchGestures.js';
+export { useCustomKeySets } from './hooks/useCustomKeySets.js';
+export type { UseTerminalEventsReturn, UseTerminalEventsOptions } from './hooks/useTerminalEvents.js';
+export type { MobileDetection } from './hooks/useMobileDetection.js';
+export type { TouchGestureOptions } from './hooks/useTouchGestures.js';
 
 // Export context
-export { MobileProvider, useMobile } from './context/MobileContext';
-export { WebSocketProvider, useWebSocketConfig } from './context/WebSocketContext';
+export { MobileProvider, useMobile } from './context/MobileContext.js';
+export { WebSocketProvider, useWebSocketConfig } from './context/WebSocketContext.js';
 
 // Export keyboard types
 export type { 
@@ -36,7 +36,7 @@ export type {
   KeyboardPreferences, 
   EnhancedVirtualKeyboardProps,
   KeySetEditorProps 
-} from './types/keyboard';
+} from './types/keyboard.js';
 
 // Export keyboard constants
-export { SPECIAL_KEY_SEQUENCES } from './constants/keySets';
+export { SPECIAL_KEY_SEQUENCES } from './constants/keySets.js';

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { WebSocketService, WebSocketServiceConfig } from '../services/WebSocketService';
-import { useWebSocketConfig } from '../context/WebSocketContext';
+import { WebSocketService, WebSocketServiceConfig } from '../services/WebSocketService.js';
+import { useWebSocketConfig } from '../context/WebSocketContext.js';
 
 let sharedWsService: WebSocketService | null = null;
 let connectionCount = 0;

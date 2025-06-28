@@ -1,4 +1,4 @@
-import { KeySet } from '../types/keyboard';
+import { KeySet } from '../types/keyboard.js';
 
 /**
  * QWERTY keyboard layout

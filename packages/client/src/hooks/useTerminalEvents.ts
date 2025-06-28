@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useWebSocket } from './useWebSocket';
-import { TerminalEventService } from '../services/TerminalEventService';
+import { useWebSocket } from './useWebSocket.js';
+import { TerminalEventService } from '../services/TerminalEventService.js';
 import type { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
 
 export interface UseTerminalEventsOptions {

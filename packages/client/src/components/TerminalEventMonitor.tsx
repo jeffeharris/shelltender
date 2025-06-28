@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useTerminalEvents } from '../hooks/useTerminalEvents';
+import { useTerminalEvents } from '../hooks/useTerminalEvents.js';
 import type { PatternMatchEvent } from '@shelltender/core';
 
 interface Props {

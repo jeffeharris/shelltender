@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { TerminalEventService } from '../TerminalEventService';
+import { TerminalEventService } from '../TerminalEventService.js';
 import type { WebSocketService } from '../WebSocketService';
 import type { PatternMatchEvent } from '@shelltender/core';
 

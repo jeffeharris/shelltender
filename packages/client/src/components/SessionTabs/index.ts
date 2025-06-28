@@ -1,1 +1,1 @@
-export { SessionTabs } from './SessionTabs';
+export { SessionTabs } from './SessionTabs.js';

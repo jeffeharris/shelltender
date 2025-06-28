@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MobileSessionTabs } from '../MobileSessionTabs';
-import { MobileProvider } from '../../../context/MobileContext';
+import { MobileSessionTabs } from '../MobileSessionTabs.js';
+import { MobileProvider } from '../../../context/MobileContext.js';
 
 describe('MobileSessionTabs Button Functionality', () => {
   it('should call onCreateSession when new session button is clicked', () => {

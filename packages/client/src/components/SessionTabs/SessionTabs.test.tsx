@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SessionTabs } from './SessionTabs';
+import { SessionTabs } from './SessionTabs.js';
 import { TerminalSession } from '@shelltender/core';
 
 describe('SessionTabs', () => {

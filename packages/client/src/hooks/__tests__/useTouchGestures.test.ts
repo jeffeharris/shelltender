@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useTouchGestures, useTerminalTouchGestures } from '../useTouchGestures';
+import { useTouchGestures, useTerminalTouchGestures } from '../useTouchGestures.js';
 import { useRef } from 'react';
 
 // Helper to create mock touch event

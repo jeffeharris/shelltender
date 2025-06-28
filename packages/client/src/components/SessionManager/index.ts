@@ -1,1 +1,1 @@
-export { SessionManager } from './SessionManager';
+export { SessionManager } from './SessionManager.js';

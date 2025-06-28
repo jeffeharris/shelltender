@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useMobileDetection, MobileDetection } from '../hooks/useMobileDetection';
+import { useMobileDetection, MobileDetection } from '../hooks/useMobileDetection.js';
 
 interface MobileContextValue extends MobileDetection {
   // Additional mobile-specific settings can be added here

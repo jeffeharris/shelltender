@@ -1,6 +1,6 @@
 {
   "name": "@shelltender/client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "React components and hooks for Shelltender terminal UI",
   "type": "module",
   "main": "dist/index.js",
@@ -8,10 +8,14 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "styles"],
+  "files": [
+    "dist",
+    "styles"
+  ],
   "license": "MIT",
   "author": "Jeff Harris",
   "repository": {
@@ -35,7 +39,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
+    "build:tsc": "tsc && node ../../scripts/transform-imports.js client",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"
@@ -61,6 +66,7 @@
     "happy-dom": "^18.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.3"
   }

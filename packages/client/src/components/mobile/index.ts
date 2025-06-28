@@ -1,6 +1,6 @@
-export { MobileApp } from './MobileApp';
-export { MobileTerminal } from './MobileTerminal';
-export { MobileSessionTabs, MobileBottomTabs } from './MobileSessionTabs';
-export { MobileTerminalInput } from './MobileTerminalInput';
-export { EnhancedVirtualKeyboard } from './EnhancedVirtualKeyboard';
-export { KeySetEditor } from './KeySetEditor';
+export { MobileApp } from './MobileApp.js';
+export { MobileTerminal } from './MobileTerminal.js';
+export { MobileSessionTabs, MobileBottomTabs } from './MobileSessionTabs.js';
+export { MobileTerminalInput } from './MobileTerminalInput.js';
+export { EnhancedVirtualKeyboard } from './EnhancedVirtualKeyboard.js';
+export { KeySetEditor } from './KeySetEditor.js';

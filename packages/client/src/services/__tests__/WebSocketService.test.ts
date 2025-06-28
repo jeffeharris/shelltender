@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { WebSocketService } from '../WebSocketService';
+import { WebSocketService } from '../WebSocketService.js';
 import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
 // Define WebSocket constants (these are standard values)

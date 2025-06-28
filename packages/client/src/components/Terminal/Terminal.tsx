@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import { WebSocketService } from '../../services/WebSocketService';
+import { WebSocketService } from '../../services/WebSocketService.js';
 import type { TerminalData } from '@shelltender/core';
 
 interface TerminalProps {

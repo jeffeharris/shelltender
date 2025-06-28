@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useMobile } from '../../context/MobileContext';
+import { useMobile } from '../../context/MobileContext.js';
 
 interface MobileTerminalInputProps {
   onInput: (text: string) => void;
