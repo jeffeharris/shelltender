@@ -13,14 +13,42 @@ ls -la packages/  # Should show core, server, client, shelltender directories
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.2.3
-- Last release addressed critical integration issues
+- Current version: 0.2.4
+- Last release addressed critical integration issues and added custom session ID support
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.2.3 release documented
+- The CHANGELOG.md has the v0.2.4 release documented
 
 To check if a release has already been created:
 ```bash
 git tag -l "v*" | tail -5  # Show last 5 version tags
+```
+
+## Branch Strategy
+
+Before proceeding with a release, ensure you're on the appropriate branch:
+
+```bash
+# Check current branch
+git branch --show-current
+
+# Check if you have uncommitted changes
+git status
+```
+
+**Branch Requirements:**
+- **Preferred**: Releases should be made from `main` or `master` branch
+- **Acceptable**: Release branches like `release/v0.2.4`
+- **Not Recommended**: Feature branches (unless merging to main first)
+
+If you're on a feature branch:
+```bash
+# Option 1: Merge to main first (recommended)
+git checkout main
+git pull origin main
+git merge feature/your-branch
+
+# Option 2: Create release from feature branch (document in release notes)
+# Proceed with caution and note this in the GitHub release description
 ```
 
 ## Step 1: Determine Version Number
@@ -33,9 +61,34 @@ git status
 # View recent commits since last tag
 git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
-# Check current version
+# Check current version in package.json
 grep '"version"' packages/core/package.json
+
+# Check what's published on npm
+npm view @shelltender/core versions --json | tail -5
+npm view @shelltender/server versions --json | tail -5
+npm view @shelltender/client versions --json | tail -5
+npm view shelltender versions --json | tail -5
 ```
+
+### Handling Version Mismatches
+
+If git tags and package.json versions don't match:
+
+1. **Check npm registry** - What's actually published?
+   ```bash
+   npm view @shelltender/core version  # Latest published version
+   ```
+
+2. **Decision tree**:
+   - If package.json > npm version → Previous release may have failed
+   - If package.json = npm version → You're up to date
+   - If git tag > package.json → Package.json wasn't updated in last release
+
+3. **Resolution**:
+   - Use package.json as source of truth if npm versions match
+   - If versions were skipped, document in CHANGELOG
+   - Always increment from the highest version found
 
 Analyze recent changes to determine the version bump:
 - **PATCH** (0.2.3 → 0.2.4): Bug fixes only
@@ -59,6 +112,44 @@ npm test
 # 3. Build all packages
 npm run build
 ```
+
+### Evaluating Test Failures
+
+If tests fail, evaluate their severity:
+
+**🛑 Critical Failures (STOP RELEASE):**
+- Unit test failures in business logic
+- Integration test failures
+- Build errors or TypeScript compilation errors
+- Security-related test failures
+- Data corruption or loss scenarios
+
+**⚠️ Non-Critical Failures (PROCEED WITH CAUTION):**
+- React `act()` warnings in tests
+- CSS class name changes in snapshot tests
+- Deprecation warnings
+- Linting warnings (not errors)
+- Minor styling test failures
+
+**When in doubt:**
+```bash
+# Run failed tests individually for more detail
+npm test -- path/to/failing.test.ts
+
+# Ask the user: "I found [X] test failures. They appear to be [critical/non-critical] because [reason]. Should I proceed with the release?"
+```
+
+### Handling Build Warnings
+
+**Acceptable warnings:**
+- Chunk size warnings (unless extreme)
+- Peer dependency warnings (if documented)
+- Source map warnings
+
+**Unacceptable warnings:**
+- Security vulnerabilities
+- License compatibility issues
+- Missing dependencies
 
 ## Step 3: Update Version Numbers
 
@@ -164,10 +255,40 @@ npm publish -w shelltender
 Execute these GitHub CLI commands:
 
 ```bash
-# Create release from tag (replace X.Y.Z)
+# First, prepare the release notes (more robust extraction)
+VERSION="X.Y.Z"  # Replace with actual version
+
+# Extract release notes using awk (more reliable than sed)
+awk -v ver="$VERSION" '
+  /^## \['ver'\]/ {flag=1; next}
+  /^## \[/ && flag {exit}
+  flag {print}
+' CHANGELOG.md > release_notes.md
+
+# Review the extracted notes
+cat release_notes.md
+
+# Create the release
+gh release create "v$VERSION" \
+  --title "v$VERSION - $(head -n1 release_notes.md | sed 's/^### //')" \
+  --notes-file release_notes.md
+
+# Clean up
+rm release_notes.md
+```
+
+**Alternative: Manual release notes**
+```bash
+# If automatic extraction fails, create manually
 gh release create vX.Y.Z \
-  --title "vX.Y.Z - Release Title" \
-  --notes "$(sed -n '/## \[X.Y.Z\]/,/## \[/p' CHANGELOG.md | sed '$d')"
+  --title "vX.Y.Z - Brief Description" \
+  --notes "### Fixed
+- List fixes here
+
+### Added  
+- List additions here
+
+See CHANGELOG.md for full details."
 ```
 
 ## Step 10: Post-release Verification
@@ -182,6 +303,37 @@ npm view shelltender version
 # Test the minimal integration example
 cd packages/server
 npx tsx examples/minimal-integration.ts
+```
+
+## Step 11: Post-Release Checklist
+
+Complete these final tasks after the release:
+
+```bash
+# 1. Update this guide's Current Release Status section
+# Edit RELEASE_GUIDE.md and update:
+# - Current version: X.Y.Z → new version
+# - Last release notes summary
+```
+
+**Checklist:**
+- [ ] All packages show correct version on npm
+- [ ] GitHub release is visible at github.com/jeffh/shelltender/releases
+- [ ] Tag is visible in git: `git tag -l | grep vX.Y.Z`
+- [ ] CI/CD passed on the release tag (if applicable)
+- [ ] Updated Current Release Status in this guide
+- [ ] Notified relevant teams/users (if applicable)
+
+**Optional: Create announcement**
+```markdown
+# Shelltender vX.Y.Z Released! 🎉
+
+Key changes:
+- [Summary of major fixes/features]
+
+Update with: `npm update shelltender`
+
+Full changelog: [link to release]
 ```
 
 ## Automation Notes for Claude
@@ -225,3 +377,75 @@ Based on the recent changes, I recommend a [PATCH/MINOR/MAJOR] version bump from
 
 Shall I proceed with creating release vX.Y.Z?
 ```
+
+## Troubleshooting Version History
+
+### When Previous Versions Were Never Published
+
+If you discover versions in package.json that were never published to npm:
+
+1. **Verify what's on npm:**
+   ```bash
+   npm view @shelltender/core versions --json
+   npm view shelltender versions --json | jq '.[-5:]'  # Last 5 versions
+   ```
+
+2. **Update CHANGELOG.md:**
+   - Consolidate unpublished versions into the current release
+   - Add a note explaining the version skip
+   
+   Example:
+   ```markdown
+   ## [0.2.4] - 2025-06-28
+   
+   *Note: Version 0.2.3 was tagged but never published to npm. This release includes all changes from v0.2.3.*
+   
+   ### Fixed
+   - All fixes from 0.2.3 plus new fixes...
+   ```
+
+3. **Clean up git tags (if needed):**
+   ```bash
+   # List all tags
+   git tag -l
+   
+   # Delete local tag for unpublished version (use with caution)
+   git tag -d v0.2.3
+   
+   # Delete remote tag (use with extreme caution)
+   git push --delete origin v0.2.3
+   ```
+
+## Common Assumptions and Decisions
+
+This section clarifies assumptions Claude should make when not explicitly specified:
+
+### NPM Registry
+- **Default**: Use the public npm registry (registry.npmjs.org)
+- **Private registries**: User will specify with `--registry` flag
+- **Scoped packages**: Follow npm config for @shelltender scope
+
+### Build Warnings
+- **Chunk size warnings**: Acceptable up to 1MB, flag if larger
+- **Dependency warnings**: Note but don't block release
+- **TypeScript strict mode warnings**: Should be fixed before release
+
+### Git Workflow
+- **PR-based releases**: If prompted about PR, ask user preference
+- **Direct push**: Acceptable for tags, ask for branch pushes
+- **Default branch**: Assume 'main' unless specified
+
+### Release Formats
+- **Tag format**: Always `vX.Y.Z` (with 'v' prefix)
+- **Release title**: "vX.Y.Z - [First major change category]"
+- **Pre-releases**: Use `-beta.N` or `-rc.N` suffix
+
+### Testing Thresholds
+- **Coverage drop**: Warn if coverage drops >5%
+- **Performance**: Flag if build time >5 minutes
+- **Package size**: Warn if package grows >20% from last version
+
+### Communication
+- **Confirmation points**: Always confirm before npm publish
+- **Error handling**: Stop and ask for guidance on unexpected errors
+- **Progress updates**: Report completion of each major step
