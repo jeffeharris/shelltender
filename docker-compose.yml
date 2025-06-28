@@ -1,0 +1,73 @@
+# Development Docker Compose configuration
+name: shelltender-dev
+
+services:
+  shelltender:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: shelltender-dev
+    ports:
+      - "3001:3000"    # Backend HTTP API
+      - "8081:8080"    # WebSocket server
+      - "5173:5173"    # Vite dev server (frontend)
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - WS_PORT=8080
+      - VITE_WS_URL=ws://localhost:8081
+      - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
+    volumes:
+      # Mount source code for hot reloading
+      - ./packages:/app/packages:delegated
+      - ./apps:/app/apps:delegated
+      - ./scripts:/app/scripts:delegated
+      
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/server/node_modules
+      - /app/packages/client/node_modules
+      - /app/packages/shelltender/node_modules
+      - /app/apps/demo/node_modules
+      
+      # Persist session data
+      - shelltender-sessions:/app/sessions
+      
+      # Persist bash history for convenience
+      - shelltender-history:/root
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shelltender-network
+
+  # Optional: PostgreSQL for future session persistence
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: shelltender
+  #     POSTGRES_USER: shelltender
+  #     POSTGRES_PASSWORD: shelltender
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - shelltender-network
+
+networks:
+  shelltender-network:
+    driver: bridge
+
+volumes:
+  shelltender-sessions:
+    driver: local
+  shelltender-history:
+    driver: local
+  # postgres-data:
+  #   driver: local

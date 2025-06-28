@@ -15,6 +15,7 @@ import {
 } from '@shelltender/client';
 import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
+import { SimpleEventTest } from './components/SimpleEventTest';
 import { TouchDebugger } from '../components/TouchDebugger';
 import { SimpleTouchTest } from '../components/SimpleTouchTest';
 
@@ -295,6 +296,13 @@ function App() {
         {showEventDemo && currentSessionId && (
           <div className="h-96 border-t border-gray-800 overflow-hidden bg-gray-950">
             <EventSystemDemo sessionId={currentSessionId} />
+          </div>
+        )}
+        
+        {/* Simple Event Test - Always show when there's a session */}
+        {currentSessionId && (
+          <div className="absolute bottom-20 right-4 w-80">
+            <SimpleEventTest sessionId={currentSessionId} />
           </div>
         )}
       </div>

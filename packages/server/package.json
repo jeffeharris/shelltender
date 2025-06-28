@@ -39,7 +39,6 @@
   },
   "scripts": {
     "build": "tsup",
-    "build:old": "tsc && node ../../scripts/transform-imports.js server",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"
