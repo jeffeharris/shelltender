@@ -1,5 +1,5 @@
-import { SessionOptions } from './session';
-import { PatternConfig, AnyTerminalEvent } from './events';
+import { SessionOptions } from './session.js';
+import { PatternConfig, AnyTerminalEvent } from './events.js';
 
 export interface TerminalData {
   type: 'output' | 'input' | 'resize' | 'create' | 'connect' | 'disconnect' | 'error' | 'bell' | 'exit';

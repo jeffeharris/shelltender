@@ -86,7 +86,9 @@ export interface PatternConfig {
   /** Type of pattern matcher to use */
   type: PatternType;
   /** Pattern to match - string, RegExp, or custom matcher function */
-  pattern: string | RegExp | CustomMatcher;
+  pattern: string | RegExp | CustomMatcher | string[];
+  /** Optional description of what this pattern detects */
+  description?: string;
   /** Optional configuration */
   options?: {
     /** Case sensitivity for string matching */
