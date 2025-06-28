@@ -1,6 +1,6 @@
 {
   "name": "@shelltender/client",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "React components and hooks for Shelltender terminal UI",
   "type": "module",
   "main": "dist/index.js",
@@ -46,7 +46,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shelltender/core": "^0.2.0",
+    "@shelltender/core": "^0.2.3",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-web-links": "^0.11.0",

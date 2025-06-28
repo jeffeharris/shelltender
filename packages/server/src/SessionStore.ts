@@ -12,10 +12,20 @@ export interface StoredSession {
 
 export class SessionStore {
   private storePath: string;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor(storePath: string = '.sessions') {
     this.storePath = storePath;
-    this.ensureStoreExists();
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = this.ensureStoreExists();
+    await this.initPromise;
+    this.initialized = true;
   }
 
   private async ensureStoreExists(): Promise<void> {
@@ -23,10 +33,12 @@ export class SessionStore {
       await fs.mkdir(this.storePath, { recursive: true });
     } catch (error) {
       console.error('Error creating session store directory:', error);
+      throw error; // Re-throw to prevent silent failures
     }
   }
 
   async saveSession(sessionId: string, session: TerminalSession, buffer: string, cwd?: string): Promise<void> {
+    await this.initialize();
     try {
       const sessionData: StoredSession = {
         session,
@@ -46,6 +58,7 @@ export class SessionStore {
   }
 
   async loadSession(sessionId: string): Promise<StoredSession | null> {
+    await this.initialize();
     try {
       const filePath = path.join(this.storePath, `${sessionId}.json`);
       const data = await fs.readFile(filePath, 'utf-8');
@@ -56,6 +69,7 @@ export class SessionStore {
   }
 
   async loadAllSessions(): Promise<Map<string, StoredSession>> {
+    await this.initialize();
     const sessions = new Map<string, StoredSession>();
     
     try {
@@ -79,6 +93,7 @@ export class SessionStore {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    await this.initialize();
     try {
       const filePath = path.join(this.storePath, `${sessionId}.json`);
       await fs.unlink(filePath);
@@ -88,6 +103,7 @@ export class SessionStore {
   }
 
   async deleteAllSessions(): Promise<void> {
+    await this.initialize();
     try {
       await fs.rm(this.storePath, { recursive: true, force: true });
     } catch (error) {
@@ -96,6 +112,7 @@ export class SessionStore {
   }
 
   async updateSessionBuffer(sessionId: string, buffer: string): Promise<void> {
+    await this.initialize();
     try {
       const filePath = path.join(this.storePath, `${sessionId}.json`);
       const data = await fs.readFile(filePath, 'utf-8');
@@ -112,6 +129,7 @@ export class SessionStore {
   }
 
   async saveSessionPatterns(sessionId: string, patterns: PatternConfig[]): Promise<void> {
+    await this.initialize();
     try {
       const filePath = path.join(this.storePath, `${sessionId}.json`);
       const data = await fs.readFile(filePath, 'utf-8');
@@ -125,6 +143,7 @@ export class SessionStore {
   }
 
   async getSessionPatterns(sessionId: string): Promise<PatternConfig[]> {
+    await this.initialize();
     try {
       const session = await this.loadSession(sessionId);
       return session?.patterns || [];

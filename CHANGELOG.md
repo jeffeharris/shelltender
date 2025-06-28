@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-06-28
+
+### Fixed
+- **Critical**: Fixed SessionStore async initialization race condition that caused "loadAllSessions is not a function" error
+  - Added `initialize()` method to SessionStore for proper async initialization
+  - Updated all SessionStore methods to ensure initialization before operations
+  - Updated demo app and examples to properly await SessionStore initialization
+
+### Added
+- Custom session ID support
+  - Added `id?: string` field to SessionOptions interface
+  - SessionManager now respects provided session IDs instead of always generating UUIDs
+  - Enables downstream applications to use predictable session identifiers
+- Improved WebSocket error handling and logging
+  - Better error messages when session creation fails
+  - Added detailed logging for debugging data flow issues
+  - Changed WebSocket response type from 'create' to 'created' for consistency
+- Comprehensive troubleshooting documentation (docs/TROUBLESHOOTING.md)
+- Minimal integration example (packages/server/examples/minimal-integration.ts)
+
+### Changed
+- SessionManager now saves actual working directory instead of process.env.HOME
+- Improved error handling in SessionStore with proper error propagation
+
+### Developer Notes
+This release addresses all integration issues reported by downstream teams, particularly around initialization order and session ID management.
+
 ## [0.1.0] - 2025-06-14
 
 ### Added

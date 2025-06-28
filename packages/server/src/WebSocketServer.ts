@@ -91,19 +91,32 @@ export class WebSocketServer {
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
     switch (data.type) {
       case 'create':
-        const options = data.options || {};
-        if (data.cols) options.cols = data.cols;
-        if (data.rows) options.rows = data.rows;
-        
-        const session = this.sessionManager.createSession(options);
-        this.sessionManager.addClient(session.id, clientId);
-        ws.sessionId = session.id;
-        
-        ws.send(JSON.stringify({
-          type: 'create',
-          sessionId: session.id,
-          session,
-        }));
+        try {
+          const options = data.options || {};
+          if (data.cols) options.cols = data.cols;
+          if (data.rows) options.rows = data.rows;
+          
+          console.log(`[WebSocketServer] Creating session with options:`, options);
+          
+          const session = this.sessionManager.createSession(options);
+          this.sessionManager.addClient(session.id, clientId);
+          ws.sessionId = session.id;
+          
+          ws.send(JSON.stringify({
+            type: 'created',
+            sessionId: session.id,
+            session,
+          }));
+          
+          console.log(`[WebSocketServer] Session ${session.id} created successfully`);
+        } catch (error) {
+          console.error('[WebSocketServer] Error creating session:', error);
+          ws.send(JSON.stringify({
+            type: 'error',
+            data: error instanceof Error ? error.message : 'Failed to create session',
+            requestId: (data as any).requestId
+          }));
+        }
         break;
 
       case 'connect':
@@ -131,7 +144,16 @@ export class WebSocketServer {
 
       case 'input':
         if (data.sessionId && data.data) {
-          this.sessionManager.writeToSession(data.sessionId, data.data);
+          console.log(`[WebSocketServer] Input received for session ${data.sessionId}: ${data.data.length} bytes`);
+          const success = this.sessionManager.writeToSession(data.sessionId, data.data);
+          if (!success) {
+            console.error(`[WebSocketServer] Failed to write to session ${data.sessionId}`);
+            ws.send(JSON.stringify({
+              type: 'error',
+              data: 'Failed to write to session - session may be disconnected',
+              sessionId: data.sessionId
+            }));
+          }
         }
         break;
 

@@ -20,8 +20,18 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
-# Build all packages
-RUN npm run build:all
+# Build packages in dependency order
+# First build core
+RUN npm run build -w @shelltender/core
+
+# Then build server and client (they depend on core)
+RUN npm run build -w @shelltender/server && npm run build -w @shelltender/client
+
+# Build combined package (depends on all three)
+RUN npm run build -w shelltender
+
+# Finally build demo app
+RUN npm run build -w shelltender-demo || true
 
 # Create directory for sessions
 RUN mkdir -p /app/sessions

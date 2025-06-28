@@ -95,7 +95,22 @@ export class SessionManager extends EventEmitter implements ISessionManager {
       }
     });
 
-    ptyProcess.onExit(() => {
+    ptyProcess.onExit((exitCode) => {
+      console.log(`[SessionManager] PTY process exited for session ${sessionId} with code:`, exitCode);
+      
+      // Get session info for debugging
+      const sessionInfo = this.sessions.get(sessionId);
+      if (sessionInfo) {
+        console.log(`[SessionManager] Session details:`, {
+          id: sessionId,
+          command: sessionInfo.session.command,
+          args: sessionInfo.session.args,
+          createdAt: sessionInfo.session.createdAt,
+          lastAccessedAt: sessionInfo.session.lastAccessedAt,
+          clientCount: sessionInfo.clients.size
+        });
+      }
+      
       // Emit session end event
       this.emit('sessionEnd', sessionId);
       
@@ -108,7 +123,7 @@ export class SessionManager extends EventEmitter implements ISessionManager {
   createSession(options: SessionOptions = {}): TerminalSession {
     const cols = options.cols || 80;
     const rows = options.rows || 24;
-    const sessionId = uuidv4();
+    const sessionId = options.id || uuidv4();
     const session: TerminalSession = {
       id: sessionId,
       createdAt: new Date(),
@@ -144,13 +159,30 @@ export class SessionManager extends EventEmitter implements ISessionManager {
       env = { ...env, ...shellConfig.env };
     }
 
-    const ptyProcess = pty.spawn(command, args, {
-      name: 'xterm-256color',
+    console.log(`[SessionManager] Creating new session ${sessionId}:`, {
+      command,
+      args,
+      cwd,
       cols,
       rows,
-      cwd,
-      env,
+      restrictToPath: options.restrictToPath,
+      blockedCommands: options.blockedCommands,
+      readOnlyMode: options.readOnlyMode
     });
+
+    let ptyProcess;
+    try {
+      ptyProcess = pty.spawn(command, args, {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        cwd,
+        env,
+      });
+    } catch (error) {
+      console.error(`[SessionManager] Failed to spawn PTY for session ${sessionId}:`, error);
+      throw error;
+    }
 
     this.sessions.set(sessionId, {
       pty: ptyProcess,
@@ -161,9 +193,11 @@ export class SessionManager extends EventEmitter implements ISessionManager {
     // Set up PTY handlers
     this.setupPtyHandlers(sessionId, ptyProcess);
     
-    // Save the new session
-    this.sessionStore.saveSession(sessionId, session, '', process.env.HOME);
+    // Save the new session with the actual cwd
+    this.sessionStore.saveSession(sessionId, session, '', cwd);
 
+    console.log(`[SessionManager] Session ${sessionId} created successfully`);
+    
     return session;
   }
 
@@ -179,9 +213,21 @@ export class SessionManager extends EventEmitter implements ISessionManager {
   writeToSession(sessionId: string, data: string): boolean {
     const processInfo = this.sessions.get(sessionId);
     if (processInfo) {
-      processInfo.pty.write(data);
-      return true;
+      try {
+        processInfo.pty.write(data);
+        return true;
+      } catch (error) {
+        console.error(`[SessionManager] Error writing to session ${sessionId}:`, error);
+        // Check if PTY is still alive
+        if (processInfo.pty.pid) {
+          console.log(`[SessionManager] PTY process ${processInfo.pty.pid} appears to be running`);
+        } else {
+          console.log(`[SessionManager] PTY process for session ${sessionId} has no PID - may be dead`);
+        }
+        return false;
+      }
     }
+    console.warn(`[SessionManager] Session ${sessionId} not found for write`);
     return false;
   }
 

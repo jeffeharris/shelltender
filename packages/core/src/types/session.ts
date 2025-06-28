@@ -1,4 +1,5 @@
 export interface SessionOptions {
+  id?: string;                      // Optional custom session ID
   command?: string;
   args?: string[];
   cwd?: string;
