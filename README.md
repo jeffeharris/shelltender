@@ -2,9 +2,12 @@
 
 A modern web-based terminal that maintains persistent sessions across browser closures with full scrollback history and multi-tab synchronization. Now available as modular npm packages!
 
+[![npm version](https://img.shields.io/npm/v/shelltender.svg)](https://www.npmjs.com/package/shelltender)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## 📦 Packages
 
-Shelltender is now a monorepo with modular packages:
+Shelltender is now a monorepo with modular packages (v0.2.4):
 
 - **[@shelltender/core](packages/core)** - Shared types and interfaces
 - **[@shelltender/server](packages/server)** - Backend terminal session management
@@ -35,6 +38,26 @@ npm install @shelltender/client
 # Types only
 npm install @shelltender/core
 ```
+
+### Important: Initialization Order
+
+Starting with v0.2.4, you must properly initialize the SessionStore:
+
+```typescript
+import { SessionManager, BufferManager, SessionStore, WebSocketServer } from '@shelltender/server';
+
+// Initialize components in the correct order
+const bufferManager = new BufferManager();
+const sessionStore = new SessionStore();
+
+// CRITICAL: Initialize SessionStore before creating SessionManager
+await sessionStore.initialize();
+
+const sessionManager = new SessionManager(sessionStore);
+const wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
+```
+
+See the [minimal integration example](packages/server/examples/minimal-integration.ts) for a complete working setup.
 
 ## 🛠️ Development
 
@@ -72,16 +95,30 @@ npm run dev
   - Mobile-specific session navigation
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 - **Modular Architecture**: Use only the parts you need
+- **Custom Session IDs**: Create sessions with predictable identifiers (v0.2.4+)
+
+## 🆕 What's New in v0.2.4
+
+- **Fixed**: Critical SessionStore initialization race condition
+- **Added**: Custom session ID support (`{ id: 'my-custom-id' }`)
+- **Added**: Comprehensive [troubleshooting guide](docs/TROUBLESHOOTING.md)
+- **Improved**: WebSocket error handling and logging
+- **Fixed**: Working directory persistence in sessions
+
+[See full changelog](CHANGELOG.md)
 
 ## 📖 Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Release Guide](RELEASE_GUIDE.md) - How to create and publish releases
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
 - [Mobile Support Plan](docs/MOBILE_SUPPORT_PLAN.md) - Complete mobile implementation roadmap
 - [Mobile Implementation Guide](docs/MOBILE_IMPLEMENTATION_GUIDE.md) - Detailed implementation instructions
 - [Mobile Custom Keys](docs/MOBILE_CUSTOM_KEYS.md) - Virtual keyboard customization
 - [Demo App](apps/demo) - Example implementation with mobile support
+- [Integration Example](packages/server/examples/minimal-integration.ts) - Minimal working setup
 
 ## 🧪 Testing
 
