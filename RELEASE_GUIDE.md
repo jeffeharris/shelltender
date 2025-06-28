@@ -2,17 +2,50 @@
 
 This guide is designed for Claude to execute release procedures. Follow these steps exactly to create and publish a new release.
 
+## Prerequisites
+
+Before starting, verify you're in the correct directory:
+```bash
+pwd  # Should show the shelltender project root
+ls -la packages/  # Should show core, server, client, shelltender directories
+```
+
+## Current Release Status
+
+As of the last update to this guide:
+- Current version: 0.2.3
+- Last release addressed critical integration issues
+- All packages are synchronized at the same version
+- The CHANGELOG.md has the v0.2.3 release documented
+
+To check if a release has already been created:
+```bash
+git tag -l "v*" | tail -5  # Show last 5 version tags
+```
+
 ## Step 1: Determine Version Number
 
-First, analyze recent changes to determine the version bump:
+First, check what changes are pending release:
+```bash
+# Check for uncommitted changes
+git status
+
+# View recent commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Check current version
+grep '"version"' packages/core/package.json
+```
+
+Analyze recent changes to determine the version bump:
 - **PATCH** (0.2.3 → 0.2.4): Bug fixes only
 - **MINOR** (0.2.3 → 0.3.0): New features, backwards compatible
 - **MAJOR** (0.2.3 → 1.0.0): Breaking changes
 
-Check current version:
-```bash
-grep '"version"' packages/core/package.json
-```
+Look for keywords in commits:
+- "fix:", "bugfix:" → PATCH
+- "feat:", "feature:", "add:" → MINOR
+- "BREAKING:", "breaking change:" → MAJOR
 
 ## Step 2: Run Pre-release Checks
 
@@ -160,6 +193,7 @@ When executing this guide:
 4. Ask for confirmation before publishing to npm
 5. If any step fails, stop and report the error
 6. Keep track of which steps have been completed
+7. **IMPORTANT**: Use the TodoWrite tool to track your progress through the release steps
 
 ## Version Sync Rules
 
@@ -168,3 +202,26 @@ All packages must have the same version number:
 - `@shelltender/server` (also update its dependency on core)
 - `@shelltender/client` (also update its dependency on core)
 - `shelltender` (update all three dependencies)
+
+## Common Issues and Solutions
+
+1. **Tests failing**: Don't proceed with release. Investigate failures first.
+2. **Build errors**: Usually means TypeScript errors. Check recent changes.
+3. **npm publish fails**: 
+   - 403 error: User needs to login with `npm login`
+   - 409 error: Version already exists, bump version number
+4. **Git push rejected**: User may need to pull latest changes first
+
+## Example First Message to User
+
+When starting a release, say something like:
+```
+I'll help you create a new release for Shelltender. Let me first check the current version and recent changes to determine what version number to use.
+
+[Run the version check commands]
+
+Based on the recent changes, I recommend a [PATCH/MINOR/MAJOR] version bump from X.Y.Z to X.Y.Z because:
+- [List key changes]
+
+Shall I proceed with creating release vX.Y.Z?
+```
