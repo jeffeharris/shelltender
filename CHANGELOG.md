@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-06-28
+
+### Added
+- Enhanced release guide for fresh Claude instances with detailed automation notes
+- Claude-friendly release automation guide with step-by-step instructions
+
+### Changed
+- Improved release documentation for better automation support
+- Cleanup of ESM migration workaround scripts
+
 ## [0.2.3] - 2025-06-28
 
 ### Fixed
