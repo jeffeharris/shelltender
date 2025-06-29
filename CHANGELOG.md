@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-06-29
+
+### Added
+- AI coding assistant CLIs to development container (Claude Code, OpenAI CLI, Google Gemini CLI)
+- Comprehensive debugging tools for demo application
+- Dynamic pattern library with enhanced filtering and organization
+- Docker support for containerized development
+- Observer pattern implementation for terminal data processing
+- Terminal data pipeline with processors and filters
+- Common patterns and agentic coding patterns for output detection
+- Enhanced pattern matching system with factory pattern
+- Pipeline integration for seamless data processing
+- ESM validation script for build verification
+- WSL network scripts for improved Windows development
+
+### Fixed
+- WebSocket 'created' event type migration completed
+- Test terminal script for WebSocket validation
+- Package export configuration for proper ESM/CJS compatibility
+
+### Changed
+- Improved monorepo structure with tsup build system
+- Enhanced TypeScript configurations across all packages
+- Updated demo app with better error boundaries and UI components
+
 ## [0.2.4] - 2025-06-28
 
 ### Fixed
