@@ -1,5 +1,10 @@
 import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
+// Debug helper
+const debug = (message: string, data?: any) => {
+  console.log(`[WebSocketService] ${message}`, data || '');
+};
+
 type MessageHandler = (data: any) => void;
 
 export interface WebSocketServiceConfig {
@@ -93,9 +98,18 @@ export class WebSocketService {
   }
 
   send(data: WebSocketMessage): void {
+    debug('Sending message', { type: data.type, sessionId: (data as any).sessionId });
+    
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
+      try {
+        const serialized = JSON.stringify(data);
+        debug('Message serialized, length:', serialized.length);
+        this.ws.send(serialized);
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
     } else {
+      debug('WebSocket not ready, queueing message');
       this.messageQueue.push(data);
     }
   }

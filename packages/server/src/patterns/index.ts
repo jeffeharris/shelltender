@@ -5,3 +5,4 @@ export * from './AnsiMatcher.js';
 export * from './CustomMatcher.js';
 export * from './PatternMatcherFactory.js';
 export * from './CommonPatterns.js';
+export * from './AgenticCodingPatterns.js';

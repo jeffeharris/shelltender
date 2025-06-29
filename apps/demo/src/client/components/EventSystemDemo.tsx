@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTerminalEvents } from '@shelltender/client';
 import type { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
-import { CommonPatterns, getAllPatterns, getPatternsByCategory } from '@shelltender/server/patterns';
+import { CommonPatterns, getAllPatterns, getPatternsByCategory, AgenticCodingPatterns } from '@shelltender/server/patterns';
 
 interface Props {
   sessionId: string;
@@ -9,15 +9,22 @@ interface Props {
 
 // Pattern categories for organization
 const PATTERN_CATEGORIES = [
-  { key: 'build', label: 'Build Tools', icon: '🔨' },
-  { key: 'git', label: 'Version Control', icon: '🔀' },
-  { key: 'testing', label: 'Testing', icon: '🧪' },
-  { key: 'diagnostics', label: 'Errors & Warnings', icon: '⚠️' },
-  { key: 'system', label: 'System & Shell', icon: '💻' },
-  { key: 'progress', label: 'Progress & Status', icon: '📊' },
-  { key: 'network', label: 'Network & HTTP', icon: '🌐' },
-  { key: 'docker', label: 'Docker & Containers', icon: '🐳' },
-  { key: 'packageManagers', label: 'Package Managers', icon: '📦' }
+  { key: 'build', label: 'Build Tools', icon: '🔨', source: 'common' },
+  { key: 'git', label: 'Version Control', icon: '🔀', source: 'common' },
+  { key: 'testing', label: 'Testing', icon: '🧪', source: 'common' },
+  { key: 'diagnostics', label: 'Errors & Warnings', icon: '⚠️', source: 'common' },
+  { key: 'system', label: 'System & Shell', icon: '💻', source: 'common' },
+  { key: 'progress', label: 'Progress & Status', icon: '📊', source: 'common' },
+  { key: 'network', label: 'Network & HTTP', icon: '🌐', source: 'common' },
+  { key: 'docker', label: 'Docker & Containers', icon: '🐳', source: 'common' },
+  { key: 'packageManagers', label: 'Package Managers', icon: '📦', source: 'common' },
+  // AI Assistant patterns
+  { key: 'status', label: 'AI Status', icon: '🤖', source: 'agentic' },
+  { key: 'input', label: 'AI Input Prompts', icon: '💬', source: 'agentic' },
+  { key: 'ui', label: 'AI UI Elements', icon: '🔲', source: 'agentic' },
+  { key: 'completion', label: 'AI Task Results', icon: '✅', source: 'agentic' },
+  { key: 'special', label: 'AI Special States', icon: '⚡', source: 'agentic' },
+  { key: 'terminal', label: 'Terminal Control', icon: '🖥️', source: 'agentic' }
 ] as const;
 
 export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
@@ -28,6 +35,7 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   const [customPatternName, setCustomPatternName] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [collectedActionWords, setCollectedActionWords] = useState<Map<string, number>>(new Map());
 
   // Load existing patterns on mount
   useEffect(() => {
@@ -35,6 +43,24 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
       loadPatterns();
     }
   }, [isConnected]);
+
+  // Collect action words from AI events
+  useEffect(() => {
+    events.forEach(event => {
+      if (event.type === 'pattern-match' && (event as any).patternName === 'ai-action-word') {
+        const match = (event as any).match;
+        const actionWordMatch = match.match(/[·✢*✶✻✽✺●○◉◎]\s*(\w+)…/);
+        if (actionWordMatch) {
+          const word = actionWordMatch[1];
+          setCollectedActionWords(prev => {
+            const newMap = new Map(prev);
+            newMap.set(word, (newMap.get(word) || 0) + 1);
+            return newMap;
+          });
+        }
+      }
+    });
+  }, [events]);
 
   const loadPatterns = async () => {
     try {
@@ -102,8 +128,15 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
     });
   };
 
-  const getFilteredPatterns = (categoryKey: string) => {
-    const patterns = CommonPatterns[categoryKey as keyof typeof CommonPatterns];
+  const getFilteredPatterns = (category: typeof PATTERN_CATEGORIES[number]) => {
+    let patterns: any;
+    
+    if (category.source === 'common') {
+      patterns = CommonPatterns[category.key as keyof typeof CommonPatterns];
+    } else if (category.source === 'agentic') {
+      patterns = AgenticCodingPatterns[category.key as keyof typeof AgenticCodingPatterns];
+    }
+    
     if (!patterns) return [];
     
     const patternArray = Object.values(patterns) as PatternConfig[];
@@ -152,7 +185,7 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
         <div className="flex-1 overflow-y-auto p-4 min-h-0">
           <div className="space-y-2">
             {PATTERN_CATEGORIES.map(category => {
-              const patterns = getFilteredPatterns(category.key);
+              const patterns = getFilteredPatterns(category);
               const isCollapsed = collapsedCategories.has(category.key);
               const hasActivePatterns = patterns.some(p => activePatterns.has(p.name));
               
@@ -304,6 +337,33 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {/* Action Word Collection Display */}
+        {collectedActionWords.size > 0 && (
+          <div className="mt-6 p-4 bg-gray-800 rounded border border-gray-700">
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <span>🎲</span>
+              <span>Claude's Action Words Collection</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {Array.from(collectedActionWords.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([word, count]) => (
+                  <span
+                    key={word}
+                    className="px-3 py-1 bg-gray-700 rounded-full text-sm flex items-center gap-2"
+                    title={`Seen ${count} time${count > 1 ? 's' : ''}`}
+                  >
+                    <span className="font-medium">{word}</span>
+                    <span className="text-xs text-gray-400">×{count}</span>
+                  </span>
+                ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              These are the random action words Claude uses while thinking. Collect them all!
+            </p>
           </div>
         )}
       </div>
