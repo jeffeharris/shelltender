@@ -19,6 +19,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
   const [isConnected, setIsConnected] = useState(false);
   const currentSessionIdRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
+  const isReadyRef = useRef(false);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -76,6 +77,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
         case 'created':
           if (data.sessionId) {
             currentSessionIdRef.current = data.sessionId;
+            isReadyRef.current = true;
             if (onSessionCreated) {
               onSessionCreated(data.sessionId);
             }
@@ -88,6 +90,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
             // Use write() to preserve exact formatting
             term.write(data.scrollback);
           }
+          isReadyRef.current = true;
           break;
         case 'output':
           if (data.data) {
@@ -132,6 +135,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
         } else {
           // Connect to existing session
           currentSessionIdRef.current = sessionId;
+          isReadyRef.current = true; // Existing session is ready immediately
           ws.send({ type: 'connect', sessionId });
         }
       } else if (currentSessionIdRef.current) {
@@ -149,6 +153,9 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
 
     // Handle terminal input
     term.onData((data: string) => {
+      if (!isReadyRef.current) {
+        return; // Silently block input until ready
+      }
       if (currentSessionIdRef.current && ws.isConnected()) {
         ws.send({
           type: 'input',
@@ -246,6 +253,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
       // User clicked "New Terminal" - create new session
       if (currentSessionIdRef.current !== null) {
         currentSessionIdRef.current = null;
+        isReadyRef.current = false; // Reset ready state
         if (xtermRef.current) {
           xtermRef.current.clear();
         }
@@ -258,6 +266,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
     } else if (sessionId !== currentSessionIdRef.current) {
       // User selected a different existing session
       currentSessionIdRef.current = sessionId;
+      isReadyRef.current = true; // Existing session is ready
       if (xtermRef.current) {
         xtermRef.current.clear();
       }

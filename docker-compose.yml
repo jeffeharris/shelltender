@@ -17,6 +17,14 @@ services:
       - WS_PORT=8080
       - VITE_WS_URL=ws://localhost:8081
       - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
+      # AI Assistant API Keys (loaded from .env file)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Optional: Google Cloud configuration
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
+      - GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-}
+      - GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-}
     volumes:
       # Mount source code for hot reloading
       - ./packages:/app/packages:delegated
