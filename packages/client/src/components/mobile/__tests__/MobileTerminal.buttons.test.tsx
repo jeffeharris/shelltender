@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MobileTerminal } from '../MobileTerminal';
-import { WebSocketProvider } from '../../../context/WebSocketContext';
+import { MobileTerminal } from '../MobileTerminal.js';
+import { WebSocketProvider } from '../../../context/WebSocketContext.js';
 
 // Mock dependencies
 vi.mock('../../../hooks/useWebSocket', () => ({

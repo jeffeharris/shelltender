@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { KeySet, KeyboardPreferences } from '../types/keyboard';
-import { DEFAULT_KEYBOARD_PREFERENCES, PREDEFINED_KEY_SETS } from '../constants/keySets';
+import { KeySet, KeyboardPreferences } from '../types/keyboard.js';
+import { DEFAULT_KEYBOARD_PREFERENCES, PREDEFINED_KEY_SETS } from '../constants/keySets.js';
 
 const STORAGE_KEY = 'shelltender-keyboard-preferences';
 

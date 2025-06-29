@@ -1,17 +1,25 @@
 {
   "name": "@shelltender/server",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "description": "Server-side terminal session management for Shelltender",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./patterns": {
+      "types": "./dist/patterns/index.d.ts",
+      "import": "./dist/patterns/index.js",
+      "require": "./dist/patterns/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "author": "Jeff Harris",
   "repository": {
@@ -35,16 +43,16 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shelltender/core": "^0.2.0",
+    "@shelltender/core": "^0.2.4",
     "node-pty": "^1.0.0",
-    "ws": "^8.18.2",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.2"
   },
   "peerDependencies": {
     "express": "^4.0.0"
@@ -54,8 +62,9 @@
     "@types/node": "^24.0.1",
     "@types/ws": "^8.18.1",
     "express": "^4.21.2",
+    "supertest": "^7.1.1",
+    "tsup": "^8.5.0",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.3",
-    "supertest": "^7.1.1"
+    "vitest": "^3.2.3"
   }
 }

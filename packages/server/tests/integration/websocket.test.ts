@@ -22,7 +22,7 @@ vi.mock('node-pty', () => {
 });
 
 // Mock SessionStore to prevent file operations
-vi.mock('../../src/server/SessionStore.js', () => {
+vi.mock('../../src/SessionStore.js', () => {
   const mockStore = {
     loadAllSessions: vi.fn().mockResolvedValue(new Map()),
     saveSession: vi.fn().mockResolvedValue(undefined),
@@ -50,10 +50,12 @@ describe('WebSocket Integration', () => {
     
     bufferManager = new BufferManager();
     sessionStore = new SessionStore('.test-sessions-' + Date.now());
-    sessionManager = new SessionManager(bufferManager, sessionStore);
-    
-    // Wait for session manager to initialize
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Mock initialize if it doesn't exist (for backwards compatibility in tests)
+    if (!sessionStore.initialize) {
+      sessionStore.initialize = async () => {};
+    }
+    await sessionStore.initialize();
+    sessionManager = new SessionManager(sessionStore);
     
     wsServer = new WebSocketServer(testPort, sessionManager, bufferManager);
   });
@@ -106,7 +108,7 @@ describe('WebSocket Integration', () => {
       }));
       
       const response = await messagePromise;
-      expect(response.type).toBe('create');
+      expect(response.type).toBe('created');
       expect(response.sessionId).toBeDefined();
       expect(response.session).toMatchObject({
         id: expect.any(String),
@@ -129,7 +131,7 @@ describe('WebSocket Integration', () => {
       }));
       
       const response = await messagePromise;
-      expect(response.type).toBe('create');
+      expect(response.type).toBe('created');
       expect(response.sessionId).toBeDefined();
     });
   });

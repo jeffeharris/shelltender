@@ -16,7 +16,7 @@ const server = createServer(app);
 // Initialize managers
 const bufferManager = new BufferManager();
 const sessionStore = new SessionStore();
-const sessionManager = new SessionManager(bufferManager, sessionStore);
+const sessionManager = new SessionManager(sessionStore);
 
 // Initialize WebSocket server
 const wsPort = parseInt(process.env.WS_PORT || '8282');

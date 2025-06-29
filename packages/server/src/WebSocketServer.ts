@@ -1,6 +1,7 @@
 import { WebSocketServer as WSServer } from 'ws';
 import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
+import { SessionStore } from './SessionStore.js';
 import { EventManager } from './events/EventManager.js';
 import { 
   TerminalData, 
@@ -16,21 +17,24 @@ export class WebSocketServer {
   private wss: WSServer;
   private sessionManager: SessionManager;
   private bufferManager: BufferManager;
+  private sessionStore?: SessionStore;
   private eventManager?: EventManager;
   private clients: Map<string, any> = new Map();
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
 
-  constructor(port: number, sessionManager: SessionManager, bufferManager: BufferManager, eventManager?: EventManager) {
+  constructor(
+    port: number, 
+    sessionManager: SessionManager, 
+    bufferManager: BufferManager, 
+    eventManager?: EventManager,
+    sessionStore?: SessionStore
+  ) {
     this.sessionManager = sessionManager;
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
+    this.sessionStore = sessionStore;
     this.wss = new WSServer({ port, host: '0.0.0.0' });
-
-    // Set up the broadcaster for the session manager
-    this.sessionManager.setClientBroadcaster((sessionId: string, data: any) => {
-      this.broadcastToSession(sessionId, data);
-    });
 
     // Set up event system if available
     if (this.eventManager) {
@@ -87,19 +91,30 @@ export class WebSocketServer {
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
     switch (data.type) {
       case 'create':
-        const options = data.options || {};
-        if (data.cols) options.cols = data.cols;
-        if (data.rows) options.rows = data.rows;
-        
-        const session = this.sessionManager.createSession(options);
-        this.sessionManager.addClient(session.id, clientId);
-        ws.sessionId = session.id;
-        
-        ws.send(JSON.stringify({
-          type: 'create',
-          sessionId: session.id,
-          session,
-        }));
+        try {
+          const options = data.options || {};
+          if (data.cols) options.cols = data.cols;
+          if (data.rows) options.rows = data.rows;
+          
+          
+          const session = this.sessionManager.createSession(options);
+          this.sessionManager.addClient(session.id, clientId);
+          ws.sessionId = session.id;
+          
+          ws.send(JSON.stringify({
+            type: 'created',
+            sessionId: session.id,
+            session,
+          }));
+          
+        } catch (error) {
+          console.error('[WebSocketServer] Error creating session:', error);
+          ws.send(JSON.stringify({
+            type: 'error',
+            data: error instanceof Error ? error.message : 'Failed to create session',
+            requestId: (data as any).requestId
+          }));
+        }
         break;
 
       case 'connect':
@@ -127,7 +142,14 @@ export class WebSocketServer {
 
       case 'input':
         if (data.sessionId && data.data) {
-          this.sessionManager.writeToSession(data.sessionId, data.data);
+          const success = this.sessionManager.writeToSession(data.sessionId, data.data);
+          if (!success) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              data: 'Failed to write to session - session may be disconnected',
+              sessionId: data.sessionId
+            }));
+          }
         }
         break;
 
@@ -169,7 +191,7 @@ export class WebSocketServer {
     }
   }
 
-  private broadcastToSession(sessionId: string, data: any): void {
+  public broadcastToSession(sessionId: string, data: any): void {
     this.clients.forEach((ws, clientId) => {
       if (ws.sessionId === sessionId && ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify(data));

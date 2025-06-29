@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-06-28
+
+### Fixed
+- **Critical**: Fixed SessionStore async initialization race condition that caused "loadAllSessions is not a function" error
+  - Added `initialize()` method to SessionStore for proper async initialization
+  - Updated all SessionStore methods to ensure initialization before operations
+  - Updated demo app and examples to properly await SessionStore initialization
+- Multiple ESM build system issues across all packages
+  - Migrated @shelltender/core to tsup build system
+  - Migrated @shelltender/server to tsup build system  
+  - Migrated @shelltender/client to proper ESM build
+  - Migrated shelltender combined package to tsup
+- Demo app tsconfig for standalone build
+- CSS styling issues and improved desktop UI
+- Mobile keyboard accessibility
+
+### Added
+- Custom session ID support
+  - Added `id?: string` field to SessionOptions interface
+  - SessionManager now respects provided session IDs instead of always generating UUIDs
+  - Enables downstream applications to use predictable session identifiers
+- Improved WebSocket error handling and logging
+  - Better error messages when session creation fails
+  - Added detailed logging for debugging data flow issues
+  - Changed WebSocket response type from 'create' to 'created' for consistency
+- Comprehensive troubleshooting documentation (docs/TROUBLESHOOTING.md)
+- Minimal integration example (packages/server/examples/minimal-integration.ts)
+- **Mobile Support** (v0.2.0 features)
+  - Comprehensive mobile support with multi-touch gestures
+  - Enhanced virtual keyboard with terminal-specific key sets
+  - Mobile-optimized UI components
+  - Touch gesture support (2-finger copy, 3-finger paste, swipe navigation)
+  - Custom key set creation and persistence
+- Observer pattern for terminal data processing
+- Enhanced release guide for fresh Claude instances with detailed automation notes
+- Claude-friendly release automation guide with step-by-step instructions
+
+### Changed
+- SessionManager now saves actual working directory instead of process.env.HOME
+- Improved error handling in SessionStore with proper error propagation
+- Configured servers to bind to 0.0.0.0 for mobile testing
+- Use standard WebSocket port 8080 as default
+- Improved release documentation for better automation support
+- Cleanup of ESM migration workaround scripts
+
+### Developer Notes
+This release includes all changes since v0.1.0, including the v0.2.0 mobile support features and v0.2.3 critical fixes that were not previously published to npm. It addresses all integration issues reported by downstream teams, particularly around initialization order and session ID management.
+
+## [0.2.3] - Not Released
+*Note: Version 0.2.3 was tagged in the codebase but never published to npm. All changes are included in v0.2.4.*
+
 ## [0.1.0] - 2025-06-14
 
 ### Added

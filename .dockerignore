@@ -1,0 +1,61 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Development files
+.git/
+.gitignore
+.github/
+*.log
+*.pid
+*.seed
+*.pid.lock
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Documentation
+docs/screenshots/
+
+# Session data (will be created in container)
+sessions/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# npm cache
+.npm/
+
+# eslint cache
+.eslintcache
+
+# Testing
+test-*.js
+test-*.mjs

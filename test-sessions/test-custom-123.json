@@ -1,0 +1,16 @@
+{
+  "session": {
+    "id": "test-custom-123",
+    "createdAt": "2025-06-28T18:29:25.563Z",
+    "lastAccessedAt": "2025-06-28T18:29:25.563Z",
+    "cols": 80,
+    "rows": 24,
+    "command": "/bin/bash"
+  },
+  "buffer": "echo \"Hello from Shelltender!\"\r\npwd\r\n\u001b[?2004h\u001b]0;jeffh@studio-harris: /tmp\u0007\u001b[01;32mjeffh@studio-harris\u001b[00m:\u001b[01;34m/tmp\u001b[00m$ echo \"Hello from Shelltender!\"\r\n\u001b[?2004l\rHello from Shelltender!\r\n\u001b[?2004h\u001b]0;jeffh@studio-harris: /tmp\u0007\u001b[01;32mjeffh@studio-harris\u001b[00m:\u001b[01;34m/tmp\u001b[00m$ pwd\r\n\u001b[?2004l\r/tmp\r\n\u001b[?2004h\u001b]0;jeffh@studio-harris: /tmp\u0007\u001b[01;32mjeffh@studio-harris\u001b[00m:\u001b[01;34m/tmp\u001b[00m$ ",
+  "cwd": "/tmp",
+  "env": {
+    "TERM": "xterm-256color",
+    "LANG": "C.UTF-8"
+  }
+}

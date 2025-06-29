@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { useTerminalEvents } from '../useTerminalEvents';
-import { useWebSocket } from '../useWebSocket';
+import { useTerminalEvents } from '../useTerminalEvents.js';
+import { useWebSocket } from '../useWebSocket.js';
 import type { PatternMatchEvent } from '@shelltender/core';
 
 // Mock useWebSocket hook

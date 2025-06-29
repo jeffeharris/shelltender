@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { WebSocketService } from '../WebSocketService';
+import { WebSocketService } from '../WebSocketService.js';
 import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
 // Define WebSocket constants (these are standard values)
@@ -82,7 +82,7 @@ describe('WebSocketService', () => {
       mockWebSocket = (service as any).ws as MockWebSocket;
       
       expect(mockWebSocket).toBeDefined();
-      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8080');
+      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8081');
     });
 
     it('should call onConnect handler when connected', () => {

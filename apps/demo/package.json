@@ -15,9 +15,9 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@shelltender/client": "^0.1.0",
-    "@shelltender/core": "^0.1.0",
-    "@shelltender/server": "^0.1.0",
+    "@shelltender/client": "^0.2.1",
+    "@shelltender/core": "^0.2.1",
+    "@shelltender/server": "^0.2.1",
     "express": "^4.21.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

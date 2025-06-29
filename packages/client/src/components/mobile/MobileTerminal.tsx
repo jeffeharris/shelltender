@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Terminal } from '../Terminal';
-import { useTerminalTouchGestures } from '../../hooks/useTouchGestures';
-import { useWebSocket } from '../../hooks/useWebSocket';
-import { MobileTerminalInput } from './MobileTerminalInput';
+import { Terminal } from '../Terminal/index.js';
+import { useTerminalTouchGestures } from '../../hooks/useTouchGestures.js';
+import { useWebSocket } from '../../hooks/useWebSocket.js';
+import { MobileTerminalInput } from './MobileTerminalInput.js';
 
 interface MobileTerminalProps {
   sessionId: string;

@@ -1,4 +1,4 @@
-import { WebSocketService } from './WebSocketService';
+import { WebSocketService } from './WebSocketService.js';
 import { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
 
 export type EventCallback = (event: AnyTerminalEvent) => void;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { TerminalEventMonitor } from '../TerminalEventMonitor';
-import { useTerminalEvents } from '../../hooks/useTerminalEvents';
+import { TerminalEventMonitor } from '../TerminalEventMonitor.js';
+import { useTerminalEvents } from '../../hooks/useTerminalEvents.js';
 import type { PatternMatchEvent } from '@shelltender/core';
 
 // Mock the useTerminalEvents hook

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EnhancedVirtualKeyboardProps, KeyDefinition, SpecialKeyType } from '../../types/keyboard';
-import { useCustomKeySets } from '../../hooks/useCustomKeySets';
-import { SPECIAL_KEY_SEQUENCES } from '../../constants/keySets';
+import { EnhancedVirtualKeyboardProps, KeyDefinition, SpecialKeyType } from '../../types/keyboard.js';
+import { useCustomKeySets } from '../../hooks/useCustomKeySets.js';
+import { SPECIAL_KEY_SEQUENCES } from '../../constants/keySets.js';
 
 export function EnhancedVirtualKeyboard({
   isVisible,

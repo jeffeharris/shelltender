@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MobileTerminal } from '../MobileTerminal';
-import { WebSocketProvider } from '../../../context/WebSocketContext';
-import { MobileProvider } from '../../../context/MobileContext';
+import { MobileTerminal } from '../MobileTerminal.js';
+import { WebSocketProvider } from '../../../context/WebSocketContext.js';
+import { MobileProvider } from '../../../context/MobileContext.js';
 
 // Mock dependencies
 const mockWsService = {

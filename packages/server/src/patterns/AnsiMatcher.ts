@@ -1,5 +1,5 @@
 import { PatternConfig, PatternMatch } from '@shelltender/core';
-import { PatternMatcher } from './PatternMatcher';
+import { PatternMatcher } from './PatternMatcher.js';
 
 /**
  * Pattern matcher for ANSI escape sequences

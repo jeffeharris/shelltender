@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useMobileDetection, useBreakpoint } from '../useMobileDetection';
+import { useMobileDetection, useBreakpoint } from '../useMobileDetection.js';
 
 describe('useMobileDetection', () => {
   const originalUserAgent = navigator.userAgent;

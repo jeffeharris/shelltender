@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SessionManager } from './SessionManager';
+import { SessionManager } from './SessionManager.js';
 import type { TerminalSession } from '@shelltender/core';
 
 // Mock window.confirm

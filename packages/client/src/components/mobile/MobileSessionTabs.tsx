@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { useTouchGestures } from '../../hooks/useTouchGestures';
-import { useMobile } from '../../context/MobileContext';
+import { useTouchGestures } from '../../hooks/useTouchGestures.js';
+import { useMobile } from '../../context/MobileContext.js';
 
 interface Session {
   id: string;

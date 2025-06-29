@@ -17,6 +17,8 @@ import type { TerminalSession } from '@shelltender/core';
 import { EventSystemDemo } from './components/EventSystemDemo';
 import { TouchDebugger } from '../components/TouchDebugger';
 import { SimpleTouchTest } from '../components/SimpleTouchTest';
+import { DiagnosticPanel } from './components/DiagnosticPanel';
+import { debugLogger } from './utils/debugLogger';
 
 // Helper to get special key sequence
 function getSpecialKeySequence(key: SpecialKeyType): string {
@@ -351,6 +353,7 @@ function App() {
           }}
         />
       )}
+      <DiagnosticPanel />
     </div>
   );
 }

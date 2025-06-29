@@ -1,0 +1,75 @@
+# Development Dockerfile for Shelltender
+FROM node:20-alpine
+
+# Install build dependencies for node-pty and development tools
+RUN apk add --no-cache python3 make g++ git bash
+
+# Install AI coding assistant CLIs
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    openai-cli \
+    @google/gemini-cli
+
+# Install common development tools these AIs typically use
+RUN npm install -g \
+    typescript \
+    @types/node \
+    eslint \
+    prettier \
+    jest \
+    vitest
+
+# Install Python tools (using --break-system-packages for Alpine)
+RUN apk add --no-cache py3-pip && \
+    pip3 install --break-system-packages \
+    black \
+    pylint \
+    pytest \
+    ruff
+
+WORKDIR /app
+
+# Copy package files first for better layer caching
+COPY package*.json ./
+COPY packages/core/package*.json ./packages/core/
+COPY packages/server/package*.json ./packages/server/
+COPY packages/client/package*.json ./packages/client/
+COPY packages/shelltender/package*.json ./packages/shelltender/
+COPY apps/demo/package*.json ./apps/demo/
+
+# Install dependencies
+RUN npm ci
+
+# Copy all source files
+COPY . .
+
+# Build packages in dependency order
+# First build core
+RUN npm run build -w @shelltender/core
+
+# Then build server and client (they depend on core)
+RUN npm run build -w @shelltender/server && npm run build -w @shelltender/client
+
+# Build combined package (depends on all three)
+RUN npm run build -w shelltender
+
+# Finally build demo app
+RUN npm run build -w shelltender-demo || true
+
+# Create directory for sessions
+RUN mkdir -p /app/sessions
+
+# Expose all development ports
+EXPOSE 3000 5173 8080
+
+# Set development environment
+ENV NODE_ENV=development
+ENV PORT=3000
+ENV WS_PORT=8080
+ENV VITE_WS_URL=ws://localhost:8080
+
+# Start in the demo app directory
+WORKDIR /app/apps/demo
+
+# Use npm run dev which starts both server and client
+CMD ["npm", "run", "dev"]

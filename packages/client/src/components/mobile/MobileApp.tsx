@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
-import { MobileProvider } from '../../context/MobileContext';
-import { useMobileDetection } from '../../hooks/useMobileDetection';
+import { MobileProvider } from '../../context/MobileContext.js';
+import { useMobileDetection } from '../../hooks/useMobileDetection.js';
 
 interface MobileAppProps {
   children: ReactNode;

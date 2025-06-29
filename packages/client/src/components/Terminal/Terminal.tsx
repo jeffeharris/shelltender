@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import { WebSocketService } from '../../services/WebSocketService';
+import { WebSocketService } from '../../services/WebSocketService.js';
 import type { TerminalData } from '@shelltender/core';
 
 interface TerminalProps {
@@ -73,7 +73,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
     // (output, create, connect, resize, error, etc.)
     const handleTerminalMessage = (data: TerminalData) => {
       switch (data.type) {
-        case 'create':
+        case 'created':
           if (data.sessionId) {
             currentSessionIdRef.current = data.sessionId;
             if (onSessionCreated) {
@@ -107,7 +107,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
 
     // Register handlers for each terminal message type
     ws.on('output', handleTerminalMessage);
-    ws.on('create', handleTerminalMessage);
+    ws.on('created', handleTerminalMessage);
     ws.on('connect', handleTerminalMessage);
     ws.on('resize', handleTerminalMessage);
     ws.on('error', handleTerminalMessage);

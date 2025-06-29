@@ -1,4 +1,4 @@
-export { Terminal } from './Terminal/index';
-export { SessionManager } from './SessionManager/index';
-export { SessionTabs } from './SessionTabs/index';
-export { SessionList } from './SessionList';
+export { Terminal } from './Terminal/index.js';
+export { SessionManager } from './SessionManager/index.js';
+export { SessionTabs } from './SessionTabs/index.js';
+export { SessionList } from './SessionList.js';

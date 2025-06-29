@@ -23,7 +23,7 @@ vi.mock('node-pty', () => {
 vi.mock('fs/promises');
 
 // Mock SessionStore to prevent actual file operations
-vi.mock('../../src/server/SessionStore.js', () => {
+vi.mock('../../src/SessionStore.js', () => {
   const mockStore = {
     loadAllSessions: vi.fn().mockResolvedValue(new Map()),
     saveSession: vi.fn().mockResolvedValue(undefined),
@@ -43,13 +43,12 @@ describe('SessionManager', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    bufferManager = new BufferManager();
     sessionStore = new SessionStore('.test-sessions');
     
     // Wait a bit for the async constructor operations
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    sessionManager = new SessionManager(bufferManager, sessionStore);
+    sessionManager = new SessionManager(sessionStore);
   });
 
   describe('createSession', () => {
