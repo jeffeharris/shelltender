@@ -59,6 +59,10 @@ RUN npm run build -w shelltender-demo || true
 # Create directory for sessions
 RUN mkdir -p /app/sessions
 
+# Switch to non-root user (using existing node user from base image)
+# This avoids git ownership errors and follows security best practices
+USER node
+
 # Expose all development ports
 EXPOSE 3000 5173 8080
 
