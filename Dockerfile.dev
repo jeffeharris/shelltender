@@ -4,6 +4,29 @@ FROM node:20-alpine
 # Install build dependencies for node-pty and development tools
 RUN apk add --no-cache python3 make g++ git bash
 
+# Install AI coding assistant CLIs
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    openai-cli \
+    @google/gemini-cli
+
+# Install common development tools these AIs typically use
+RUN npm install -g \
+    typescript \
+    @types/node \
+    eslint \
+    prettier \
+    jest \
+    vitest
+
+# Install Python tools (using --break-system-packages for Alpine)
+RUN apk add --no-cache py3-pip && \
+    pip3 install --break-system-packages \
+    black \
+    pylint \
+    pytest \
+    ruff
+
 WORKDIR /app
 
 # Copy package files first for better layer caching
