@@ -41,6 +41,12 @@ FROM node:20-alpine
 # Install runtime dependencies for PTY support
 RUN apk add --no-cache python3 make g++
 
+# Install AI coding assistant CLIs
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    openai-cli \
+    @google/gemini-cli
+
 WORKDIR /app
 
 # Copy built application
