@@ -2,13 +2,28 @@
 
 This guide provides exact instructions for Claude to execute release procedures autonomously. Every decision point has explicit criteria.
 
-## Prerequisites
+## Pre-Release Environment Check
 
-Before starting, verify you're in the correct directory:
+Before starting any release, Claude should verify:
+
 ```bash
+# Check all prerequisites in parallel
 pwd  # Should show the shelltender project root
+git branch --show-current  # Should be main/master or release branch
+git status --short  # Should be empty (no uncommitted changes)
+git fetch origin  # Update remote tracking
+git status -uno  # Check if local is up to date with remote
 ls -la packages/  # Should show core, server, client, shelltender directories
 ```
+
+**Environment Checklist:**
+- [ ] Current working directory is project root
+- [ ] Git is on main/master branch (or explicitly note if not)
+- [ ] No uncommitted changes exist
+- [ ] All local branches are up to date with remote
+- [ ] All required packages directories exist
+
+If any check fails, resolve before proceeding.
 
 ## Current Release Status
 
@@ -27,7 +42,7 @@ git tag -l "v*" | tail -5  # Show last 5 version tags
 
 Execute this release using these specific tool patterns:
 
-1. **Start with TodoWrite** - Create these 11 release steps:
+1. **Start with TodoWrite** - Create these 11 release steps IMMEDIATELY:
    ```
    - Step 1: Check current version and branch
    - Step 2: Run pre-release checks
@@ -42,29 +57,59 @@ Execute this release using these specific tool patterns:
    - Step 11: Update release guide
    ```
 
+   **Todo List Best Practices:**
+   - Create the 11-step todo list immediately upon starting
+   - Update status to "in_progress" BEFORE starting each step
+   - Mark "completed" immediately after finishing
+   - If a step fails, add a new todo for the fix before proceeding
+   - Never batch todo updates - update immediately after each state change
+
 2. **Use MultiEdit** for simultaneous updates:
    - Update all 4 package.json files in ONE operation
    - Never edit package.json files individually
+   - Read all files first, then use separate MultiEdit calls if needed
 
 3. **Use Bash tool** with exact commands:
    - Copy commands exactly as shown
    - Never use interactive flags (-i, --interactive)
    - Always check command success before proceeding
 
+4. **Parallel Operations** - Run these in parallel for efficiency:
+   ```bash
+   # All npm dry-run commands
+   # All npm view commands for verification  
+   # Reading multiple package.json files
+   # Git status checks across different aspects
+   ```
+
 4. **State tracking** - Initialize and maintain throughout:
    ```typescript
    // Claude: Initialize these at the start
    const releaseState = {
-     CURRENT_VERSION: "",      // Set from: grep '"version"' packages/core/package.json
+     // Version Management
+     PREVIOUS_VERSION: "",     // Set from: grep '"version"' packages/core/package.json
+     CURRENT_VERSION: "",      // Same as PREVIOUS_VERSION initially
      NEW_VERSION: "",          // Calculate based on RELEASE_TYPE
      BRANCH_NAME: "",          // Set from: git branch --show-current
      RELEASE_TYPE: "",         // PATCH|MINOR|MAJOR - determined from commits
+     
+     // Progress Tracking
      STEPS_COMPLETED: [],      // Track: ["step1", "step2", ...]
      ERRORS_ENCOUNTERED: [],   // Log all errors with step number
+     NPM_PUBLISH_STATUS: {     // Track per-package publish status
+       "@shelltender/core": "pending",
+       "@shelltender/server": "pending",
+       "@shelltender/client": "pending",
+       "shelltender": "pending"
+     },
+     
+     // Test & Build Results
+     TEST_STATUS: "not_run",   // not_run|passed|failed|failed_non_critical
      TEST_RESULTS: {
        passed: false,
        failures: 0,
-       criticalFailures: []
+       criticalFailures: [],
+       nonCriticalFailures: []
      },
      BUILD_METRICS: {
        time: 0,              // Build time in seconds
@@ -73,6 +118,7 @@ Execute this release using these specific tool patterns:
      }
    };
    
+   // Claude should maintain these variables throughout the release
    // Update TodoWrite with current state after each step
    ```
 
@@ -172,14 +218,37 @@ If git tags and package.json versions don't match:
    - Always increment from the highest version found
 
 Analyze recent changes to determine the version bump:
-- **PATCH** (0.2.3 → 0.2.4): Bug fixes only
-- **MINOR** (0.2.3 → 0.3.0): New features, backwards compatible
-- **MAJOR** (0.2.3 → 1.0.0): Breaking changes
 
-Look for keywords in commits:
-- "fix:", "bugfix:" → PATCH
-- "feat:", "feature:", "add:" → MINOR
-- "BREAKING:", "breaking change:" → MAJOR
+## Version Bump Decision Matrix
+
+| Commit Pattern | Contains | Version Bump | Example |
+|----------------|----------|--------------|----------|
+| `feat:` | New features | MINOR | feat: add session persistence |
+| `fix:` | Bug fixes only | PATCH | fix: resolve connection timeout |
+| `BREAKING:` or `!:` | Breaking changes | MAJOR | feat!: change API response format |
+| `chore:`, `docs:`, `test:` | No functional changes | PATCH | docs: update README |
+| `refactor:` | Code improvements | PATCH | refactor: optimize buffer handling |
+| `perf:` | Performance improvements | PATCH | perf: reduce memory usage |
+| Multiple types | Mixed changes | Use highest | feat + fix = MINOR |
+| No conventional commits | Any changes | PATCH | General updates |
+
+**Note:** User override always takes precedence over automatic determination.
+
+**Claude Version Determination Logic:**
+```javascript
+const determineVersionBump = (commits) => {
+  // Check for breaking changes first (highest priority)
+  if (commits.some(c => c.includes('BREAKING') || c.includes('!:'))) {
+    return 'MAJOR';
+  }
+  // Check for new features
+  if (commits.some(c => c.match(/^feat(\(.+\))?:/))) {
+    return 'MINOR';
+  }
+  // Everything else is PATCH
+  return 'PATCH';
+};
+```
 
 ## Step 2: Run Pre-release Checks
 
@@ -204,6 +273,8 @@ If tests fail, evaluate their severity:
 - Build errors or TypeScript compilation errors
 - Security-related test failures
 - Data corruption or loss scenarios
+- Package export test failures affecting runtime
+- Core functionality test failures (SessionManager, BufferManager, WebSocket)
 
 **⚠️ Non-Critical Failures (PROCEED WITH CAUTION):**
 - React `act()` warnings in tests
@@ -211,6 +282,23 @@ If tests fail, evaluate their severity:
 - Deprecation warnings
 - Linting warnings (not errors)
 - Minor styling test failures
+- Mobile/Touch test failures (generally non-critical)
+- SessionManager UI test failures (non-critical if only display-related)
+
+## Common Issues and Recovery
+
+### File Not Found Errors
+If Claude encounters "file has not been read yet" errors:
+1. Always use Read tool before Edit/MultiEdit
+2. For batch updates, read all files first, then use separate MultiEdit calls
+3. Never assume a file's content - always read first
+
+### Test Failure Recovery
+When tests fail:
+1. Run tests with verbose output: `npm test -- --reporter=verbose`
+2. Identify specific failing test files
+3. Check if failures match known non-critical patterns
+4. If unclear, share the specific failure with user for assessment
 
 **Claude Test Failure Decision Logic:**
 ```javascript
@@ -384,6 +472,115 @@ if [ ${#FAILED[@]} -gt 0 ]; then
 fi
 ```
 
+## NPM Publish Decision Tree
+
+```mermaid
+graph TD
+    A[npm publish] --> B{Error?}
+    B -->|403 Forbidden| C[Auth needed: User must run 'npm login']
+    B -->|409 Conflict| D[Version exists: Increment version and retry]
+    B -->|E404 Not Found| E[First publish: Retry with 'npm publish --access public']
+    B -->|Network Error| F[Retry with exponential backoff: 1s, 2s, 4s]
+    B -->|E402 Payment Required| G[Private package: Add '--access public' flag]
+    B -->|EPUBLISHCONFLICT| H[Concurrent publish: Wait 10s and retry]
+    B -->|Success| I[Continue to next package]
+    
+    C --> J[Wait for user to authenticate]
+    D --> K[Bump patch version and update all packages]
+    E --> L[Retry with public access flag]
+    F --> M{Retry count < 3?}
+    M -->|Yes| A
+    M -->|No| N[Report persistent network error]
+```
+
+**Claude NPM Error Handling:**
+```javascript
+const handleNpmError = (error, packageName, retryCount = 0) => {
+  if (error.includes("403")) {
+    return {
+      action: "STOP",
+      message: "Authentication required. Please run 'npm login' and let me know when ready."
+    };
+  }
+  
+  if (error.includes("409") || error.includes("EPUBLISHCONFLICT")) {
+    return {
+      action: "ASK_USER",
+      message: `Version already exists for ${packageName}. Should I increment to next patch version?`
+    };
+  }
+  
+  if (error.includes("E404") || error.includes("E402")) {
+    return {
+      action: "RETRY",
+      command: `npm publish -w "${packageName}" --access public`
+    };
+  }
+  
+  if (error.includes("network") && retryCount < 3) {
+    return {
+      action: "RETRY_WITH_BACKOFF",
+      delay: Math.pow(2, retryCount) * 1000,
+      message: `Network error, retrying in ${Math.pow(2, retryCount)}s...`
+    };
+  }
+  
+  return {
+    action: "STOP",
+    message: `Unknown error for ${packageName}: ${error}`
+  };
+};
+```
+
+## Multi-Package Coordination
+
+### Package Publishing Order
+Always publish in this exact order to respect dependencies:
+
+1. **@shelltender/core** (no dependencies)
+   - Base types and interfaces
+   - Must succeed before continuing
+
+2. **@shelltender/server** (depends on core)
+   - Requires @shelltender/core to be published
+   - Uses `^X.Y.Z` version of core
+
+3. **@shelltender/client** (depends on core)
+   - Requires @shelltender/core to be published
+   - Uses `^X.Y.Z` version of core
+
+4. **shelltender** (depends on all)
+   - Requires all three packages published
+   - Re-exports from all packages
+
+If any package fails to publish:
+- **STOP** immediately
+- Assess the error using the decision tree
+- Do NOT continue to dependent packages
+- Report exact status to user
+
+### Dependency Version Sync
+When updating versions, ensure:
+```json
+// @shelltender/server/package.json
+{
+  "version": "X.Y.Z",
+  "dependencies": {
+    "@shelltender/core": "^X.Y.Z"  // Must match
+  }
+}
+
+// shelltender/package.json  
+{
+  "version": "X.Y.Z",
+  "dependencies": {
+    "@shelltender/core": "^X.Y.Z",   // All must
+    "@shelltender/server": "^X.Y.Z", // match the
+    "@shelltender/client": "^X.Y.Z"  // new version
+  }
+}
+```
+
 ## Step 9: Create GitHub Release
 
 Execute these GitHub CLI commands:
@@ -442,6 +639,63 @@ npx tsx examples/minimal-integration.ts
 
 ## Step 11: Post-Release Checklist
 
+## Rollback Procedures
+
+If release fails after various stages, follow these recovery steps:
+
+### 1. Git Tag Created but Not Pushed
+```bash
+# Delete local tag
+git tag -d vX.Y.Z
+```
+
+### 2. Git Tag Pushed but npm Publish Failed
+```bash
+# Delete local tag
+git tag -d vX.Y.Z
+
+# Delete remote tag (requires user confirmation)
+echo "This will delete the remote tag. Are you sure? (User must confirm)"
+git push origin :refs/tags/vX.Y.Z
+```
+
+### 3. Partial npm Publish (Some Packages Failed)
+```bash
+# Check which packages were published
+for pkg in "@shelltender/core" "@shelltender/server" "@shelltender/client" "shelltender"; do
+  echo -n "$pkg: "
+  npm view $pkg version 2>/dev/null || echo "NOT PUBLISHED"
+done
+
+# Document the state for user
+echo "Partial publish detected. Successfully published packages cannot be rolled back."
+echo "Options:"
+echo "1. Fix issues and publish remaining packages with same version"
+echo "2. Bump version and publish all packages with new version"
+```
+
+### 4. After GitHub Release Created
+```bash
+# List recent releases
+gh release list --limit 5
+
+# Delete release (requires confirmation)
+echo "Delete GitHub release vX.Y.Z? This action cannot be undone."
+gh release delete vX.Y.Z --yes
+
+# Or edit release to mark as pre-release
+gh release edit vX.Y.Z --prerelease --notes "This release had issues and is marked as pre-release"
+```
+
+### 5. Complete Rollback Checklist
+If performing a complete rollback:
+- [ ] Revert version changes in all package.json files
+- [ ] Revert CHANGELOG.md updates
+- [ ] Delete git tag (local and remote)
+- [ ] Delete/edit GitHub release
+- [ ] Document what was rolled back and why
+- [ ] Create new todo list for retry attempt
+
 Complete these final tasks after the release:
 
 ```bash
@@ -497,6 +751,41 @@ Update with: `npm update shelltender`
 
 Full changelog: [link to release]
 ```
+
+## Claude-Specific Tips
+
+1. **When in doubt, ask the user** rather than assume
+   - Version bump type if unclear from commits
+   - Whether to proceed with non-critical test failures
+   - Any permission or authentication issues
+
+2. **Show progress frequently** (every 2-3 commands)
+   - "✓ Completed version updates, now rebuilding..."
+   - "✓ Tests passed, preparing to commit..."
+   - "✓ Tag created, starting npm publish..."
+
+3. **Batch read operations but execute writes separately**
+   - Read all package.json files in one parallel operation
+   - Use separate MultiEdit calls for different types of updates
+   - Never mix reads and writes in the same operation
+
+4. **Always state your hypothesis when troubleshooting**
+   - "This 403 error suggests authentication is needed"
+   - "The test failure appears to be a timing issue in the UI tests"
+   - "This version conflict means we need to bump to X.Y.Z+1"
+
+5. **If RELEASE_GUIDE.md doesn't exist, note it but continue**
+   - Use the version from your training
+   - Adapt based on the project structure
+   - Create a basic guide after the release
+
+6. **Error reporting should be actionable**
+   - Bad: "npm publish failed"
+   - Good: "npm publish failed with 403 error. You need to run 'npm login' first."
+
+7. **Track state even across conversation boundaries**
+   - Start each session by checking git tags and npm versions
+   - Don't assume previous state unless verified
 
 ## Automation Notes for Claude
 
@@ -653,3 +942,59 @@ const gitPushRules = {
 1. **MUST confirm before**: npm publish, git push to main, force operations
 2. **MUST report after**: each step completion, any warning, any error
 3. **MUST ask when**: unknown error, ambiguous situation, missing permissions
+
+## Quick Command Reference for Claude
+
+```bash
+# One-line status check (get key info fast)
+git status --short && echo "Branch: $(git branch --show-current), Version: $(grep '"version"' packages/core/package.json | cut -d'"' -f4)"
+
+# Verify all packages at once
+for pkg in core server client shelltender; do 
+  if [ "$pkg" = "shelltender" ]; then
+    echo -n "$pkg: "; npm view $pkg version 2>/dev/null || echo "not published"
+  else
+    echo -n "@shelltender/$pkg: "; npm view @shelltender/$pkg version 2>/dev/null || echo "not published"
+  fi
+done
+
+# Quick test status (just the summary)
+npm test 2>&1 | grep -E "(Test Files|Tests|failed)" | tail -3
+
+# Check for uncommitted changes across all packages
+git status --porcelain packages/
+
+# See recent commits since last tag
+git log $(git describe --tags --abbrev=0 2>/dev/null || echo "HEAD~10")..HEAD --oneline
+
+# Quick build with timing
+time npm run build && echo "Build completed successfully"
+
+# Check bundle sizes after build
+find packages -name "*.js" -path "*/dist/*" -exec ls -lh {} + | awk '{print $5, $9}' | sort -h | tail -10
+
+# Verify git remotes and push permissions
+git remote -v && git push --dry-run origin HEAD
+
+# Check npm registry and auth status
+npm config get registry && npm whoami
+
+# List recent git tags with dates
+git for-each-ref --sort=-creatordate --format='%(refname:short) - %(creatordate:short)' refs/tags | head -5
+```
+
+### Emergency Commands
+
+```bash
+# If npm publish hangs, check npm status
+curl -s https://status.npmjs.org/api/v2/status.json | grep -o '"description":"[^"]*"'
+
+# If tests hang, run with timeout
+timeout 300 npm test || echo "Tests timed out after 5 minutes"
+
+# If git push fails, check SSH key
+ssh -T git@github.com 2>&1 | grep -E "success|denied"
+
+# Reset to clean state (CAUTION: discards changes)
+git checkout -- . && git clean -fd
+```
