@@ -13,10 +13,10 @@ ls -la packages/  # Should show core, server, client, shelltender directories
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.2.4
-- Last release addressed critical integration issues and added custom session ID support
+- Current version: 0.2.5
+- Last release added AI coding assistants, debugging tools, and pattern library
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.2.4 release documented
+- The CHANGELOG.md has the v0.2.5 release documented
 
 To check if a release has already been created:
 ```bash
