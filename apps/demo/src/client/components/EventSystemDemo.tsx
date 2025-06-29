@@ -1,61 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useTerminalEvents } from '@shelltender/client';
 import type { PatternConfig, AnyTerminalEvent } from '@shelltender/core';
+import { CommonPatterns, getAllPatterns, getPatternsByCategory } from '@shelltender/server/patterns';
 
 interface Props {
   sessionId: string;
 }
 
-const DEMO_PATTERNS: PatternConfig[] = [
-  {
-    name: 'npm-install',
-    type: 'regex',
-    pattern: /npm (install|i)/,
-    options: { debounce: 100 }
-  },
-  {
-    name: 'build-status',
-    type: 'regex',
-    pattern: /Build (succeeded|failed) in (\d+(\.\d+)?)s/,
-    options: { debounce: 500 }
-  },
-  {
-    name: 'test-results',
-    type: 'regex',
-    pattern: /Tests:\s+(\d+) passed, (\d+) failed/,
-    options: { debounce: 200 }
-  },
-  {
-    name: 'git-commands',
-    type: 'regex',
-    pattern: /git (status|add|commit|push|pull)/,
-    options: { debounce: 100 }
-  },
-  {
-    name: 'error-detection',
-    type: 'regex',
-    pattern: /error:|Error:|ERROR:|failed|Failed|FAILED/i,
-    options: { debounce: 200 }
-  },
-  {
-    name: 'warning-detection',
-    type: 'regex',
-    pattern: /warning:|Warning:|WARNING:|warn:|Warn:|WARN:/i,
-    options: { debounce: 200 }
-  },
-  {
-    name: 'prompt-detection',
-    type: 'regex',
-    pattern: /\$\s*$/,
-    options: { debounce: 0 }
-  },
-  {
-    name: 'progress-percentage',
-    type: 'regex',
-    pattern: /(\d+)%/,
-    options: { debounce: 100 }
-  }
-];
+// Pattern categories for organization
+const PATTERN_CATEGORIES = [
+  { key: 'build', label: 'Build Tools', icon: '🔨' },
+  { key: 'git', label: 'Version Control', icon: '🔀' },
+  { key: 'testing', label: 'Testing', icon: '🧪' },
+  { key: 'diagnostics', label: 'Errors & Warnings', icon: '⚠️' },
+  { key: 'system', label: 'System & Shell', icon: '💻' },
+  { key: 'progress', label: 'Progress & Status', icon: '📊' },
+  { key: 'network', label: 'Network & HTTP', icon: '🌐' },
+  { key: 'docker', label: 'Docker & Containers', icon: '🐳' },
+  { key: 'packageManagers', label: 'Package Managers', icon: '📦' }
+] as const;
 
 export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   const { events, registerPattern, clearEvents, getPatterns, isConnected } = useTerminalEvents(sessionId, { maxEvents: 100 });
@@ -63,6 +26,8 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [customPattern, setCustomPattern] = useState('');
   const [customPatternName, setCustomPatternName] = useState('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load existing patterns on mount
   useEffect(() => {
@@ -125,6 +90,34 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
     }
   };
 
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const getFilteredPatterns = (categoryKey: string) => {
+    const patterns = CommonPatterns[categoryKey as keyof typeof CommonPatterns];
+    if (!patterns) return [];
+    
+    const patternArray = Object.values(patterns) as PatternConfig[];
+    
+    if (!searchQuery) return patternArray;
+    
+    const query = searchQuery.toLowerCase();
+    return patternArray.filter(pattern => 
+      pattern.name.toLowerCase().includes(query) ||
+      (pattern.description && pattern.description.toLowerCase().includes(query)) ||
+      (pattern.pattern instanceof RegExp && pattern.pattern.toString().toLowerCase().includes(query))
+    );
+  };
+
   const getEventsByPattern = () => {
     const grouped: Record<string, AnyTerminalEvent[]> = {};
     events.forEach((event: AnyTerminalEvent) => {
@@ -142,69 +135,129 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   return (
     <div className="h-full flex bg-gray-900 text-white">
       {/* Pattern Selection Panel */}
-      <div className="w-80 border-r border-gray-700 p-4 overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">Pattern Library</h3>
+      <div className="w-96 border-r border-gray-700 flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b border-gray-700 flex-shrink-0">
+          <h3 className="text-lg font-semibold mb-3">Pattern Library</h3>
+          
+          {/* Search input */}
+          <input
+            type="text"
+            placeholder="Search patterns..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 rounded border border-gray-700 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
         
-        <div className="space-y-2 mb-6">
-          {DEMO_PATTERNS.map(pattern => (
-            <label
-              key={pattern.name}
-              className="flex items-center gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={activePatterns.has(pattern.name)}
-                onChange={() => togglePattern(pattern)}
-                disabled={isLoading || !isConnected}
-                className="w-4 h-4 text-blue-500"
-              />
-              <div className="flex-1">
-                <div className="font-medium text-sm">{pattern.name}</div>
-                <div className="text-xs text-gray-500 font-mono">
-                  {pattern.pattern instanceof RegExp ? pattern.pattern.toString() : String(pattern.pattern)}
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
+          <div className="space-y-2">
+            {PATTERN_CATEGORIES.map(category => {
+              const patterns = getFilteredPatterns(category.key);
+              const isCollapsed = collapsedCategories.has(category.key);
+              const hasActivePatterns = patterns.some(p => activePatterns.has(p.name));
+              
+              if (patterns.length === 0 && searchQuery) return null;
+              
+              return (
+                <div key={category.key} className="border border-gray-700 rounded overflow-hidden">
+                  <button
+                    onClick={() => toggleCategory(category.key)}
+                    className="w-full px-3 py-2 bg-gray-800 hover:bg-gray-750 flex items-center justify-between text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{category.icon}</span>
+                      <span className="font-medium">{category.label}</span>
+                      <span className="text-xs text-gray-500">({patterns.length})</span>
+                      {hasActivePatterns && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-600 rounded">Active</span>
+                      )}
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  
+                  {!isCollapsed && (
+                    <div className="p-2 space-y-1 bg-gray-850">
+                      {patterns.map(pattern => (
+                        <label
+                          key={pattern.name}
+                          className="flex items-start gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={activePatterns.has(pattern.name)}
+                            onChange={() => togglePattern(pattern)}
+                            disabled={isLoading || !isConnected}
+                            className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-200">{pattern.name}</div>
+                            {pattern.description && (
+                              <div className="text-xs text-gray-400 mt-0.5">{pattern.description}</div>
+                            )}
+                            <div className="text-xs text-gray-500 font-mono mt-1 break-all">
+                              {pattern.pattern instanceof RegExp 
+                                ? pattern.pattern.toString() 
+                                : Array.isArray(pattern.pattern)
+                                  ? pattern.pattern.join(', ')
+                                  : String(pattern.pattern)}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="font-medium mb-2">Custom Pattern</h4>
-          <input
-            type="text"
-            placeholder="Pattern name"
-            value={customPatternName}
-            onChange={(e) => setCustomPatternName(e.target.value)}
-            className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
-          />
-          <input
-            type="text"
-            placeholder="Regex pattern (e.g., error|failed)"
-            value={customPattern}
-            onChange={(e) => setCustomPattern(e.target.value)}
-            className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
-          />
-          <button
-            onClick={registerCustomPattern}
-            disabled={isLoading || !isConnected || !customPattern || !customPatternName}
-            className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded text-sm"
-          >
-            Register Pattern
-          </button>
-        </div>
-
-        <div className="border-t border-gray-700 pt-4 mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Connection</span>
-            <span className={`text-sm px-2 py-0.5 rounded ${
-              isConnected ? 'bg-green-600' : 'bg-red-600'
-            }`}>
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
+              );
+            })}
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Total Events</span>
-            <span className="text-sm">{events.length}</span>
+        </div>
+
+        <div className="p-4 space-y-4 border-t border-gray-700 flex-shrink-0 bg-gray-900">
+          <div>
+            <h4 className="font-medium mb-2">Custom Pattern</h4>
+            <input
+              type="text"
+              placeholder="Pattern name"
+              value={customPatternName}
+              onChange={(e) => setCustomPatternName(e.target.value)}
+              className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
+            />
+            <input
+              type="text"
+              placeholder="Regex pattern (e.g., error|failed)"
+              value={customPattern}
+              onChange={(e) => setCustomPattern(e.target.value)}
+              className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
+            />
+            <button
+              onClick={registerCustomPattern}
+              disabled={isLoading || !isConnected || !customPattern || !customPatternName}
+              className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded text-sm"
+            >
+              Register Pattern
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Connection</span>
+              <span className={`text-sm px-2 py-0.5 rounded ${
+                isConnected ? 'bg-green-600' : 'bg-red-600'
+              }`}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Total Events</span>
+              <span className="text-sm">{events.length}</span>
+            </div>
           </div>
         </div>
       </div>
