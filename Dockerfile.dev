@@ -56,8 +56,8 @@ RUN npm run build -w shelltender
 # Finally build demo app
 RUN npm run build -w shelltender-demo || true
 
-# Create directory for sessions
-RUN mkdir -p /app/sessions
+# Create directory for sessions and ensure proper ownership
+RUN mkdir -p /app/sessions && chown -R node:node /app
 
 # Switch to non-root user (using existing node user from base image)
 # This avoids git ownership errors and follows security best practices
