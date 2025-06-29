@@ -73,7 +73,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
     // (output, create, connect, resize, error, etc.)
     const handleTerminalMessage = (data: TerminalData) => {
       switch (data.type) {
-        case 'create':
+        case 'created':
           if (data.sessionId) {
             currentSessionIdRef.current = data.sessionId;
             if (onSessionCreated) {
@@ -107,7 +107,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
 
     // Register handlers for each terminal message type
     ws.on('output', handleTerminalMessage);
-    ws.on('create', handleTerminalMessage);
+    ws.on('created', handleTerminalMessage);
     ws.on('connect', handleTerminalMessage);
     ws.on('resize', handleTerminalMessage);
     ws.on('error', handleTerminalMessage);

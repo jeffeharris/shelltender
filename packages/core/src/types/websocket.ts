@@ -2,7 +2,7 @@ import { SessionOptions } from './session.js';
 import { PatternConfig, AnyTerminalEvent } from './events.js';
 
 export interface TerminalData {
-  type: 'output' | 'input' | 'resize' | 'create' | 'connect' | 'disconnect' | 'error' | 'bell' | 'exit';
+  type: 'output' | 'input' | 'resize' | 'create' | 'created' | 'connect' | 'disconnect' | 'error' | 'bell' | 'exit';
   sessionId?: string;
   data?: string;
   cols?: number;
@@ -10,6 +10,7 @@ export interface TerminalData {
   scrollback?: string;
   exitCode?: number;
   options?: SessionOptions;  // For create message
+  session?: any;  // For created message
 }
 
 // Event System WebSocket Messages
