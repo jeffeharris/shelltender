@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2025-06-29
+
+### Added
+- Environment file patterns to .gitignore for better security
+- AI assistant API key support in docker-compose.yml (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY)
+- Terminal input readiness check to prevent race conditions
+
+### Fixed
+- Terminal input race condition where users could type before session was ready
+- Docker container now runs as non-root user for improved security
+
+### Changed
+- Enhanced RELEASE_GUIDE.md with comprehensive Claude-specific improvements
+
+### Removed
+- Obsolete test-terminal.js file
+
 ## [0.2.5] - 2025-06-29
 
 ### Added
