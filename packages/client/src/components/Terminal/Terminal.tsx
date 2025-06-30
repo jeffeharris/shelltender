@@ -103,7 +103,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId, onSessionCreated 
           }
           break;
         case 'error':
-          console.error('Terminal error:', data.data);
+          // Terminal error occurred
           break;
       }
     };

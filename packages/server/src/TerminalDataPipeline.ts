@@ -145,7 +145,7 @@ export class TerminalDataPipeline extends EventEmitter implements IPipelineSubsc
     this.emit('error', error);
     
     if (this.listenerCount('error') === 0) {
-      console.error(`[TerminalDataPipeline] Error in ${error.phase} '${error.name}':`, error.error);
+      // Error in pipeline processor
     }
   }
 
@@ -245,8 +245,8 @@ export const CommonFilters = {
   noBinary: (): DataFilter => {
     return (event: TerminalDataEvent) => {
       // Check for non-printable characters (except common control chars)
-      // Allow: tab(\t), newline(\n), carriage return(\r), and escape sequences
-      return !/[\x00-\x08\x0E-\x1A\x1C-\x1F\x7F-\x9F]/.test(event.data);
+      // Allow: tab(\t), newline(\n), carriage return(\r), backspace(\x08, \x7F), and escape sequences(\x1B)
+      return !/[\x00-\x07\x0E-\x1A\x1C\x80-\x9F]/.test(event.data);
     };
   },
 

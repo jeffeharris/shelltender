@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { useTouchGestures } from '../../hooks/useTouchGestures.js';
-import { useMobile } from '../../context/MobileContext.js';
 
 interface Session {
   id: string;
@@ -68,7 +67,6 @@ export function MobileSessionTabs({
           <button
             onPointerDown={(e) => {
               e.stopPropagation();
-              console.log('New session button pointer down');
               onCreateSession();
             }}
             className="icon-button mobile-action-button"

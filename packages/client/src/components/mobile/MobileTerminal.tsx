@@ -20,10 +20,6 @@ export function MobileTerminal({
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const { wsService } = useWebSocket();
 
-  // Debug log
-  useEffect(() => {
-    console.log('MobileTerminal mounted with sessionId:', sessionId);
-  }, [sessionId]);
 
   // Handle copy operation
   const handleCopy = useCallback(() => {
@@ -37,10 +33,8 @@ export function MobileTerminal({
 
   // Handle paste operation
   const handlePaste = useCallback(async () => {
-    console.log('Paste button clicked', { wsService: !!wsService, sessionId });
     try {
       const text = await navigator.clipboard.readText();
-      console.log('Clipboard text:', text);
       if (text && wsService && sessionId) {
         // Send paste command through WebSocket
         wsService.send({
@@ -49,11 +43,8 @@ export function MobileTerminal({
           data: text,
         });
         showToast('Pasted from clipboard');
-      } else {
-        console.log('Missing requirements:', { hasText: !!text, hasWsService: !!wsService, sessionId });
       }
     } catch (err) {
-      console.error('Failed to paste:', err);
       showToast('Paste failed - check permissions');
     }
   }, [sessionId, wsService]);
@@ -69,8 +60,6 @@ export function MobileTerminal({
 
   // Handle context menu
   const handleContextMenu = useCallback((x: number, y: number) => {
-    console.log('Context menu triggered at:', x, y, 'window size:', window.innerWidth, window.innerHeight);
-    
     // Menu dimensions
     const menuWidth = 200;
     const menuHeight = 180; // 4 items * ~45px each
@@ -80,28 +69,12 @@ export function MobileTerminal({
     const adjustedX = Math.min(Math.max(margin, x), window.innerWidth - margin);
     const adjustedY = Math.min(Math.max(margin, y), window.innerHeight - menuHeight - margin);
     
-    console.log('Adjusted position:', adjustedX, adjustedY);
-    console.log('Setting showContextMenu to true');
     
     setContextMenuPosition({ x: adjustedX, y: adjustedY });
     setShowContextMenu(true);
   }, []);
   
-  // Debug effect
-  useEffect(() => {
-    console.log('MobileTerminal state:', { showContextMenu, contextMenuPosition });
-  }, [showContextMenu, contextMenuPosition]);
   
-  // Debug ref attachment
-  useEffect(() => {
-    console.log('MobileTerminal containerRef.current:', containerRef.current);
-    if (containerRef.current) {
-      console.log('Container element:', {
-        className: containerRef.current.className,
-        hasEventListeners: containerRef.current.ontouchstart !== null
-      });
-    }
-  }, []);
 
   // Setup touch gestures
   useTerminalTouchGestures(containerRef, {
@@ -110,7 +83,6 @@ export function MobileTerminal({
     onNextSession: handleNextSession,
     onPrevSession: handlePrevSession,
     onContextMenu: (x, y) => {
-      console.log('onContextMenu callback called with:', x, y);
       handleContextMenu(x, y);
     },
   });
@@ -217,7 +189,6 @@ export function MobileTerminal({
             className="fixed inset-0" 
             style={{ zIndex: 9999 }}
             onClick={(e) => {
-              console.log('Backdrop clicked');
               setShowContextMenu(false);
             }}
           />
@@ -238,7 +209,6 @@ export function MobileTerminal({
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('Copy button pointer down!');
               handleCopy();
               setShowContextMenu(false);
             }}
@@ -250,7 +220,6 @@ export function MobileTerminal({
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('Paste button pointer down!');
               handlePaste();
               setShowContextMenu(false);
             }}
@@ -262,7 +231,6 @@ export function MobileTerminal({
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('Select All button pointer down!');
               // Select all using keyboard shortcut
               if (wsService && sessionId) {
                 wsService.send({
@@ -270,7 +238,6 @@ export function MobileTerminal({
                   sessionId,
                   data: '\x01', // Ctrl+A
                 });
-                console.log('Select All command sent');
               }
               setShowContextMenu(false);
             }}
@@ -282,7 +249,6 @@ export function MobileTerminal({
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('Clear button pointer down!', { wsService: !!wsService, sessionId });
               // Clear using keyboard shortcut
               if (wsService && sessionId) {
                 wsService.send({
@@ -290,7 +256,6 @@ export function MobileTerminal({
                   sessionId,
                   data: '\x0c', // Ctrl+L
                 });
-                console.log('Clear command sent');
               }
               setShowContextMenu(false);
             }}

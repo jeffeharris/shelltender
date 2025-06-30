@@ -1,10 +1,5 @@
 import type { TerminalData, WebSocketMessage } from '@shelltender/core';
 
-// Debug helper
-const debug = (message: string, data?: any) => {
-  console.log(`[WebSocketService] ${message}`, data || '');
-};
-
 type MessageHandler = (data: any) => void;
 
 export interface WebSocketServiceConfig {
@@ -40,7 +35,7 @@ export class WebSocketService {
       this.ws = new WebSocket(this.url);
       this.setupEventHandlers();
     } catch (error) {
-      console.error('WebSocket connection error:', error);
+      // WebSocket connection error
       this.scheduleReconnect();
     }
   }
@@ -49,7 +44,6 @@ export class WebSocketService {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
       this.reconnectAttempts = 0;
       this.flushMessageQueue();
       if (this.onConnectHandler) {
@@ -62,12 +56,11 @@ export class WebSocketService {
         const data: WebSocketMessage = JSON.parse(event.data);
         this.handleMessage(data);
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        // Error parsing WebSocket message
       }
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
       if (this.onDisconnectHandler) {
         this.onDisconnectHandler();
       }
@@ -75,7 +68,7 @@ export class WebSocketService {
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      // WebSocket error
     };
   }
 
@@ -83,7 +76,6 @@ export class WebSocketService {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
       setTimeout(() => this.connect(), delay);
     }
   }
@@ -98,18 +90,15 @@ export class WebSocketService {
   }
 
   send(data: WebSocketMessage): void {
-    debug('Sending message', { type: data.type, sessionId: (data as any).sessionId });
     
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       try {
         const serialized = JSON.stringify(data);
-        debug('Message serialized, length:', serialized.length);
         this.ws.send(serialized);
       } catch (error) {
-        console.error('Failed to send message:', error);
+        // Failed to send message
       }
     } else {
-      debug('WebSocket not ready, queueing message');
       this.messageQueue.push(data);
     }
   }
