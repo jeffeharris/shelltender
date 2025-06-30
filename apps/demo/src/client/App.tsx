@@ -5,7 +5,6 @@ import {
   SessionManager, 
   TerminalEventMonitor,
   MobileApp,
-  MobileTerminal,
   MobileSessionTabs,
   EnhancedVirtualKeyboard,
   useMobileDetection,
@@ -168,7 +167,7 @@ function App({ showEventSystem = false, forceMobile = false }: AppProps) {
             <div className="absolute inset-0 flex flex-col">
               {currentSessionId !== null ? (
                 currentSessionId ? (
-                  <MobileTerminal
+                  <Terminal
                     sessionId={currentSessionId}
                     onSessionChange={handleSessionChange}
                   />

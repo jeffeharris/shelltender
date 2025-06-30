@@ -6,7 +6,7 @@ import '../styles/demo.css'
 import App from './App'
 import { AppRouter } from './AppRouter'
 import { ErrorBoundary } from './ErrorBoundary'
-import { WebSocketProvider } from '@shelltender/client'
+import { WebSocketProvider, ToastProvider } from '@shelltender/client'
 import { applySafetyPatches, checkForCrashes } from './utils/safetyPatch'
 
 // Apply safety patches before anything else
@@ -15,13 +15,15 @@ checkForCrashes();
 
 // Configure WebSocket based on environment
 const wsConfig = {
-  port: (import.meta as any).env?.VITE_WS_PORT || '8081'
+  port: import.meta.env?.VITE_WS_PORT || '8081'
 }
 
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <WebSocketProvider config={wsConfig}>
-      <AppRouter />
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
     </WebSocketProvider>
   </ErrorBoundary>
 )

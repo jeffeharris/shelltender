@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { MOBILE_BREAKPOINTS } from '../constants/mobile.js';
 
 export interface MobileDetection {
   isMobile: boolean;
@@ -13,97 +14,100 @@ export interface MobileDetection {
   hasTouch: boolean;
 }
 
+/**
+ * Detects mobile device features based on user agent and screen size
+ */
+function detectMobileFeatures(): MobileDetection {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  
+  // Device detection
+  const isIOS = /iphone|ipad|ipod/.test(userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /android/.test(userAgent);
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  
+  // Size-based detection
+  const isPhone = width < MOBILE_BREAKPOINTS.PHONE_MAX;
+  const isTablet = width >= MOBILE_BREAKPOINTS.PHONE_MAX && width < MOBILE_BREAKPOINTS.TABLET_MAX;
+  // Only consider it mobile if it's a small screen OR it's actually iOS/Android
+  const isMobile = isPhone || isTablet || (hasTouch && (isIOS || isAndroid));
+  
+  // Orientation
+  const isPortrait = height > width;
+  const isLandscape = width > height;
+  
+  return {
+    isMobile,
+    isTablet,
+    isPhone,
+    isIOS,
+    isAndroid,
+    isPortrait,
+    isLandscape,
+    screenWidth: width,
+    screenHeight: height,
+    hasTouch,
+  };
+}
+
+/**
+ * Debounce function to limit update frequency
+ */
+function debounce<T extends (...args: unknown[]) => void>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: NodeJS.Timeout;
+  
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+}
+
 export function useMobileDetection(): MobileDetection {
-  const [detection, setDetection] = useState<MobileDetection>(() => {
-    const userAgent = navigator.userAgent.toLowerCase();
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    // Device detection
-    const isIOS = /iphone|ipad|ipod/.test(userAgent) || 
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isAndroid = /android/.test(userAgent);
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    // Size-based detection
-    const isPhone = width < 768;
-    const isTablet = width >= 768 && width < 1024;
-    // Only consider it mobile if it's a small screen OR it's actually iOS/Android
-    const isMobile = isPhone || isTablet || (hasTouch && (isIOS || isAndroid));
-    
-    // Orientation
-    const isPortrait = height > width;
-    const isLandscape = width > height;
-    
-    return {
-      isMobile,
-      isTablet,
-      isPhone,
-      isIOS,
-      isAndroid,
-      isPortrait,
-      isLandscape,
-      screenWidth: width,
-      screenHeight: height,
-      hasTouch,
-    };
-  });
+  const [detection, setDetection] = useState<MobileDetection>(detectMobileFeatures);
+  const visualViewportRef = useRef<VisualViewport | null>(null);
+
+  // Create debounced update function
+  const updateDetection = useCallback(
+    debounce(() => {
+      setDetection(detectMobileFeatures());
+    }, 100),
+    []
+  );
 
   useEffect(() => {
-    const handleResize = () => {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
-      const isIOS = /iphone|ipad|ipod/.test(userAgent) || 
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const isAndroid = /android/.test(userAgent);
-      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
-      const isPhone = width < 768;
-      const isTablet = width >= 768 && width < 1024;
-      // Only consider it mobile if it's a small screen OR it's actually iOS/Android
-      const isMobile = isPhone || isTablet || (hasTouch && (isIOS || isAndroid));
-      
-      const isPortrait = height > width;
-      const isLandscape = width > height;
-      
-      setDetection({
-        isMobile,
-        isTablet,
-        isPhone,
-        isIOS,
-        isAndroid,
-        isPortrait,
-        isLandscape,
-        screenWidth: width,
-        screenHeight: height,
-        hasTouch,
-      });
-    };
-
-    // Handle orientation change
+    // Handle orientation change with delay to ensure dimensions are updated
     const handleOrientationChange = () => {
       // Small delay to ensure dimensions are updated
-      setTimeout(handleResize, 100);
+      setTimeout(updateDetection, 100);
     };
 
-    window.addEventListener('resize', handleResize);
+    // Add event listeners
+    window.addEventListener('resize', updateDetection);
     window.addEventListener('orientationchange', handleOrientationChange);
     
     // Also listen to visual viewport changes for better keyboard handling
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
+      visualViewportRef.current = window.visualViewport;
+      visualViewportRef.current.addEventListener('resize', updateDetection);
     }
 
+    // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', updateDetection);
       window.removeEventListener('orientationchange', handleOrientationChange);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
+      
+      // Safely remove visualViewport listener
+      if (visualViewportRef.current) {
+        visualViewportRef.current.removeEventListener('resize', updateDetection);
+        visualViewportRef.current = null;
       }
     };
-  }, []);
+  }, [updateDetection]);
 
   return detection;
 }

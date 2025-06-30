@@ -132,7 +132,7 @@ export function KeySetEditor({ keySet, onSave, onCancel }: KeySetEditorProps) {
               <label>Type:</label>
               <select
                 value={keyForm.type}
-                onChange={(e) => setKeyForm({ ...keyForm, type: e.target.value as any })}
+                onChange={(e) => setKeyForm({ ...keyForm, type: e.target.value as 'text' | 'special' | 'command' | 'macro' })}
               >
                 <option value="text">Text</option>
                 <option value="special">Special Key</option>
@@ -158,7 +158,7 @@ export function KeySetEditor({ keySet, onSave, onCancel }: KeySetEditorProps) {
               <label>Style:</label>
               <select
                 value={keyForm.style || ''}
-                onChange={(e) => setKeyForm({ ...keyForm, style: e.target.value as any || undefined })}
+                onChange={(e) => setKeyForm({ ...keyForm, style: e.target.value === '' ? undefined : e.target.value as 'primary' | 'danger' | 'warning' | 'success' })}
               >
                 <option value="">Default</option>
                 <option value="primary">Primary (Blue)</option>

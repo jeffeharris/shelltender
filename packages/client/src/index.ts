@@ -6,7 +6,10 @@ export { SessionList } from './components/SessionList.js';
 export { TerminalEventMonitor } from './components/TerminalEventMonitor.js';
 
 // Export mobile components
-export { MobileApp, MobileTerminal, MobileSessionTabs, MobileBottomTabs, EnhancedVirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
+export { MobileApp, MobileSessionTabs, MobileBottomTabs, EnhancedVirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
+
+// Export Toast components
+export { ToastProvider, useToast } from './components/Toast/index.js';
 
 // Export services
 export { WebSocketService } from './services/WebSocketService.js';
