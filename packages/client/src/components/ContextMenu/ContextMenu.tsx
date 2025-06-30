@@ -1,10 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { CONTEXT_MENU, Z_INDEX } from '../../constants/mobile.js';
+import { mobileDesignTokens } from '../../styles/mobile.js';
+import { cn, containerStyles } from '../../styles/components.js';
+import { useIconButtonStyles, useTouchTargetStyles } from '../../hooks/useStyles.js';
 
 export interface ContextMenuItem {
   label: string;
   action: () => void;
   icon?: React.ReactNode;
+  variant?: 'default' | 'danger';
 }
 
 interface ContextMenuProps {
@@ -17,6 +20,7 @@ interface ContextMenuProps {
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const isClosingRef = useRef(false);
+  const touchTargetStyles = useTouchTargetStyles('preferred');
 
   useEffect(() => {
     // Delay before allowing close to prevent immediate closure
@@ -37,16 +41,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
         document.removeEventListener('click', handleClickOutside);
         document.removeEventListener('touchstart', handleClickOutside);
       };
-    }, CONTEXT_MENU.SHOW_DELAY);
+    }, mobileDesignTokens.contextMenu.showDelay || 100);
 
     return () => clearTimeout(timer);
   }, [onClose]);
 
   // Calculate position to keep menu on screen
   const adjustPosition = () => {
-    const menuWidth = CONTEXT_MENU.WIDTH;
-    const menuHeight = items.length * CONTEXT_MENU.ITEM_HEIGHT;
-    const margin = CONTEXT_MENU.MARGIN;
+    const menuWidth = mobileDesignTokens.contextMenu.minWidth;
+    const menuHeight = items.length * mobileDesignTokens.contextMenu.itemHeight;
+    const margin = 10; // viewport margin
 
     let adjustedX = x;
     let adjustedY = y;
@@ -82,34 +86,64 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 
-        style={{ zIndex: Z_INDEX.CONTEXT_MENU_BACKDROP }}
+        style={{ zIndex: mobileDesignTokens.zIndex.CONTEXT_MENU_BACKDROP }}
       />
       
       {/* Menu */}
       <div 
         ref={menuRef}
-        className="fixed bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-2"
+        className={cn(
+          containerStyles.cardElevated,
+          'fixed p-1 border border-gray-600'
+        )}
         style={{ 
           left: `${position.x}px`, 
           top: `${position.y}px`,
-          zIndex: Z_INDEX.CONTEXT_MENU,
-          minWidth: `${CONTEXT_MENU.WIDTH}px`,
+          zIndex: mobileDesignTokens.zIndex.CONTEXT_MENU,
+          minWidth: `${mobileDesignTokens.contextMenu.minWidth}px`,
+          maxWidth: `${mobileDesignTokens.contextMenu.maxWidth}px`,
         }}
       >
-        {items.map((item, index) => (
-          <button
-            key={index}
-            className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 rounded mobile-touch-target flex items-center gap-2"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleItemClick(item.action);
-            }}
-          >
-            {item.icon && <span className="w-4 h-4">{item.icon}</span>}
-            {item.label}
-          </button>
-        ))}
+        {items.map((item, index) => {
+          const itemClasses = cn(
+            'w-full text-left px-3 py-2 rounded-md',
+            'flex items-center gap-3',
+            'transition-colors duration-150',
+            'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+            item.variant === 'danger' 
+              ? 'text-red-400 hover:bg-red-900/20 hover:text-red-300 focus:ring-red-500'
+              : 'text-gray-300 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
+          );
+          
+          return (
+            <button
+              key={index}
+              className={itemClasses}
+              style={{
+                ...touchTargetStyles,
+                height: `${mobileDesignTokens.contextMenu.itemHeight}px`,
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleItemClick(item.action);
+              }}
+            >
+              {item.icon && (
+                <span 
+                  className="flex-shrink-0"
+                  style={{
+                    width: `${mobileDesignTokens.contextMenu.iconSize}px`,
+                    height: `${mobileDesignTokens.contextMenu.iconSize}px`,
+                  }}
+                >
+                  {item.icon}
+                </span>
+              )}
+              <span className="flex-1">{item.label}</span>
+            </button>
+          );
+        })}
       </div>
     </>
   );

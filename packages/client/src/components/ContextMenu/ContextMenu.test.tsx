@@ -132,8 +132,9 @@ describe('ContextMenu Component', () => {
     
     const buttons = screen.getAllByRole('button');
     buttons.forEach(button => {
-      expect(button).toHaveClass('mobile-touch-target');
       expect(button).toHaveClass('hover:bg-gray-700');
+      expect(button).toHaveClass('text-gray-300');
+      expect(button).toHaveClass('rounded-md');
     });
   });
 });
