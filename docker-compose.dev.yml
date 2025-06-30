@@ -1,0 +1,29 @@
+# Simplified development Docker Compose
+version: '3.8'
+
+services:
+  shelltender:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"    # Backend API
+      - "8080:8080"    # WebSocket
+      - "5173:5173"    # Vite dev server
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source for hot reload
+      - ./packages:/app/packages
+      - ./apps:/app/apps
+      # Named volumes for node_modules
+      - node_modules:/app/node_modules
+      - demo_node_modules:/app/apps/demo/node_modules
+    working_dir: /app/apps/demo
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+volumes:
+  node_modules:
+  demo_node_modules:

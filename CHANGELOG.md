@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-06-30
+
+### Added
+- AI Monitor Integration for monitoring AI-related terminal sessions
+  - Standalone server for detecting AI CLI tools (Claude, Aider, etc.)
+  - Pattern matchers for AI-specific behaviors (thinking animations, prompts)
+  - REST API for monitoring status
+  - Docker integration with separate container support
+- EventEmitter support to SessionManager for `data` and `sessionEnd` events
+- TerminalDataPipeline for processing terminal data through filters and processors
+- PipelineIntegration to connect SessionManager → Pipeline → BufferManager → WebSocket
+
+### Fixed
+- React `act()` warnings in mobile terminal tests
+- Session creation time display in SessionManager UI
+
+### Changed
+- Refactored WebSocketServer to break down god functions for better maintainability
+- Removed console.log statements throughout the codebase
+- Improved Docker development scripts with better error handling
+- Enhanced TypeScript configurations for better ESM support
+- Updated dependencies in demo application
+
 ## [0.2.6] - 2025-06-29
 
 ### Added
