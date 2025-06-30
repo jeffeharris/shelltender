@@ -28,10 +28,10 @@ If any check fails, resolve before proceeding.
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.2.6
-- Last release improved environment handling, fixed terminal input race condition, and enhanced Docker security
+- Current version: 0.3.0
+- Last release added AI Monitor Integration, EventEmitter support, and major refactoring improvements
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.2.6 release documented
+- The CHANGELOG.md has the v0.3.0 release documented
 
 To check if a release has already been created:
 ```bash
