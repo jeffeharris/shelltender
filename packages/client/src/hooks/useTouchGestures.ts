@@ -1,149 +1,99 @@
-import { useRef, useEffect, RefObject } from 'react';
+import { useRef, useEffect, RefObject, useCallback } from 'react';
+import { TOUCH_GESTURES } from '../constants/mobile.js';
+import type { 
+  TouchGestureOptions, 
+  TouchState, 
+  TouchEventHandlers 
+} from './gestures/gestureTypes.js';
+import {
+  getTouchCenter,
+  getTouchDistance,
+  hasTouchMoved,
+} from './gestures/gestureDetectors.js';
+import {
+  createInitialTouchState,
+  updateTouchStart,
+  updateTouchMove,
+  updateLongPress,
+} from './gestures/touchStateManager.js';
+import {
+  processTapGesture,
+  processSwipeGesture,
+  processPinchGesture,
+  processSelectionGesture,
+  handleLongPressTimeout,
+  createLongPressTimer,
+  clearLongPressTimer,
+} from './gestures/gestureHandlers.js';
 
-export interface TouchGestureOptions {
-  onSwipeLeft?: () => void;
-  onSwipeRight?: () => void;
-  onSwipeUp?: () => void;
-  onSwipeDown?: () => void;
-  onLongPress?: (x: number, y: number) => void;
-  onTwoFingerTap?: (x: number, y: number) => void;
-  onThreeFingerTap?: (x: number, y: number) => void;
-  onPinchStart?: (scale: number) => void;
-  onPinchMove?: (scale: number) => void;
-  onPinchEnd?: (scale: number) => void;
-  onSelectionStart?: (x: number, y: number) => void;
-  onSelectionMove?: (x: number, y: number) => void;
-  onSelectionEnd?: () => void;
-  swipeThreshold?: number;
-  longPressDelay?: number;
-}
+// Re-export types for backward compatibility
+export type { TouchGestureOptions } from './gestures/gestureTypes.js';
 
-interface TouchState {
-  startX: number;
-  startY: number;
-  startTime: number;
-  initialDistance: number;
-  isMoving: boolean;
-  isLongPress: boolean;
-  touchCount: number;
-}
+/**
+ * Hook for handling touch gestures on an element
+ */
+export function useTouchGestures(
+  ref: RefObject<HTMLElement | null>,
+  options: TouchGestureOptions = {}
+) {
+  const touchState = useRef<TouchState>(createInitialTouchState());
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-// Helper functions extracted from the main hook
-const getTouchDistance = (touches: TouchList): number => {
-  if (touches.length < 2) return 0;
-  const dx = touches[1].clientX - touches[0].clientX;
-  const dy = touches[1].clientY - touches[0].clientY;
-  return Math.sqrt(dx * dx + dy * dy);
-};
+  // Memoize options with defaults
+  const gestureOptions = useRef<Required<TouchGestureOptions>>({
+    ...options,
+    swipeThreshold: options.swipeThreshold ?? TOUCH_GESTURES.SWIPE_THRESHOLD,
+    longPressDelay: options.longPressDelay ?? TOUCH_GESTURES.LONG_PRESS_DELAY,
+  } as Required<TouchGestureOptions>);
 
-const getTouchCenter = (touches: TouchList): { x: number; y: number } => {
-  let sumX = 0;
-  let sumY = 0;
-  for (let i = 0; i < touches.length; i++) {
-    sumX += touches[i].clientX;
-    sumY += touches[i].clientY;
-  }
-  return {
-    x: sumX / touches.length,
-    y: sumY / touches.length,
-  };
-};
+  // Update options ref when they change
+  useEffect(() => {
+    gestureOptions.current = {
+      ...options,
+      swipeThreshold: options.swipeThreshold ?? TOUCH_GESTURES.SWIPE_THRESHOLD,
+      longPressDelay: options.longPressDelay ?? TOUCH_GESTURES.LONG_PRESS_DELAY,
+    } as Required<TouchGestureOptions>;
+  }, [options]);
 
-// Gesture detection functions
-const detectSwipeDirection = (
-  deltaX: number,
-  deltaY: number,
-  threshold: number
-): 'left' | 'right' | 'up' | 'down' | null => {
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-
-  if (absX <= threshold && absY <= threshold) return null;
-
-  if (absX > absY) {
-    return deltaX > 0 ? 'right' : 'left';
-  } else {
-    return deltaY > 0 ? 'down' : 'up';
-  }
-};
-
-const isQuickTap = (duration: number, isMoving: boolean): boolean => {
-  return !isMoving && duration < 300;
-};
-
-// Touch event handlers factory
-const createTouchHandlers = (
-  touchState: React.MutableRefObject<TouchState>,
-  longPressTimer: React.MutableRefObject<NodeJS.Timeout | null>,
-  options: TouchGestureOptions
-) => {
-  const {
-    onSwipeLeft,
-    onSwipeRight,
-    onSwipeUp,
-    onSwipeDown,
-    onLongPress,
-    onTwoFingerTap,
-    onThreeFingerTap,
-    onPinchStart,
-    onPinchMove,
-    onPinchEnd,
-    onSelectionStart,
-    onSelectionMove,
-    onSelectionEnd,
-    swipeThreshold = 50,
-    longPressDelay = 500,
-  } = options;
-
-  const startLongPressTimer = (x: number, y: number) => {
-    longPressTimer.current = setTimeout(() => {
-      if (!touchState.current.isMoving) {
-        touchState.current.isLongPress = true;
-        onLongPress?.(x, y);
-        onSelectionStart?.(x, y);
-      }
-    }, longPressDelay);
-  };
-
-  const clearLongPressTimer = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  const handleTouchStart = (e: TouchEvent) => {
+  // Create memoized event handlers
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     const touches = e.touches;
-    const center = getTouchCenter(touches);
     
     // Prevent default for single touch to avoid text selection
     if (touches.length === 1) {
       e.preventDefault();
     }
     
-    touchState.current = {
-      startX: center.x,
-      startY: center.y,
-      startTime: Date.now(),
-      initialDistance: getTouchDistance(touches),
-      isMoving: false,
-      isLongPress: false,
-      touchCount: touches.length,
-    };
-
-    clearLongPressTimer();
+    // Update touch state
+    touchState.current = updateTouchStart(touches);
+    
+    // Clear any existing long press timer
+    clearLongPressTimer(longPressTimer.current);
+    longPressTimer.current = null;
 
     // Handle different touch counts
     if (touches.length === 1) {
-      const touchX = touches[0].clientX;
-      const touchY = touches[0].clientY;
-      startLongPressTimer(touchX, touchY);
+      const touch = touches[0];
+      longPressTimer.current = createLongPressTimer(() => {
+        touchState.current = updateLongPress(touchState.current, true);
+        handleLongPressTimeout(
+          touchState.current,
+          touch.clientX,
+          touch.clientY,
+          gestureOptions.current
+        );
+      }, gestureOptions.current.longPressDelay);
     } else if (touches.length === 2) {
-      onPinchStart?.(1);
+      processPinchGesture(
+        touchState.current,
+        touches,
+        'start',
+        gestureOptions.current
+      );
     }
-  };
+  }, []);
 
-  const handleTouchMove = (e: TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
     const touches = e.touches;
     const center = getTouchCenter(touches);
     
@@ -152,157 +102,142 @@ const createTouchHandlers = (
       e.preventDefault();
     }
     
-    const deltaX = center.x - touchState.current.startX;
-    const deltaY = center.y - touchState.current.startY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    // Check if touch has moved beyond threshold
+    const hasMoved = hasTouchMoved(
+      touchState.current.startX,
+      touchState.current.startY,
+      center.x,
+      center.y
+    );
 
-    // Mark as moving if moved more than 10 pixels
-    if (distance > 10) {
-      touchState.current.isMoving = true;
-      clearLongPressTimer();
+    if (hasMoved) {
+      touchState.current = updateTouchMove(touchState.current, true);
+      clearLongPressTimer(longPressTimer.current);
+      longPressTimer.current = null;
     }
 
     // Handle pinch gesture
     if (touches.length === 2 && touchState.current.touchCount === 2) {
-      const currentDistance = getTouchDistance(touches);
-      if (currentDistance > 0 && touchState.current.initialDistance > 0) {
-        const scale = currentDistance / touchState.current.initialDistance;
-        onPinchMove?.(scale);
-      }
+      processPinchGesture(
+        touchState.current,
+        touches,
+        'move',
+        gestureOptions.current
+      );
     }
 
     // Handle selection drag
     if (touchState.current.isLongPress && touches.length === 1) {
-      onSelectionMove?.(touches[0].clientX, touches[0].clientY);
+      processSelectionGesture(
+        touchState.current,
+        touches[0].clientX,
+        touches[0].clientY,
+        'move',
+        gestureOptions.current
+      );
     }
-  };
+  }, []);
 
-  const handleTouchEnd = (e: TouchEvent) => {
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
     const endTime = Date.now();
     const duration = endTime - touchState.current.startTime;
     const touches = e.changedTouches;
     const center = getTouchCenter(touches);
     
-    clearLongPressTimer();
+    clearLongPressTimer(longPressTimer.current);
+    longPressTimer.current = null;
 
     // Handle selection end
     if (touchState.current.isLongPress) {
-      onSelectionEnd?.();
+      processSelectionGesture(
+        touchState.current,
+        center.x,
+        center.y,
+        'end',
+        gestureOptions.current
+      );
       return;
     }
 
-    // Handle tap gestures
-    if (isQuickTap(duration, touchState.current.isMoving)) {
-      switch (touchState.current.touchCount) {
-        case 2:
-          onTwoFingerTap?.(center.x, center.y);
-          return;
-        case 3:
-          onThreeFingerTap?.(center.x, center.y);
-          return;
-      }
+    // Try to process as tap gesture
+    if (processTapGesture(
+      touchState.current,
+      touches,
+      duration,
+      gestureOptions.current
+    )) {
+      return;
     }
 
-    // Handle swipe gestures
-    if (touchState.current.isMoving && touchState.current.touchCount === 1) {
-      const deltaX = center.x - touchState.current.startX;
-      const deltaY = center.y - touchState.current.startY;
-      const swipeDirection = detectSwipeDirection(deltaX, deltaY, swipeThreshold);
-
-      switch (swipeDirection) {
-        case 'left':
-          onSwipeLeft?.();
-          break;
-        case 'right':
-          onSwipeRight?.();
-          break;
-        case 'up':
-          onSwipeUp?.();
-          break;
-        case 'down':
-          onSwipeDown?.();
-          break;
-      }
-    }
+    // Try to process as swipe gesture
+    processSwipeGesture(
+      touchState.current,
+      center.x,
+      center.y,
+      gestureOptions.current
+    );
 
     // Handle pinch end
-    if (touchState.current.touchCount === 2) {
-      const currentDistance = getTouchDistance(e.touches);
-      if (currentDistance > 0 && touchState.current.initialDistance > 0) {
-        const scale = currentDistance / touchState.current.initialDistance;
-        onPinchEnd?.(scale);
-      }
+    if (touchState.current.touchCount === 2 && e.touches.length < 2) {
+      processPinchGesture(
+        touchState.current,
+        e.touches,
+        'end',
+        gestureOptions.current
+      );
     }
-  };
+  }, []);
 
-  const handleTouchCancel = () => {
-    clearLongPressTimer();
+  const handleTouchCancel = useCallback(() => {
+    clearLongPressTimer(longPressTimer.current);
+    longPressTimer.current = null;
     
     if (touchState.current.isLongPress) {
-      onSelectionEnd?.();
+      processSelectionGesture(
+        touchState.current,
+        0,
+        0,
+        'end',
+        gestureOptions.current
+      );
     }
-  };
+    
+    touchState.current = createInitialTouchState();
+  }, []);
 
-  return {
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-    handleTouchCancel,
-  };
-};
-
-export function useTouchGestures(
-  ref: RefObject<HTMLElement>,
-  options: TouchGestureOptions = {}
-) {
-  const touchState = useRef<TouchState>({
-    startX: 0,
-    startY: 0,
-    startTime: 0,
-    initialDistance: 0,
-    isMoving: false,
-    isLongPress: false,
-    touchCount: 0,
-  });
-
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const handleContextMenu = useCallback((e: Event) => {
+    e.preventDefault();
+  }, []);
 
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
 
-    const handlers = createTouchHandlers(touchState, longPressTimer, options);
-    
-    // Prevent default context menu
-    const handleContextMenu = (e: Event) => {
-      e.preventDefault();
-    };
-
     // Add passive: false to prevent scrolling during gestures
     const eventOptions = { passive: false };
-    element.addEventListener('touchstart', handlers.handleTouchStart, eventOptions);
-    element.addEventListener('touchmove', handlers.handleTouchMove, eventOptions);
-    element.addEventListener('touchend', handlers.handleTouchEnd, eventOptions);
-    element.addEventListener('touchcancel', handlers.handleTouchCancel, eventOptions);
+    element.addEventListener('touchstart', handleTouchStart, eventOptions);
+    element.addEventListener('touchmove', handleTouchMove, eventOptions);
+    element.addEventListener('touchend', handleTouchEnd, eventOptions);
+    element.addEventListener('touchcancel', handleTouchCancel, eventOptions);
     element.addEventListener('contextmenu', handleContextMenu, eventOptions);
 
     return () => {
-      element.removeEventListener('touchstart', handlers.handleTouchStart);
-      element.removeEventListener('touchmove', handlers.handleTouchMove);
-      element.removeEventListener('touchend', handlers.handleTouchEnd);
-      element.removeEventListener('touchcancel', handlers.handleTouchCancel);
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchmove', handleTouchMove);
+      element.removeEventListener('touchend', handleTouchEnd);
+      element.removeEventListener('touchcancel', handleTouchCancel);
       element.removeEventListener('contextmenu', handleContextMenu);
       
-      if (longPressTimer.current) {
-        clearTimeout(longPressTimer.current);
-      }
+      clearLongPressTimer(longPressTimer.current);
     };
-  }, [ref, options]);
+  }, [ref, handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel, handleContextMenu]);
 }
 
-// Helper hook for common terminal touch patterns
+/**
+ * Helper hook for common terminal touch patterns
+ */
 export function useTerminalTouchGestures(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   options: {
     onCopy?: () => void;
     onPaste?: () => void;
@@ -319,7 +254,7 @@ export function useTerminalTouchGestures(
     onSwipeLeft: onNextSession,
     onSwipeRight: onPrevSession,
     onLongPress: onContextMenu,
-    swipeThreshold: 75,
-    longPressDelay: 400,
+    swipeThreshold: TOUCH_GESTURES.SWIPE_THRESHOLD,
+    longPressDelay: TOUCH_GESTURES.LONG_PRESS_DELAY,
   });
 }

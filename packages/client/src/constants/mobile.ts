@@ -9,6 +9,7 @@ export const TOUCH_GESTURES = {
   LONG_PRESS_DELAY: 400,
   PINCH_THRESHOLD: 50,
   MULTI_TAP_DELAY: 300,
+  QUICK_TAP_DURATION: 300,
 } as const;
 
 // Context menu dimensions

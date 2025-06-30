@@ -26,7 +26,7 @@ export const Terminal: React.FC<TerminalProps> = ({
   onShowVirtualKeyboard 
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocketService | null>(null);
