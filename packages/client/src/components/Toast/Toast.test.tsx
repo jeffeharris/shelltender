@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { Toast } from './Toast';
 
 describe('Toast Component', () => {
@@ -12,6 +12,10 @@ describe('Toast Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should render toast message', () => {
@@ -33,13 +37,17 @@ describe('Toast Component', () => {
     expect(container.firstChild).toHaveClass('opacity-100');
     
     // Advance time to trigger fade out
-    vi.advanceTimersByTime(1000);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
     
     // Should start fading
     expect(container.firstChild).toHaveClass('opacity-0');
     
     // Advance time for fade animation
-    vi.advanceTimersByTime(300);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     
     // onClose should be called
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -50,8 +58,13 @@ describe('Toast Component', () => {
     render(<Toast message="Test" onClose={onClose} />);
     
     // Default duration is 2000ms
-    vi.advanceTimersByTime(2000);
-    vi.advanceTimersByTime(300);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     
     expect(onClose).toHaveBeenCalled();
   });
