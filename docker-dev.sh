@@ -11,6 +11,7 @@ case "$1" in
     echo "🌐 Web Interface: http://localhost:5173"
     echo "🔌 API Server: http://localhost:3001"
     echo "📡 WebSocket: ws://localhost:8081"
+    echo "🤖 AI Monitor: http://localhost:3002"
     echo ""
     echo "To view logs: docker compose logs -f"
     ;;
@@ -26,12 +27,30 @@ case "$1" in
     ;;
   
   logs)
-    docker compose logs -f shelltender
+    if [ "$2" = "ai" ]; then
+      docker compose logs -f ai-monitor
+    else
+      docker compose logs -f shelltender
+    fi
     ;;
   
   shell)
-    echo "Opening shell in container..."
-    docker compose exec shelltender /bin/bash
+    if [ "$2" = "ai" ]; then
+      echo "Opening shell in AI Monitor container..."
+      docker compose exec ai-monitor /bin/sh
+    else
+      echo "Opening shell in Shelltender container..."
+      docker compose exec shelltender /bin/bash
+    fi
+    ;;
+  
+  ai-status)
+    echo "🤖 AI Monitor Status:"
+    echo ""
+    curl -s http://localhost:3002/api/stats | jq . || echo "AI Monitor not responding"
+    echo ""
+    echo "Sessions needing attention:"
+    curl -s http://localhost:3002/api/attention | jq . || echo "Could not fetch"
     ;;
   
   rebuild)
@@ -46,16 +65,22 @@ case "$1" in
     ;;
   
   *)
-    echo "Usage: $0 {start|stop|restart|logs|shell|rebuild|status}"
+    echo "Usage: $0 {start|stop|restart|logs|shell|rebuild|status|ai-status}"
     echo ""
     echo "Commands:"
-    echo "  start    - Start the development environment"
-    echo "  stop     - Stop all containers"
-    echo "  restart  - Restart containers"
-    echo "  logs     - Follow container logs"
-    echo "  shell    - Open bash shell in container"
-    echo "  rebuild  - Rebuild and restart containers"
-    echo "  status   - Show container status"
+    echo "  start      - Start the development environment"
+    echo "  stop       - Stop all containers"
+    echo "  restart    - Restart containers"
+    echo "  logs [ai]  - Follow container logs (add 'ai' for AI Monitor logs)"
+    echo "  shell [ai] - Open shell in container (add 'ai' for AI Monitor)"
+    echo "  rebuild    - Rebuild and restart containers"
+    echo "  status     - Show container status"
+    echo "  ai-status  - Show AI Monitor statistics"
+    echo ""
+    echo "Examples:"
+    echo "  $0 logs ai     # View AI Monitor logs"
+    echo "  $0 shell ai    # Shell into AI Monitor container"
+    echo "  $0 ai-status   # Check AI Monitor stats"
     exit 1
     ;;
 esac

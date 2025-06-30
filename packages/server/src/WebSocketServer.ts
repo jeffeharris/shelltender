@@ -22,6 +22,7 @@ export class WebSocketServer {
   private clients: Map<string, any> = new Map();
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
+  private monitorClients = new Set<string>();
 
   constructor(
     port: number, 
@@ -80,6 +81,7 @@ export class WebSocketServer {
         this.clients.delete(clientId);
         this.clientPatterns.delete(clientId);
         this.clientEventSubscriptions.delete(clientId);
+        this.monitorClients.delete(clientId);
       });
 
       ws.on('error', (error) => {
@@ -99,6 +101,7 @@ export class WebSocketServer {
       'unregister-pattern': this.handleUnregisterPattern.bind(this),
       'subscribe-events': this.handleSubscribeEvents.bind(this),
       'unsubscribe-events': this.handleUnsubscribeEvents.bind(this),
+      'monitor-all': this.handleMonitorAll.bind(this),
     };
 
     const handler = handlers[data.type];
@@ -209,11 +212,29 @@ export class WebSocketServer {
   }
 
   public broadcastToSession(sessionId: string, data: any): void {
+    // Send to clients connected to this session
     this.clients.forEach((ws, clientId) => {
       if (ws.sessionId === sessionId && ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify(data));
       }
     });
+
+    // Also send to monitor clients with session information
+    if (data.type === 'output' && this.monitorClients.size > 0) {
+      const monitorMessage = {
+        type: 'session-output',
+        sessionId,
+        data: data.data,
+        timestamp: new Date().toISOString()
+      };
+
+      this.monitorClients.forEach(monitorId => {
+        const ws = this.clients.get(monitorId);
+        if (ws && ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify(monitorMessage));
+        }
+      });
+    }
   }
 
   private setupEventSystem(): void {
@@ -329,6 +350,31 @@ export class WebSocketServer {
     ws.send(JSON.stringify({
       type: 'unsubscribed',
       eventTypes: message.eventTypes
+    }));
+  }
+
+  private handleMonitorAll(clientId: string, ws: any, data: any): void {
+    // Check authentication
+    const authKey = data.authKey || data.auth;
+    const expectedAuthKey = process.env.SHELLTENDER_MONITOR_AUTH_KEY || 'default-monitor-key';
+    
+    if (authKey !== expectedAuthKey) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Invalid authentication key for monitor mode',
+        requestId: data.requestId
+      }));
+      return;
+    }
+
+    // Add to monitor clients
+    this.monitorClients.add(clientId);
+    ws.isMonitor = true;
+
+    ws.send(JSON.stringify({
+      type: 'monitor-mode-enabled',
+      message: 'Successfully enabled monitor mode. You will receive all terminal output.',
+      sessionCount: this.sessionManager.getAllSessions().length
     }));
   }
 }

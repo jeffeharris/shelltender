@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
+    "dev:ai-monitor": "tsx src/server/ai-monitor-env.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -18,7 +19,9 @@
     "@shelltender/client": "^0.2.1",
     "@shelltender/core": "^0.2.1",
     "@shelltender/server": "^0.2.1",
+    "dotenv": "^17.0.0",
     "express": "^4.21.2",
+    "lucide-react": "^0.525.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

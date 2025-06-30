@@ -73,13 +73,32 @@ Test coverage includes:
 - **SessionManager** (`src/server/SessionManager.ts`) - Manages PTY processes and session lifecycle
   - Supports custom commands and restricted sessions
   - Provides programmatic input methods (sendCommand, sendRawInput, sendKey)
+  - Extends EventEmitter with `data` and `sessionEnd` events
 - **BufferManager** (`src/server/BufferManager.ts`) - Maintains scrollback buffers for each session
 - **RestrictedShell** (`src/server/RestrictedShell.ts`) - Provides filesystem-restricted shell sessions
 - **WebSocketServer** (`src/server/WebSocketServer.ts`) - Handles real-time communication with clients
 - **SessionStore** (`src/server/SessionStore.ts`) - Persists session state to disk
 - **EventManager** (`src/server/events/EventManager.ts`) - Pattern matching and event detection system
 - **Pattern Matchers** (`src/server/patterns/`) - Regex, String, ANSI, and Custom pattern matching
+- **TerminalDataPipeline** (`src/server/TerminalDataPipeline.ts`) - Processes terminal data through filters and processors
+- **PipelineIntegration** (`src/server/PipelineIntegration.ts`) - Connects SessionManager → Pipeline → BufferManager → WebSocket
 - HTTP server on port 3000, WebSocket server on port 8080
+
+### AI Monitor Integration (Optional Add-on)
+- **AIMonitorServer** (`apps/demo/src/server/ai-monitor-integration.ts`) - Standalone server for monitoring AI CLI tools
+  - Detects AI tools (Claude, Aider, etc.) in terminal sessions
+  - Registers pattern matchers for AI-specific behaviors
+  - Provides REST API for monitoring status
+  - Configurable ports and connection settings
+- **AI Patterns** - Pre-configured patterns for:
+  - Thinking animations (Claude's dots with token counts)
+  - Input prompts (yes/no, multiple choice)
+  - Error detection
+  - Task completion indicators
+- **Docker Integration** - Runs as separate container in docker-compose
+  - Service name: `ai-monitor`
+  - API port: 3002 (external) → 3001 (internal)
+  - Connects to main Shelltender via Docker network
 
 ### Frontend (React/TypeScript/Tailwind)
 - **Terminal Component** - xterm.js integration with WebSocket communication

@@ -25,15 +25,21 @@ function getSpecialKeySequence(key: SpecialKeyType): string {
   return SPECIAL_KEY_SEQUENCES[key] || '';
 }
 
-function App() {
+interface AppProps {
+  showEventSystem?: boolean;
+  forceMobile?: boolean;
+}
+
+function App({ showEventSystem = false, forceMobile = false }: AppProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showEventMonitor, setShowEventMonitor] = useState(false);
-  const [showEventDemo, setShowEventDemo] = useState(false);
+  const [showEventDemo, setShowEventDemo] = useState(showEventSystem);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { isMobile } = useMobileDetection();
+  const effectiveMobile = forceMobile || isMobile;
   const { wsService } = useWebSocket();
 
   // Fetch sessions periodically
@@ -54,7 +60,6 @@ function App() {
   }, []);
 
   const handleSelectSession = (sessionId: string) => {
-    console.log('handleSelectSession called with:', sessionId);
     setCurrentSessionId(sessionId);
     if (!openTabs.includes(sessionId)) {
       setOpenTabs(prev => [...prev, sessionId]);
@@ -62,7 +67,6 @@ function App() {
   };
 
   const handleNewSession = () => {
-    console.log('handleNewSession called');
     setCurrentSessionId(''); // Empty string triggers new session
   };
 
@@ -136,11 +140,9 @@ function App() {
     name: s.title || `Session ${s.id.substring(0, 8)}`
   }));
 
-  // Debug mobile detection and session
-  console.log('Mobile detection:', { isMobile, currentSessionId, sessionsCount: sessions.length });
   
   // Mobile layout
-  if (isMobile) {
+  if (effectiveMobile) {
     // Temporary debug mode
     if (window.location.search.includes('debug')) {
       return <TouchDebugger />;

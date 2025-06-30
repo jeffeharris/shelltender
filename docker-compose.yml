@@ -56,6 +56,48 @@ services:
     networks:
       - shelltender-network
 
+  # AI Monitor Service - monitors terminal sessions for AI tool patterns
+  ai-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: shelltender-ai-monitor
+    ports:
+      - "3002:3001"    # AI Monitor API
+    environment:
+      - NODE_ENV=development
+      - AI_MONITOR_HTTP_PORT=3001
+      - SHELLTENDER_WS_HOST=shelltender  # Connect to main container
+      - SHELLTENDER_WS_PORT=8080
+      - AI_MONITOR_DATA_DIR=/app/ai-monitor-data
+    volumes:
+      # Mount source code for development
+      - ./packages:/app/packages:delegated
+      - ./apps:/app/apps:delegated
+      
+      # Exclude node_modules
+      - /app/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/server/node_modules
+      - /app/packages/client/node_modules
+      - /app/apps/demo/node_modules
+      
+      # Persist AI monitor data
+      - ai-monitor-data:/app/ai-monitor-data
+    depends_on:
+      - shelltender
+    restart: unless-stopped
+    networks:
+      - shelltender-network
+    working_dir: /app/apps/demo
+    command: ["npx", "tsx", "src/server/ai-monitor-env.ts"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # Optional: PostgreSQL for future session persistence
   # postgres:
   #   image: postgres:15-alpine
@@ -76,6 +118,8 @@ volumes:
   shelltender-sessions:
     driver: local
   shelltender-history:
+    driver: local
+  ai-monitor-data:
     driver: local
   # postgres-data:
   #   driver: local

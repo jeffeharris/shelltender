@@ -4,6 +4,7 @@ import './index.css'
 import '../styles/index.css'
 import '../styles/demo.css'
 import App from './App'
+import { AppRouter } from './AppRouter'
 import { ErrorBoundary } from './ErrorBoundary'
 import { WebSocketProvider } from '@shelltender/client'
 import { applySafetyPatches, checkForCrashes } from './utils/safetyPatch'
@@ -20,7 +21,7 @@ const wsConfig = {
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <WebSocketProvider config={wsConfig}>
-      <App />
+      <AppRouter />
     </WebSocketProvider>
   </ErrorBoundary>
 )

@@ -28,10 +28,10 @@ If any check fails, resolve before proceeding.
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.2.5
-- Last release added AI coding assistants, debugging tools, and pattern library
+- Current version: 0.2.6
+- Last release improved environment handling, fixed terminal input race condition, and enhanced Docker security
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.2.5 release documented
+- The CHANGELOG.md has the v0.2.6 release documented
 
 To check if a release has already been created:
 ```bash

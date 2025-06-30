@@ -1,8 +1,8 @@
 # Development Dockerfile for Shelltender
-FROM node:20-alpine
+FROM node:20
 
 # Install build dependencies for node-pty and development tools
-RUN apk add --no-cache python3 make g++ git bash
+RUN apt-get update && apt-get install -y python3 make g++ git && rm -rf /var/lib/apt/lists/*
 
 # Install AI coding assistant CLIs
 RUN npm install -g \
@@ -19,8 +19,9 @@ RUN npm install -g \
     jest \
     vitest
 
-# Install Python tools (using --break-system-packages for Alpine)
-RUN apk add --no-cache py3-pip && \
+# Install Python tools
+RUN apt-get update && apt-get install -y python3-pip && \
+    rm -rf /var/lib/apt/lists/* && \
     pip3 install --break-system-packages \
     black \
     pylint \
@@ -56,8 +57,12 @@ RUN npm run build -w shelltender
 # Finally build demo app
 RUN npm run build -w shelltender-demo || true
 
-# Create directory for sessions and ensure proper ownership
-RUN mkdir -p /app/sessions && chown -R node:node /app
+# Create directory for sessions
+RUN mkdir -p /app/sessions /app/ai-monitor-data
+
+# Only change ownership of necessary directories, not entire /app
+RUN chown -R node:node /app/sessions /app/ai-monitor-data && \
+    chown node:node /app
 
 # Switch to non-root user (using existing node user from base image)
 # This avoids git ownership errors and follows security best practices

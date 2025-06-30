@@ -28,12 +28,12 @@ const PATTERN_CATEGORIES = [
 ] as const;
 
 export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
-  const { events, registerPattern, clearEvents, getPatterns, isConnected } = useTerminalEvents(sessionId, { maxEvents: 100 });
-  const [activePatterns, setActivePatterns] = useState<Set<string>>(new Set());
+  const { events, registerPattern, unregisterPattern, clearEvents, getPatterns, isConnected } = useTerminalEvents(sessionId, { maxEvents: 100 });
+  const [activePatterns, setActivePatterns] = useState<Map<string, string>>(new Map()); // name -> patternId
   const [isLoading, setIsLoading] = useState(false);
   const [customPattern, setCustomPattern] = useState('');
   const [customPatternName, setCustomPatternName] = useState('');
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [collectedActionWords, setCollectedActionWords] = useState<Map<string, number>>(new Map());
 
@@ -65,8 +65,8 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   const loadPatterns = async () => {
     try {
       const patterns = await getPatterns();
-      const names = new Set(patterns.map((p: any) => p.config.name));
-      setActivePatterns(names);
+      const patternMap = new Map(patterns.map((p: any) => [p.config.name, p.patternId]));
+      setActivePatterns(patternMap);
     } catch (error) {
       console.error('Failed to load patterns:', error);
     }
@@ -75,17 +75,25 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
   const togglePattern = async (pattern: PatternConfig) => {
     setIsLoading(true);
     try {
-      if (activePatterns.has(pattern.name)) {
-        // Pattern is already registered, we can't unregister by name
-        // so we'll just remove from our tracking
+      const patternId = activePatterns.get(pattern.name);
+      if (patternId) {
+        // Unregister the pattern
+        await unregisterPattern(patternId);
         setActivePatterns(prev => {
-          const next = new Set(prev);
+          const next = new Map(prev);
           next.delete(pattern.name);
           return next;
         });
       } else {
-        await registerPattern(pattern);
-        setActivePatterns(prev => new Set([...prev, pattern.name]));
+        // Need to convert RegExp to string for serialization
+        const serializedPattern = {
+          ...pattern,
+          pattern: pattern.pattern instanceof RegExp 
+            ? pattern.pattern.source 
+            : pattern.pattern
+        };
+        const newPatternId = await registerPattern(serializedPattern);
+        setActivePatterns(prev => new Map([...prev, [pattern.name, newPatternId]]));
       }
     } catch (error) {
       console.error('Failed to toggle pattern:', error);
@@ -99,13 +107,13 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
     
     setIsLoading(true);
     try {
-      await registerPattern({
+      const patternId = await registerPattern({
         name: customPatternName,
         type: 'regex',
-        pattern: new RegExp(customPattern),
+        pattern: customPattern, // Send as string, not RegExp
         options: { debounce: 100 }
       });
-      setActivePatterns(prev => new Set([...prev, customPatternName]));
+      setActivePatterns(prev => new Map([...prev, [customPatternName, patternId]]));
       setCustomPattern('');
       setCustomPatternName('');
     } catch (error) {
@@ -116,16 +124,8 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
     }
   };
 
-  const toggleCategory = (category: string) => {
-    setCollapsedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(category)) {
-        next.delete(category);
-      } else {
-        next.add(category);
-      }
-      return next;
-    });
+  const toggleSection = (section: string) => {
+    setExpandedSection(prev => prev === section ? null : section);
   };
 
   const getFilteredPatterns = (category: typeof PATTERN_CATEGORIES[number]) => {
@@ -186,7 +186,7 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
           <div className="space-y-2">
             {PATTERN_CATEGORIES.map(category => {
               const patterns = getFilteredPatterns(category);
-              const isCollapsed = collapsedCategories.has(category.key);
+              const isExpanded = expandedSection === category.key;
               const hasActivePatterns = patterns.some(p => activePatterns.has(p.name));
               
               if (patterns.length === 0 && searchQuery) return null;
@@ -194,7 +194,7 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
               return (
                 <div key={category.key} className="border border-gray-700 rounded overflow-hidden">
                   <button
-                    onClick={() => toggleCategory(category.key)}
+                    onClick={() => toggleSection(category.key)}
                     className="w-full px-3 py-2 bg-gray-800 hover:bg-gray-750 flex items-center justify-between text-left"
                   >
                     <div className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
                       )}
                     </div>
                     <svg
-                      className={`w-4 h-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                      className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -215,21 +215,29 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
                     </svg>
                   </button>
                   
-                  {!isCollapsed && (
+                  {isExpanded && (
                     <div className="p-2 space-y-1 bg-gray-850">
                       {patterns.map(pattern => (
-                        <label
+                        <div
                           key={pattern.name}
-                          className="flex items-start gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+                          className="flex items-start gap-2 p-2 rounded hover:bg-gray-800"
                         >
                           <input
                             type="checkbox"
                             checked={activePatterns.has(pattern.name)}
                             onChange={() => togglePattern(pattern)}
                             disabled={isLoading || !isConnected}
-                            className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0"
+                            className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0 cursor-pointer"
+                            id={`pattern-${pattern.name}`}
                           />
-                          <div className="flex-1 min-w-0">
+                          <label 
+                            htmlFor={`pattern-${pattern.name}`}
+                            className="flex-1 min-w-0 cursor-pointer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              togglePattern(pattern);
+                            }}
+                          >
                             <div className="font-medium text-sm text-gray-200">{pattern.name}</div>
                             {pattern.description && (
                               <div className="text-xs text-gray-400 mt-0.5">{pattern.description}</div>
@@ -241,8 +249,8 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
                                   ? pattern.pattern.join(', ')
                                   : String(pattern.pattern)}
                             </div>
-                          </div>
-                        </label>
+                          </label>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -252,33 +260,54 @@ export const EventSystemDemo: React.FC<Props> = ({ sessionId }) => {
           </div>
         </div>
 
-        <div className="p-4 space-y-4 border-t border-gray-700 flex-shrink-0 bg-gray-900">
-          <div>
-            <h4 className="font-medium mb-2">Custom Pattern</h4>
-            <input
-              type="text"
-              placeholder="Pattern name"
-              value={customPatternName}
-              onChange={(e) => setCustomPatternName(e.target.value)}
-              className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
-            />
-            <input
-              type="text"
-              placeholder="Regex pattern (e.g., error|failed)"
-              value={customPattern}
-              onChange={(e) => setCustomPattern(e.target.value)}
-              className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2"
-            />
+        <div className="border-t border-gray-700 flex-shrink-0 bg-gray-900">
+          <div className="border border-gray-700 rounded m-4 overflow-hidden">
             <button
-              onClick={registerCustomPattern}
-              disabled={isLoading || !isConnected || !customPattern || !customPatternName}
-              className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded text-sm"
+              onClick={() => toggleSection('custom')}
+              className="w-full px-3 py-2 bg-gray-800 hover:bg-gray-750 flex items-center justify-between text-left"
             >
-              Register Pattern
+              <div className="flex items-center gap-2">
+                <span className="text-lg">✏️</span>
+                <span className="font-medium">Custom Pattern</span>
+              </div>
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform ${expandedSection === 'custom' ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
+            
+            {expandedSection === 'custom' && (
+              <div className="p-4 bg-gray-850">
+                <input
+                  type="text"
+                  placeholder="Pattern name"
+                  value={customPatternName}
+                  onChange={(e) => setCustomPatternName(e.target.value)}
+                  className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2 border border-gray-700"
+                />
+                <input
+                  type="text"
+                  placeholder="Regex pattern (e.g., error|failed)"
+                  value={customPattern}
+                  onChange={(e) => setCustomPattern(e.target.value)}
+                  className="w-full px-2 py-1 bg-gray-800 rounded text-sm mb-2 border border-gray-700"
+                />
+                <button
+                  onClick={registerCustomPattern}
+                  disabled={isLoading || !isConnected || !customPattern || !customPatternName}
+                  className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded text-sm"
+                >
+                  Register Pattern
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
+          <div className="px-4 pb-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Connection</span>
               <span className={`text-sm px-2 py-0.5 rounded ${
