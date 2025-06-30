@@ -54,7 +54,7 @@ export class WebSocketServer {
           const data: WebSocketMessage = JSON.parse(message);
           this.handleMessage(clientId, ws, data);
         } catch (error) {
-          console.error('Error parsing message:', error);
+          // Error parsing message
           ws.send(JSON.stringify({ type: 'error', data: 'Invalid message format' }));
         }
       });
@@ -70,9 +70,9 @@ export class WebSocketServer {
           const patterns = this.clientPatterns.get(clientId);
           if (patterns) {
             for (const patternId of patterns) {
-              this.eventManager.unregisterPattern(patternId).catch(err => 
-                console.error('Error unregistering pattern:', err)
-              );
+              this.eventManager.unregisterPattern(patternId).catch(err => {
+                // Error unregistering pattern
+              });
             }
           }
         }
@@ -83,111 +83,128 @@ export class WebSocketServer {
       });
 
       ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        // WebSocket error occurred
       });
     });
   }
 
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
-    switch (data.type) {
-      case 'create':
-        try {
-          const options = data.options || {};
-          if (data.cols) options.cols = data.cols;
-          if (data.rows) options.rows = data.rows;
-          
-          
-          const session = this.sessionManager.createSession(options);
-          this.sessionManager.addClient(session.id, clientId);
-          ws.sessionId = session.id;
-          
-          ws.send(JSON.stringify({
-            type: 'created',
-            sessionId: session.id,
-            session,
-          }));
-          
-        } catch (error) {
-          console.error('[WebSocketServer] Error creating session:', error);
-          ws.send(JSON.stringify({
-            type: 'error',
-            data: error instanceof Error ? error.message : 'Failed to create session',
-            requestId: (data as any).requestId
-          }));
-        }
-        break;
+    const handlers: Record<string, (clientId: string, ws: any, data: any) => void> = {
+      'create': this.handleCreateSession.bind(this),
+      'connect': this.handleConnectSession.bind(this),
+      'input': this.handleSessionInput.bind(this),
+      'resize': this.handleSessionResize.bind(this),
+      'disconnect': this.handleSessionDisconnect.bind(this),
+      'register-pattern': this.handleRegisterPattern.bind(this),
+      'unregister-pattern': this.handleUnregisterPattern.bind(this),
+      'subscribe-events': this.handleSubscribeEvents.bind(this),
+      'unsubscribe-events': this.handleUnsubscribeEvents.bind(this),
+    };
 
-      case 'connect':
-        if (data.sessionId) {
-          const session = this.sessionManager.getSession(data.sessionId);
-          if (session) {
-            this.sessionManager.addClient(data.sessionId, clientId);
-            ws.sessionId = data.sessionId;
-            
-            // Send session info and scrollback buffer
-            ws.send(JSON.stringify({
-              type: 'connect',
-              sessionId: data.sessionId,
-              session,
-              scrollback: this.bufferManager.getBuffer(data.sessionId),
-            }));
-          } else {
-            ws.send(JSON.stringify({
-              type: 'error',
-              data: 'Session not found',
-            }));
-          }
-        }
-        break;
+    const handler = handlers[data.type];
+    if (handler) {
+      handler(clientId, ws, data);
+    } else {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: `Unknown message type: ${data.type}`,
+      }));
+    }
+  }
 
-      case 'input':
-        if (data.sessionId && data.data) {
-          const success = this.sessionManager.writeToSession(data.sessionId, data.data);
-          if (!success) {
-            ws.send(JSON.stringify({
-              type: 'error',
-              data: 'Failed to write to session - session may be disconnected',
-              sessionId: data.sessionId
-            }));
-          }
-        }
-        break;
+  private handleCreateSession(clientId: string, ws: any, data: any): void {
+    try {
+      const options = data.options || {};
+      if (data.cols) options.cols = data.cols;
+      if (data.rows) options.rows = data.rows;
+      
+      const session = this.sessionManager.createSession(options);
+      this.sessionManager.addClient(session.id, clientId);
+      ws.sessionId = session.id;
+      
+      ws.send(JSON.stringify({
+        type: 'created',
+        sessionId: session.id,
+        session,
+      }));
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: error instanceof Error ? error.message : 'Failed to create session',
+        requestId: data.requestId
+      }));
+    }
+  }
 
-      case 'resize':
-        if (data.sessionId && data.cols && data.rows) {
-          this.sessionManager.resizeSession(data.sessionId, data.cols, data.rows);
-          // Broadcast resize to all clients
-          this.broadcastToSession(data.sessionId, {
-            type: 'resize',
-            sessionId: data.sessionId,
-            cols: data.cols,
-            rows: data.rows,
-          });
-        }
-        break;
+  private handleConnectSession(clientId: string, ws: any, data: any): void {
+    if (!data.sessionId) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Session ID required',
+      }));
+      return;
+    }
 
-      case 'disconnect':
-        if (data.sessionId) {
-          this.sessionManager.removeClient(data.sessionId, clientId);
-          ws.sessionId = undefined;
-        }
-        break;
+    const session = this.sessionManager.getSession(data.sessionId);
+    if (session) {
+      this.sessionManager.addClient(data.sessionId, clientId);
+      ws.sessionId = data.sessionId;
+      
+      ws.send(JSON.stringify({
+        type: 'connect',
+        sessionId: data.sessionId,
+        session,
+        scrollback: this.bufferManager.getBuffer(data.sessionId),
+      }));
+    } else {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Session not found',
+      }));
+    }
+  }
 
-      case 'register-pattern':
-        this.handleRegisterPattern(clientId, ws, data as RegisterPatternMessage);
-        break;
+  private handleSessionInput(clientId: string, ws: any, data: any): void {
+    if (!data.sessionId || !data.data) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Session ID and data required',
+      }));
+      return;
+    }
 
-      case 'unregister-pattern':
-        this.handleUnregisterPattern(clientId, ws, data as UnregisterPatternMessage);
-        break;
+    const success = this.sessionManager.writeToSession(data.sessionId, data.data);
+    if (!success) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Failed to write to session - session may be disconnected',
+        sessionId: data.sessionId
+      }));
+    }
+  }
 
-      case 'subscribe-events':
-        this.handleSubscribeEvents(clientId, ws, data as SubscribeEventsMessage);
-        break;
+  private handleSessionResize(clientId: string, ws: any, data: any): void {
+    if (!data.sessionId || !data.cols || !data.rows) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        data: 'Session ID, cols, and rows required',
+      }));
+      return;
+    }
 
-      case 'unsubscribe-events':
-        this.handleUnsubscribeEvents(clientId, ws, data as UnsubscribeEventsMessage);
-        break;
+    this.sessionManager.resizeSession(data.sessionId, data.cols, data.rows);
+    this.broadcastToSession(data.sessionId, {
+      type: 'resize',
+      sessionId: data.sessionId,
+      cols: data.cols,
+      rows: data.rows,
+    });
+  }
+
+  private handleSessionDisconnect(clientId: string, ws: any, data: any): void {
+    if (data.sessionId) {
+      this.sessionManager.removeClient(data.sessionId, clientId);
+      ws.sessionId = undefined;
     }
   }
 
