@@ -33,7 +33,6 @@ export const QWERTY_KEYS: KeySet = {
     { label: '⌫', type: 'special', value: 'backspace' },
     
     // Third row
-    { label: '⇧', type: 'special', value: 'shift' },
     { label: 'z', type: 'text', value: 'z' },
     { label: 'x', type: 'text', value: 'x' },
     { label: 'c', type: 'text', value: 'c' },
@@ -179,6 +178,41 @@ export const CONTROL_KEYS: KeySet = {
 };
 
 /**
+ * Edit and selection keys
+ */
+export const EDIT_KEYS: KeySet = {
+  id: 'edit',
+  name: 'Edit',
+  readonly: true,
+  keys: [
+    // Clipboard operations
+    { label: 'Copy', type: 'special', value: 'ctrl-c', style: 'primary' },
+    { label: 'Cut', type: 'special', value: 'ctrl-x', style: 'warning' },
+    { label: 'Paste', type: 'special', value: 'ctrl-v', style: 'success' },
+    { label: 'Select All', type: 'special', value: 'ctrl-a' },
+    
+    // Text navigation
+    { label: 'Home', type: 'special', value: 'home' },
+    { label: 'End', type: 'special', value: 'end' },
+    { label: 'Word ←', type: 'special', value: 'ctrl-left' },
+    { label: 'Word →', type: 'special', value: 'ctrl-right' },
+    
+    // Text deletion
+    { label: 'Del Word', type: 'special', value: 'ctrl-w' },
+    { label: 'Del Line', type: 'special', value: 'ctrl-u' },
+    { label: 'Del →', type: 'special', value: 'ctrl-k' },
+    
+    // Undo/Redo (if supported by terminal app)
+    { label: 'Undo', type: 'special', value: 'ctrl-z' },
+    { label: 'Redo', type: 'special', value: 'ctrl-y' },
+    
+    // Common edit shortcuts
+    { label: 'Find', type: 'special', value: 'ctrl-f' },
+    { label: 'Replace', type: 'special', value: 'ctrl-h' },
+  ]
+};
+
+/**
  * Common Unix commands
  */
 export const UNIX_KEYS: KeySet = {
@@ -257,6 +291,7 @@ export const PREDEFINED_KEY_SETS: KeySet[] = [
   QUICK_KEYS,
   NAVIGATION_KEYS,
   CONTROL_KEYS,
+  EDIT_KEYS,
   UNIX_KEYS,
   GIT_KEYS,
   FUNCTION_KEYS,
@@ -268,7 +303,7 @@ export const PREDEFINED_KEY_SETS: KeySet[] = [
 export const DEFAULT_KEYBOARD_PREFERENCES = {
   defaultKeySetId: 'qwerty',
   showHints: true,
-  keyboardHeight: 12, // rem
+  keyboardHeight: 40, // percentage of viewport height
   hapticFeedback: true,
   customKeySets: [],
 };
@@ -316,6 +351,8 @@ export const SPECIAL_KEY_SEQUENCES: Record<string, string> = {
   'ctrl-x': '\x18',
   'ctrl-y': '\x19',
   'ctrl-z': '\x1a',
+  'ctrl-left': '\x1b[1;5D',
+  'ctrl-right': '\x1b[1;5C',
   'f1': '\x1bOP',
   'f2': '\x1bOQ',
   'f3': '\x1bOR',

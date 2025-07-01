@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EnhancedVirtualKeyboardProps, KeyDefinition, SpecialKeyType } from '../../types/keyboard.js';
+import { VirtualKeyboardProps, KeyDefinition, SpecialKeyType } from '../../types/keyboard.js';
 import { useCustomKeySets } from '../../hooks/useCustomKeySets.js';
+import { useModifierKeys } from '../../hooks/useModifierKeys.js';
 import { SPECIAL_KEY_SEQUENCES } from '../../constants/keySets.js';
 
-export function EnhancedVirtualKeyboard({
+export function VirtualKeyboard({
   isVisible,
   onInput,
   onCommand,
   onMacro,
   onHeightChange,
   preferences: overridePreferences,
-}: EnhancedVirtualKeyboardProps) {
+}: VirtualKeyboardProps) {
   const {
     preferences,
     getAllKeySets,
@@ -21,6 +22,7 @@ export function EnhancedVirtualKeyboard({
   const [activeKeySetId, setActiveKeySetId] = useState(preferences.defaultKeySetId);
   const [showSettings, setShowSettings] = useState(false);
   const keyboardRef = useRef<HTMLDivElement>(null);
+  const [modifiers, modifierActions] = useModifierKeys();
 
   // Merge override preferences
   const effectivePreferences = {
@@ -60,13 +62,38 @@ export function EnhancedVirtualKeyboard({
       navigator.vibrate(10);
     }
 
+    // Handle modifier keys specially
+    if (key.value === 'ctrl') {
+      modifierActions.toggleCtrl();
+      return;
+    } else if (key.value === 'alt') {
+      modifierActions.toggleAlt();
+      return;
+    } else if (key.value === 'shift') {
+      modifierActions.toggleShift();
+      return;
+    } else if (key.value === 'esc' || key.value === 'escape') {
+      onInput('\x1b');
+      return;
+    }
+
     switch (key.type) {
       case 'text':
-        onInput(key.value as string);
+        const processedText = modifierActions.handleKeyPress(key.value as string);
+        // Check if it became a special key sequence (e.g., ctrl-c)
+        if (processedText.startsWith('ctrl-') || processedText.startsWith('alt-')) {
+          const sequence = SPECIAL_KEY_SEQUENCES[processedText];
+          if (sequence) {
+            onInput(sequence);
+          }
+        } else {
+          onInput(processedText);
+        }
         break;
       
       case 'special':
-        const sequence = SPECIAL_KEY_SEQUENCES[key.value as string];
+        const specialKey = modifierActions.handleKeyPress(key.value as string);
+        const sequence = SPECIAL_KEY_SEQUENCES[specialKey];
         if (sequence) {
           onInput(sequence);
         }
@@ -74,12 +101,14 @@ export function EnhancedVirtualKeyboard({
       
       case 'command':
         onCommand(key.value as string);
+        modifierActions.clearModifiers();
         break;
       
       case 'macro':
         if (Array.isArray(key.value)) {
           onMacro(key.value);
         }
+        modifierActions.clearModifiers();
         break;
     }
   };
@@ -99,9 +128,9 @@ export function EnhancedVirtualKeyboard({
   return (
     <div 
       ref={keyboardRef}
-      className="enhanced-virtual-keyboard"
+      className="virtual-keyboard"
       style={{
-        maxHeight: `${effectivePreferences.keyboardHeight}rem`,
+        transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
       }}
     >
       {/* Tab bar for key sets */}
@@ -126,24 +155,72 @@ export function EnhancedVirtualKeyboard({
         </button>
       </div>
 
+      {/* Modifier keys row */}
+      <div className="keyboard-modifiers">
+        <button
+          className={`keyboard-modifier ${modifiers.ctrl ? 'active' : ''}`}
+          onClick={() => modifierActions.toggleCtrl()}
+        >
+          Ctrl
+        </button>
+        <button
+          className={`keyboard-modifier ${modifiers.alt ? 'active' : ''}`}
+          onClick={() => modifierActions.toggleAlt()}
+        >
+          Alt
+        </button>
+        <button
+          className={`keyboard-modifier ${modifiers.shift ? 'active' : ''}`}
+          onClick={() => modifierActions.toggleShift()}
+        >
+          Shift
+        </button>
+        <button
+          className="keyboard-modifier esc"
+          onClick={() => handleKeyPress({ label: 'Esc', type: 'special', value: 'escape' })}
+        >
+          Esc
+        </button>
+      </div>
+
       {/* Keys grid */}
       <div className="keyboard-keys">
-        {currentKeySet.keys.map((key, index) => (
-          <button
-            key={index}
-            className={`keyboard-key ${key.style || ''}`}
-            style={{
-              gridColumn: key.width ? `span ${key.width}` : undefined,
-            }}
-            onClick={() => handleKeyPress(key)}
-          >
-            {key.icon ? (
-              <span className="keyboard-key-icon">{key.icon}</span>
-            ) : (
-              <span className="keyboard-key-label">{key.label}</span>
-            )}
-          </button>
-        ))}
+        {currentKeySet.keys.map((key, index) => {
+          // Show modified label for text keys when shift is active
+          let displayLabel = key.label;
+          if (key.type === 'text' && modifiers.shift && typeof key.value === 'string' && key.value.length === 1) {
+            const shiftMap: Record<string, string> = {
+              '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
+              '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+              '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|',
+              ';': ':', "'": '"', ',': '<', '.': '>', '/': '?',
+              '`': '~',
+            };
+            
+            if (shiftMap[key.value]) {
+              displayLabel = shiftMap[key.value];
+            } else if (/[a-z]/.test(key.value)) {
+              displayLabel = key.value.toUpperCase();
+            }
+          }
+
+          return (
+            <button
+              key={index}
+              className={`keyboard-key ${key.style || ''} ${modifierActions.isModifierActive() ? 'modifier-active' : ''}`}
+              style={{
+                gridColumn: key.width ? `span ${key.width}` : undefined,
+              }}
+              onClick={() => handleKeyPress(key)}
+            >
+              {key.icon ? (
+                <span className="keyboard-key-icon">{key.icon}</span>
+              ) : (
+                <span className="keyboard-key-label">{displayLabel}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Settings panel */}

@@ -137,6 +137,7 @@ export function KeySetEditor({ keySet, onSave, onCancel }: KeySetEditorProps) {
                 <option value="text">Text</option>
                 <option value="special">Special Key</option>
                 <option value="command">Command</option>
+                <option value="macro">Macro</option>
               </select>
             </div>
 

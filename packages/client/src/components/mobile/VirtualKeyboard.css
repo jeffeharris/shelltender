@@ -1,6 +1,6 @@
-/* Enhanced Virtual Keyboard Styles */
+/* Virtual Keyboard Styles - Improved Responsive Version */
 
-.enhanced-virtual-keyboard {
+.virtual-keyboard {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -8,19 +8,20 @@
   background: #1f2937;
   border-top: 2px solid #374151;
   z-index: 9999;
-  transition: all 0.3s ease;
-  overflow: hidden;
+  transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
-  max-width: 100vw;
+  /* Max 40% of viewport height */
+  max-height: 40vh;
+  /* Min height to ensure usability */
+  min-height: 200px;
+}
+
+.virtual-keyboard * {
   box-sizing: border-box;
 }
 
-.enhanced-virtual-keyboard * {
-  box-sizing: border-box;
-}
-
-/* Tab bar */
+/* Tab bar - fixed height */
 .keyboard-tabs {
   display: flex;
   background: #111827;
@@ -28,6 +29,8 @@
   padding: 0.25rem;
   gap: 0.25rem;
   align-items: center;
+  flex-shrink: 0;
+  height: 2.5rem;
 }
 
 .keyboard-tab-list {
@@ -48,16 +51,16 @@
   background: transparent;
   color: #9ca3af;
   border: 1px solid transparent;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
+  cursor: pointer;
   transition: all 0.2s;
-  touch-action: manipulation;
 }
 
-.keyboard-tab:active {
-  transform: scale(0.95);
+.keyboard-tab:hover {
+  background: #374151;
 }
 
 .keyboard-tab.active {
@@ -67,38 +70,80 @@
 }
 
 .keyboard-settings-btn {
-  padding: 0.375rem;
   background: transparent;
-  color: #9ca3af;
   border: none;
-  border-radius: 0.25rem;
+  color: #9ca3af;
+  padding: 0.5rem;
   font-size: 1rem;
   touch-action: manipulation;
 }
 
-/* Keys grid */
+/* Modifier keys row - fixed height */
+.keyboard-modifiers {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #111827;
+  border-bottom: 1px solid #374151;
+  flex-shrink: 0;
+  height: 3.5rem;
+}
+
+.keyboard-modifier {
+  flex: 1;
+  background: #374151;
+  color: #9ca3af;
+  border: 2px solid transparent;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.keyboard-modifier:active {
+  transform: scale(0.95);
+}
+
+.keyboard-modifier.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.keyboard-modifier.esc {
+  background: #dc2626;
+  color: white;
+  max-width: 5rem;
+}
+
+.keyboard-modifier.esc:active {
+  background: #b91c1c;
+}
+
+/* Keys grid - fills remaining space, no scroll */
 .keyboard-keys {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 0.125rem;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
   padding: 0.25rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
-  box-sizing: border-box;
+  overflow: hidden; /* No scrolling */
+  min-height: 0; /* Allow shrinking */
 }
 
+/* Dynamic key sizing based on container */
 .keyboard-key {
-  padding: 0.25rem;
+  padding: 0;
   background: #374151;
   color: white;
   border: none;
   border-radius: 0.375rem;
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 2vw, 0.875rem);
   font-weight: 500;
-  min-height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,6 +153,21 @@
   overflow: hidden;
   min-width: 0;
   word-break: break-word;
+  /* Aspect ratio for consistent shape */
+  aspect-ratio: 1;
+}
+
+/* Wider keys maintain min aspect ratio */
+.keyboard-key[style*="grid-column: span 2"] {
+  aspect-ratio: 2 / 1;
+}
+
+.keyboard-key[style*="grid-column: span 3"] {
+  aspect-ratio: 3 / 1;
+}
+
+.keyboard-key[style*="grid-column: span 4"] {
+  aspect-ratio: 4 / 1;
 }
 
 .keyboard-key:active {
@@ -115,7 +175,7 @@
   background: #4b5563;
 }
 
-/* Key styles */
+/* Key variant styles */
 .keyboard-key.primary {
   background: #3b82f6;
 }
@@ -148,27 +208,30 @@
   background: #059669;
 }
 
+/* Modifier active state */
+.keyboard-key.modifier-active {
+  box-shadow: inset 0 0 0 2px #3b82f6;
+}
+
 /* Settings panel */
 .keyboard-settings {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  z-index: 10;
 }
 
 .keyboard-settings-content {
   background: #1f2937;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   padding: 1.5rem;
   max-width: 20rem;
   width: 100%;
-  max-height: 80vh;
+  max-height: 90%;
   overflow-y: auto;
 }
 
@@ -181,10 +244,9 @@
 .keyboard-setting {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   margin-bottom: 1rem;
   color: #d1d5db;
-  font-size: 0.875rem;
+  gap: 0.5rem;
 }
 
 .keyboard-setting input[type="checkbox"] {
@@ -194,19 +256,17 @@
 
 .keyboard-setting select {
   flex: 1;
-  padding: 0.375rem;
+  padding: 0.5rem;
   background: #374151;
   color: white;
   border: 1px solid #4b5563;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
+  border-radius: 0.375rem;
 }
 
 .keyboard-settings-actions {
   margin-top: 1.5rem;
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
 }
 
 .keyboard-settings-actions button {
@@ -215,69 +275,42 @@
   color: white;
   border: none;
   border-radius: 0.375rem;
-  font-size: 0.875rem;
   font-weight: 500;
+  cursor: pointer;
+}
+
+.keyboard-settings-actions button:hover {
+  background: #2563eb;
 }
 
 /* Responsive adjustments */
-@media (max-width: 640px) {
-  .keyboard-keys {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 0.0625rem;
-    padding: 0.125rem;
+@media (max-height: 600px) {
+  .virtual-keyboard {
+    max-height: 50vh;
   }
   
   .keyboard-key {
     font-size: 0.75rem;
-    min-height: 2.25rem;
-    padding: 0.125rem;
-    border-radius: 0.25rem;
   }
 }
 
-/* Very small screens */
-@media (max-width: 400px) {
-  .keyboard-keys {
-    gap: 0.0625rem;
-    padding: 0.0625rem;
-  }
-  
-  .keyboard-key {
-    font-size: 0.625rem;
-    min-height: 2rem;
-    padding: 0.0625rem;
-  }
-}
-
-/* Extra small screens */
-@media (max-width: 360px) {
-  .keyboard-keys {
-    gap: 1px;
-    padding: 2px;
-  }
-  
-  .keyboard-key {
-    font-size: 0.5rem;
-    min-height: 1.75rem;
-    padding: 2px;
-    border-radius: 0.125rem;
+@media (min-width: 768px) {
+  .virtual-keyboard {
+    max-height: 35vh;
   }
 }
 
 /* Landscape mode */
-@media (orientation: landscape) and (max-height: 600px) {
-  .enhanced-virtual-keyboard {
-    max-height: 50vh !important;
+@media (orientation: landscape) and (max-height: 500px) {
+  .virtual-keyboard {
+    max-height: 60vh;
   }
   
-  .keyboard-keys {
-    padding: 0.125rem;
-    gap: 0.0625rem;
+  .keyboard-modifiers {
+    height: 3rem;
   }
   
-  .keyboard-key {
-    min-height: 1.5rem;
-    padding: 0.125rem;
-    font-size: 0.625rem;
+  .keyboard-tabs {
+    height: 2rem;
   }
 }

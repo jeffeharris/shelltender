@@ -6,7 +6,7 @@ export { SessionList } from './components/SessionList.js';
 export { TerminalEventMonitor } from './components/TerminalEventMonitor.js';
 
 // Export mobile components
-export { MobileApp, MobileSessionTabs, MobileBottomTabs, EnhancedVirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
+export { MobileApp, MobileSessionTabs, MobileBottomTabs, VirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
 
 // Export Toast components
 export { ToastProvider, useToast } from './components/Toast/index.js';
@@ -37,7 +37,7 @@ export type {
   KeyDefinition, 
   KeySet, 
   KeyboardPreferences, 
-  EnhancedVirtualKeyboardProps,
+  VirtualKeyboardProps,
   KeySetEditorProps 
 } from './types/keyboard.js';
 

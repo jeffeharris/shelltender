@@ -1,5 +1,5 @@
 /**
- * Keyboard types for the enhanced virtual keyboard system
+ * Keyboard types for the virtual keyboard system
  */
 
 /**
@@ -72,7 +72,7 @@ export interface KeyboardPreferences {
   defaultKeySetId: string;
   /** Whether to show key hints */
   showHints: boolean;
-  /** Keyboard height in rem */
+  /** Keyboard height as percentage of viewport (0-100) */
   keyboardHeight: number;
   /** Whether to vibrate on key press (if supported) */
   hapticFeedback: boolean;
@@ -81,9 +81,9 @@ export interface KeyboardPreferences {
 }
 
 /**
- * Props for the EnhancedVirtualKeyboard component
+ * Props for the VirtualKeyboard component
  */
-export interface EnhancedVirtualKeyboardProps {
+export interface VirtualKeyboardProps {
   /** Whether the keyboard is visible */
   isVisible: boolean;
   /** Callback for text input */
