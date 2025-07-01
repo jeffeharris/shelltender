@@ -6,7 +6,7 @@ import {
   TerminalEventMonitor,
   MobileApp,
   MobileSessionTabs,
-  EnhancedVirtualKeyboard,
+  VirtualKeyboard,
   useMobileDetection,
   useWebSocket,
   SpecialKeyType,
@@ -211,8 +211,8 @@ function App({ showEventSystem = false, forceMobile = false }: AppProps) {
             />
           )}
           
-          {/* Enhanced Virtual Keyboard */}
-          <EnhancedVirtualKeyboard
+          {/* Virtual Keyboard */}
+          <VirtualKeyboard
             isVisible={!!currentSessionId}
             onInput={(text) => {
               if (wsService && currentSessionId) {

@@ -1,5 +1,5 @@
 /* Import all mobile component styles */
-@import './EnhancedVirtualKeyboard.css';
+@import './VirtualKeyboard.css';
 @import './KeySetEditor.css';
 
 /* Additional mobile styles already in this file */
