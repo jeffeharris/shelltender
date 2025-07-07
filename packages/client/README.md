@@ -46,29 +46,85 @@ function App() {
 The core terminal emulator component with xterm.js integration.
 
 ```tsx
-import { Terminal } from '@shelltender/client';
+import { Terminal, TerminalTheme } from '@shelltender/client';
+
+// Custom theme
+const theme: TerminalTheme = {
+  background: '#1e1e1e',
+  foreground: '#d4d4d4',
+  cursor: '#ffffff',
+  selection: '#3a3d41'
+};
 
 <Terminal
   sessionId="session-123"  // Optional: connect to existing session
   onSessionCreated={(sessionId) => {
     console.log('New session created:', sessionId);
   }}
+  // Customization options
+  padding={{ left: 12, right: 4 }}
+  fontSize={16}
+  fontFamily="JetBrains Mono, monospace"
+  theme={theme}
+  cursorStyle="underline"
+  cursorBlink={false}
+  scrollback={50000}
 />
 ```
 
 #### Props
 - `sessionId?: string` - ID of existing session to connect to (creates new if empty/undefined)
 - `onSessionCreated?: (sessionId: string) => void` - Called when a new session is created
+- `onSessionChange?: (direction: 'next' | 'prev') => void` - Handle session navigation (mobile)
+- `onShowVirtualKeyboard?: () => void` - Show virtual keyboard (mobile)
+- `padding?: number | { left?: number; right?: number; top?: number; bottom?: number }` - Terminal padding (default: 8px left)
+- `fontSize?: number` - Font size in pixels (default: 14)
+- `fontFamily?: string` - Font family (default: 'Consolas, Monaco, monospace')
+- `theme?: TerminalTheme` - Color theme customization
+- `cursorStyle?: 'block' | 'underline' | 'bar'` - Cursor style (default: 'block')
+- `cursorBlink?: boolean` - Enable cursor blinking (default: true)
+- `scrollback?: number` - Scrollback buffer size (default: 10000)
+
+#### Terminal Theme Interface
+
+```typescript
+interface TerminalTheme {
+  background?: string;
+  foreground?: string;
+  cursor?: string;
+  cursorAccent?: string;
+  selection?: string;
+  // ANSI colors
+  black?: string;
+  red?: string;
+  green?: string;
+  yellow?: string;
+  blue?: string;
+  magenta?: string;
+  cyan?: string;
+  white?: string;
+  // Bright ANSI colors
+  brightBlack?: string;
+  brightRed?: string;
+  brightGreen?: string;
+  brightYellow?: string;
+  brightBlue?: string;
+  brightMagenta?: string;
+  brightCyan?: string;
+  brightWhite?: string;
+}
+```
 
 #### Features
 - Full xterm.js terminal with WebGL rendering
 - Automatic WebSocket connection and reconnection
 - Scrollback buffer restoration on reconnect
 - Clipboard support (Ctrl/Cmd+V, right-click paste)
-- Responsive terminal sizing
+- Responsive terminal sizing with ResizeObserver
 - Web links addon for clickable URLs
 - Unicode support
 - Connection status indicator
+- Ref-based API for manual control (fit method)
 
 ### SessionTabs
 

@@ -1,5 +1,6 @@
 // Export components
 export { Terminal } from './components/Terminal/index.js';
+export type { TerminalHandle, TerminalTheme } from './components/Terminal/index.js';
 export { SessionManager } from './components/SessionManager/index.js';
 export { SessionTabs } from './components/SessionTabs/index.js';
 export { SessionList } from './components/SessionList.js';

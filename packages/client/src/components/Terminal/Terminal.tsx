@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -12,21 +12,63 @@ import { MobileTerminalInput } from '../mobile/MobileTerminalInput.js';
 import { SPECIAL_KEYS, Z_INDEX } from '../../constants/mobile.js';
 import type { TerminalData } from '@shelltender/core';
 
+export interface TerminalTheme {
+  background?: string;
+  foreground?: string;
+  cursor?: string;
+  cursorAccent?: string;
+  selection?: string;
+  black?: string;
+  red?: string;
+  green?: string;
+  yellow?: string;
+  blue?: string;
+  magenta?: string;
+  cyan?: string;
+  white?: string;
+  brightBlack?: string;
+  brightRed?: string;
+  brightGreen?: string;
+  brightYellow?: string;
+  brightBlue?: string;
+  brightMagenta?: string;
+  brightCyan?: string;
+  brightWhite?: string;
+}
+
 interface TerminalProps {
   sessionId?: string;
   onSessionCreated?: (sessionId: string) => void;
   onSessionChange?: (direction: 'next' | 'prev') => void;
   onShowVirtualKeyboard?: () => void;
   padding?: number | { left?: number; right?: number; top?: number; bottom?: number };
+  debug?: boolean;
+  fontSize?: number;
+  fontFamily?: string;
+  theme?: TerminalTheme;
+  cursorStyle?: 'block' | 'underline' | 'bar';
+  cursorBlink?: boolean;
+  scrollback?: number;
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ 
+export interface TerminalHandle {
+  fit: () => void;
+}
+
+export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({ 
   sessionId, 
   onSessionCreated,
   onSessionChange,
   onShowVirtualKeyboard,
-  padding = { left: 8, right: 0, top: 0, bottom: 0 }
-}) => {
+  padding = { left: 8, right: 0, top: 0, bottom: 0 },
+  debug = false,
+  fontSize = 14,
+  fontFamily = 'Consolas, Monaco, monospace',
+  theme,
+  cursorStyle = 'block',
+  cursorBlink = true,
+  scrollback = 10000
+}, ref) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xtermRef = useRef<XTerm | null>(null);
@@ -36,6 +78,8 @@ export const Terminal: React.FC<TerminalProps> = ({
   const currentSessionIdRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
   const isReadyRef = useRef(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // Mobile-specific state
   const { isMobile } = useMobileDetection();
@@ -47,10 +91,15 @@ export const Terminal: React.FC<TerminalProps> = ({
   const handleCopy = useCallback(() => {
     const selection = window.getSelection()?.toString();
     if (selection) {
-      navigator.clipboard.writeText(selection);
+      navigator.clipboard.writeText(selection).catch((err) => {
+        if (debug) {
+          console.error('[Terminal] Copy failed:', err);
+        }
+        if (isMobile) showToast('Copy failed - check permissions');
+      });
       if (isMobile) showToast('Copied to clipboard');
     }
-  }, [isMobile, showToast]);
+  }, [isMobile, showToast, debug]);
 
   // Handle paste operation
   const handlePaste = useCallback(async () => {
@@ -148,24 +197,131 @@ export const Terminal: React.FC<TerminalProps> = ({
     }
   }, []);
 
+  // Manual fit function with proper debouncing
+  const performFit = useCallback(() => {
+    if (!fitAddonRef.current || !xtermRef.current) {
+      if (debug) {
+        console.log('[Terminal] Fit skipped - addon or terminal not ready');
+      }
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) {
+      if (debug) {
+        console.log('[Terminal] Fit skipped - container not available');
+      }
+      return;
+    }
+
+    // Check if container has valid dimensions
+    const { clientWidth, clientHeight } = container;
+    if (clientWidth === 0 || clientHeight === 0) {
+      if (debug) {
+        console.log('[Terminal] Fit skipped - container has zero dimensions', {
+          width: clientWidth,
+          height: clientHeight
+        });
+      }
+      return;
+    }
+
+    try {
+      if (debug) {
+        console.log('[Terminal] Performing fit', {
+          containerWidth: clientWidth,
+          containerHeight: clientHeight,
+          currentCols: xtermRef.current.cols,
+          currentRows: xtermRef.current.rows,
+        });
+      }
+
+      fitAddonRef.current.fit();
+
+      if (debug) {
+        console.log('[Terminal] Fit completed', {
+          newCols: xtermRef.current.cols,
+          newRows: xtermRef.current.rows,
+        });
+      }
+
+      // Validate dimensions before sending to server
+      const cols = xtermRef.current.cols;
+      const rows = xtermRef.current.rows;
+      if (cols > 0 && cols < 1000 && rows > 0 && rows < 1000) {
+        // Send resize to server if connected
+        if (currentSessionIdRef.current && wsRef.current?.isConnected()) {
+          wsRef.current.send({
+            type: 'resize',
+            sessionId: currentSessionIdRef.current,
+            cols,
+            rows,
+          });
+        }
+      } else if (debug) {
+        console.warn('[Terminal] Invalid dimensions after fit', { cols, rows });
+      }
+    } catch (error) {
+      if (debug) {
+        console.error('[Terminal] Fit error:', error);
+      }
+    }
+  }, [debug]);
+
+  // Debounced fit function for resize events
+  const debouncedFit = useCallback(() => {
+    if (resizeDebounceRef.current) {
+      clearTimeout(resizeDebounceRef.current);
+    }
+    
+    resizeDebounceRef.current = setTimeout(() => {
+      performFit();
+    }, 100);
+  }, [performFit]);
+
+  // Expose fit method via ref
+  useImperativeHandle(ref, () => ({
+    fit: performFit,
+  }), [performFit]);
+
   useEffect(() => {
     if (!terminalRef.current) return;
 
+    // Build theme object with defaults
+    const termTheme = {
+      background: theme?.background || '#000000',
+      foreground: theme?.foreground || '#ffffff',
+      cursor: theme?.cursor || '#ffffff',
+      cursorAccent: theme?.cursorAccent || '#000000',
+      ...(theme?.selection && { selection: theme.selection }),
+      ...(theme?.black && { black: theme.black }),
+      ...(theme?.red && { red: theme.red }),
+      ...(theme?.green && { green: theme.green }),
+      ...(theme?.yellow && { yellow: theme.yellow }),
+      ...(theme?.blue && { blue: theme.blue }),
+      ...(theme?.magenta && { magenta: theme.magenta }),
+      ...(theme?.cyan && { cyan: theme.cyan }),
+      ...(theme?.white && { white: theme.white }),
+      ...(theme?.brightBlack && { brightBlack: theme.brightBlack }),
+      ...(theme?.brightRed && { brightRed: theme.brightRed }),
+      ...(theme?.brightGreen && { brightGreen: theme.brightGreen }),
+      ...(theme?.brightYellow && { brightYellow: theme.brightYellow }),
+      ...(theme?.brightBlue && { brightBlue: theme.brightBlue }),
+      ...(theme?.brightMagenta && { brightMagenta: theme.brightMagenta }),
+      ...(theme?.brightCyan && { brightCyan: theme.brightCyan }),
+      ...(theme?.brightWhite && { brightWhite: theme.brightWhite }),
+    };
+
     // Initialize xterm.js
     const term = new XTerm({
-      cursorBlink: true,
-      cursorStyle: 'block',
+      cursorBlink: cursorBlink,
+      cursorStyle: cursorStyle,
       cursorInactiveStyle: 'none',
-      fontSize: 14,
-      fontFamily: 'Consolas, Monaco, monospace',
+      fontSize: fontSize,
+      fontFamily: fontFamily,
       lineHeight: 1.0,
-      theme: {
-        background: '#000000',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        cursorAccent: '#000000',
-      },
-      scrollback: 10000,
+      theme: termTheme,
+      scrollback: scrollback,
       convertEol: true,
       allowProposedApi: true,
       padding: padding,
@@ -185,13 +341,32 @@ export const Terminal: React.FC<TerminalProps> = ({
     // Open terminal
     term.open(terminalRef.current);
     
-    // Fit terminal after a small delay to ensure proper sizing
-    setTimeout(() => {
-      fitAddon.fit();
-    }, 0);
-
+    // Store refs immediately so they're available for fit function
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
+    
+    // Wait for layout to stabilize before initial fit with retry mechanism
+    const attemptInitialFit = (retries = 5) => {
+      if (retries === 0) {
+        if (debug) {
+          console.error('[Terminal] Failed to fit after 5 retries');
+        }
+        return;
+      }
+      
+      const container = containerRef.current;
+      if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+        requestAnimationFrame(() => attemptInitialFit(retries - 1));
+        return;
+      }
+      
+      if (debug) {
+        console.log('[Terminal] Performing initial fit after layout');
+      }
+      performFit();
+    };
+    
+    requestAnimationFrame(() => attemptInitialFit());
 
     // Initialize WebSocket
     const ws = new WebSocketService();
@@ -302,44 +477,72 @@ export const Terminal: React.FC<TerminalProps> = ({
     }
 
     // Handle right-click paste (desktop only)
+    let contextMenuHandler: ((e: Event) => void) | null = null;
     if (!isMobile && terminalRef.current) {
-      terminalRef.current.addEventListener('contextmenu', (e) => {
+      contextMenuHandler = (e: Event) => {
         e.preventDefault();
         handlePaste();
-      });
+      };
+      terminalRef.current.addEventListener('contextmenu', contextMenuHandler);
     }
 
-    // Handle resize with debounce
-    let resizeTimeout: NodeJS.Timeout;
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (fitAddon) {
-          fitAddon.fit();
-          if (currentSessionIdRef.current && ws.isConnected()) {
-            ws.send({
-              type: 'resize',
-              sessionId: currentSessionIdRef.current,
-              cols: term.cols,
-              rows: term.rows,
-            });
+    // Set up ResizeObserver for container-based resizing
+    if (containerRef.current) {
+      resizeObserverRef.current = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.target === containerRef.current) {
+            if (debug) {
+              console.log('[Terminal] ResizeObserver detected size change', {
+                width: entry.contentRect.width,
+                height: entry.contentRect.height,
+              });
+            }
+            debouncedFit();
           }
         }
-      }, 100);
-    };
-
-    window.addEventListener('resize', handleResize);
+      });
+      
+      resizeObserverRef.current.observe(containerRef.current);
+    }
     
-    // Initial resize after mount
-    setTimeout(handleResize, 100);
+    // Also listen to window resize as fallback
+    const handleWindowResize = () => {
+      if (debug) {
+        console.log('[Terminal] Window resize detected');
+      }
+      debouncedFit();
+    };
+    
+    window.addEventListener('resize', handleWindowResize);
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (resizeDebounceRef.current) {
+        clearTimeout(resizeDebounceRef.current);
+      }
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+      window.removeEventListener('resize', handleWindowResize);
+      
+      // Remove context menu handler if it was added
+      if (contextMenuHandler && terminalRef.current) {
+        terminalRef.current.removeEventListener('contextmenu', contextMenuHandler);
+      }
+      
+      // Remove all WebSocket event listeners
+      ws.off('output', handleTerminalMessage);
+      ws.off('created', handleTerminalMessage);
+      ws.off('connect', handleTerminalMessage);
+      ws.off('resize', handleTerminalMessage);
+      ws.off('error', handleTerminalMessage);
+      ws.off('bell', handleTerminalMessage);
+      ws.off('exit', handleTerminalMessage);
+      
       term.dispose();
       ws.disconnect();
     };
-  }, [isMobile]); // Include isMobile in deps
+  }, [isMobile, debug, performFit, debouncedFit, fontSize, fontFamily, theme, cursorStyle, cursorBlink, scrollback, padding, handlePaste]); // Include all dependencies
 
   // Handle session changes after initial mount
   useEffect(() => {
@@ -387,7 +590,16 @@ export const Terminal: React.FC<TerminalProps> = ({
           Disconnected
         </div>
       )}
-      <div ref={terminalRef} className="terminal-container" />
+      <div 
+        ref={terminalRef} 
+        className="terminal-container" 
+        style={{
+          paddingLeft: typeof padding === 'number' ? padding : padding.left || 0,
+          paddingRight: typeof padding === 'number' ? padding : padding.right || 0,
+          paddingTop: typeof padding === 'number' ? padding : padding.top || 0,
+          paddingBottom: typeof padding === 'number' ? padding : padding.bottom || 0,
+        }}
+      />
       
       {/* Mobile-specific UI */}
       {isMobile && (
@@ -422,4 +634,6 @@ export const Terminal: React.FC<TerminalProps> = ({
       )}
     </div>
   );
-};
+});
+
+Terminal.displayName = 'Terminal';

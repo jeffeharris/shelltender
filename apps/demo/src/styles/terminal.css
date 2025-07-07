@@ -3,7 +3,7 @@
   height: 100%;
   width: 100%;
   background-color: #000000;
-  padding: 4px;
+  /* Padding is now controlled via the padding prop in Terminal component */
   box-sizing: border-box;
 }
 

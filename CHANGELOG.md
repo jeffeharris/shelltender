@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Robust resize handling for Terminal component
+  - ResizeObserver-based detection for flexbox containers
+  - Imperative API via ref for manual terminal fitting (`terminalRef.current?.fit()`)
+  - Retry mechanism for initial fit (up to 5 attempts)
+  - Debug prop for troubleshooting resize issues
+  - Configurable padding via prop instead of hardcoded CSS
+- Additional Terminal customization props
+  - `fontSize` - Terminal font size (default: 14)
+  - `fontFamily` - Terminal font family (default: 'Consolas, Monaco, monospace')
+  - `theme` - Comprehensive theme object for colors
+  - `cursorStyle` - Cursor style: 'block' | 'underline' | 'bar' (default: 'block')
+  - `cursorBlink` - Enable/disable cursor blinking (default: true)
+  - `scrollback` - Number of scrollback lines (default: 10000)
+- TerminalHandle TypeScript type export for ref usage
+- Comprehensive test coverage for resize functionality
+- Documentation for terminal resize behavior
+
+### Fixed
+- Terminal resize issues with flexbox containers
+- CSS padding conflicts (removed hardcoded 4px padding)
+- Memory leaks in resize event handlers
+- WebSocket event listener cleanup on unmount
+- Context menu event listener cleanup
+- Clipboard API error handling
+- Dimension validation before sending resize to server
+
+### Changed
+- Terminal component now uses forwardRef for imperative API
+- Moved from window resize events to ResizeObserver as primary resize detection
+- Improved error handling throughout Terminal component
+- Enhanced initial fit timing with proper layout detection
+
 ## [0.3.0] - 2025-06-30
 
 ### Added

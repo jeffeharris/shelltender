@@ -96,6 +96,11 @@ npm run dev
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 - **Modular Architecture**: Use only the parts you need
 - **Custom Session IDs**: Create sessions with predictable identifiers (v0.2.4+)
+- **🎯 Robust Resize Handling**: 
+  - ResizeObserver-based detection for flexbox containers
+  - Imperative API for manual terminal fitting
+  - Configurable padding without CSS conflicts
+  - Debug mode for troubleshooting resize issues
 
 ## 🆕 What's New in v0.2.4
 
@@ -114,6 +119,7 @@ npm run dev
 - [Release Guide](RELEASE_GUIDE.md) - How to create and publish releases
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
+- [Terminal Resize Behavior](docs/terminal-resize.md) - Flexbox-aware resize handling
 - [Mobile Support Plan](docs/MOBILE_SUPPORT_PLAN.md) - Complete mobile implementation roadmap
 - [Mobile Implementation Guide](docs/MOBILE_IMPLEMENTATION_GUIDE.md) - Detailed implementation instructions
 - [Mobile Custom Keys](docs/MOBILE_CUSTOM_KEYS.md) - Virtual keyboard customization
