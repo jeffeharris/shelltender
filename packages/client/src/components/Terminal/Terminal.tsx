@@ -17,13 +17,15 @@ interface TerminalProps {
   onSessionCreated?: (sessionId: string) => void;
   onSessionChange?: (direction: 'next' | 'prev') => void;
   onShowVirtualKeyboard?: () => void;
+  padding?: number | { left?: number; right?: number; top?: number; bottom?: number };
 }
 
 export const Terminal: React.FC<TerminalProps> = ({ 
   sessionId, 
   onSessionCreated,
   onSessionChange,
-  onShowVirtualKeyboard 
+  onShowVirtualKeyboard,
+  padding = { left: 8, right: 0, top: 0, bottom: 0 }
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -166,6 +168,7 @@ export const Terminal: React.FC<TerminalProps> = ({
       scrollback: 10000,
       convertEol: true,
       allowProposedApi: true,
+      padding: padding,
     });
 
     // Add addons
