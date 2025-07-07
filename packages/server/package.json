@@ -43,7 +43,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "rm -f tsconfig.tsbuildinfo && tsup && tsc --emitDeclarationOnly",
+    "build:js": "tsup --no-dts",
+    "build:types": "rm -f tsconfig.tsbuildinfo && tsc --emitDeclarationOnly",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"

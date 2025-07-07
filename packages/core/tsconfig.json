@@ -11,7 +11,8 @@
     "moduleResolution": "bundler",
     "target": "ES2020",
     "allowImportingTsExtensions": false,
-    "noEmit": false
+    "noEmit": false,
+    "allowJs": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
