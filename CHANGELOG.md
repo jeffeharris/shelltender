@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-07-07
+
 ### Added
 - Robust resize handling for Terminal component
   - ResizeObserver-based detection for flexbox containers
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Live preview with interactive controls
   - Predefined themes (Default, VS Code, Monokai)
   - Code generation for configuration
+- Centralized CSS design system for mobile components
+- Enhanced mobile virtual keyboard with modular architecture
 - Comprehensive test coverage for all new features
 - Updated documentation with configuration examples
 
@@ -41,12 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context menu event listener cleanup
 - Clipboard API error handling
 - Dimension validation before sending resize to server
+- TypeScript build issues across all packages
+- React act() warnings in tests
 
 ### Changed
 - Terminal component now uses forwardRef for imperative API
 - Moved from window resize events to ResizeObserver as primary resize detection
 - Improved error handling throughout Terminal component
 - Enhanced initial fit timing with proper layout detection
+- Refactored mobile support with improved architecture
+- Modularized useTouchGestures hook for better maintainability
+- Improved development environment and build configuration
 
 ## [0.3.0] - 2025-06-30
 
