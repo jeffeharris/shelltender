@@ -324,7 +324,6 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
       scrollback: scrollback,
       convertEol: true,
       allowProposedApi: true,
-      padding: padding,
     });
 
     // Add addons

@@ -3,8 +3,9 @@ import App from './App';
 import { EventSystemDemo } from './components/EventSystemDemo';
 import { ClaudeAgentDemo } from './components/ClaudeAgentDemo';
 import { DiagnosticPanel } from './components/DiagnosticPanel';
+import { TerminalCustomization } from './components/TerminalCustomization';
 
-type DemoMode = 'terminal' | 'events' | 'claude' | 'mobile' | 'diagnostics';
+type DemoMode = 'terminal' | 'events' | 'claude' | 'mobile' | 'diagnostics' | 'customization';
 
 export function AppRouter() {
   const [mode, setMode] = useState<DemoMode>('terminal');
@@ -13,7 +14,7 @@ export function AppRouter() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedMode = params.get('mode') as DemoMode;
-    if (requestedMode && ['terminal', 'events', 'claude', 'mobile', 'diagnostics'].includes(requestedMode)) {
+    if (requestedMode && ['terminal', 'events', 'claude', 'mobile', 'diagnostics', 'customization'].includes(requestedMode)) {
       setMode(requestedMode);
     }
   }, []);
@@ -75,6 +76,16 @@ export function AppRouter() {
             >
               Diagnostics
             </button>
+            <button
+              onClick={() => setMode('customization')}
+              className={`px-3 py-1 text-sm rounded ${
+                mode === 'customization' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              Customization
+            </button>
           </div>
           <div className="ml-auto text-xs text-gray-500">
             Tip: Use ?mode=terminal, ?mode=events, ?mode=claude, etc. in URL
@@ -96,6 +107,7 @@ export function AppRouter() {
             </div>
           </div>
         )}
+        {mode === 'customization' && <TerminalCustomization />}
       </div>
     </div>
   );

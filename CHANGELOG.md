@@ -14,16 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Retry mechanism for initial fit (up to 5 attempts)
   - Debug prop for troubleshooting resize issues
   - Configurable padding via prop instead of hardcoded CSS
-- Additional Terminal customization props
+- Comprehensive Terminal customization options
+  - `padding` - Configurable terminal padding (number or per-side object)
   - `fontSize` - Terminal font size (default: 14)
   - `fontFamily` - Terminal font family (default: 'Consolas, Monaco, monospace')
-  - `theme` - Comprehensive theme object for colors
+  - `theme` - Full theme customization with TerminalTheme interface
+    - Basic colors: background, foreground, cursor, cursorAccent, selection
+    - ANSI colors: black, red, green, yellow, blue, magenta, cyan, white
+    - Bright ANSI colors: brightBlack, brightRed, etc.
   - `cursorStyle` - Cursor style: 'block' | 'underline' | 'bar' (default: 'block')
   - `cursorBlink` - Enable/disable cursor blinking (default: true)
   - `scrollback` - Number of scrollback lines (default: 10000)
-- TerminalHandle TypeScript type export for ref usage
-- Comprehensive test coverage for resize functionality
-- Documentation for terminal resize behavior
+- TerminalHandle and TerminalTheme TypeScript exports
+- Terminal Customization demo page showcasing all configuration options
+  - Live preview with interactive controls
+  - Predefined themes (Default, VS Code, Monokai)
+  - Code generation for configuration
+- Comprehensive test coverage for all new features
+- Updated documentation with configuration examples
 
 ### Fixed
 - Terminal resize issues with flexbox containers
