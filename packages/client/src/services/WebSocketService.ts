@@ -25,7 +25,7 @@ export class WebSocketService {
     } else {
       const protocol = config.protocol || (window.location.protocol === 'https:' ? 'wss' : 'ws');
       const host = window.location.hostname;
-      const port = config.port || '8081';
+      const port = config.port || '8080';
       this.url = `${protocol}://${host}:${port}`;
     }
   }

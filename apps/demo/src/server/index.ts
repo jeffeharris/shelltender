@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 // Parse command line arguments
 const argv = minimist(process.argv.slice(2), {
   default: {
-    'ws-port': parseInt(process.env.WS_PORT || '8081'),
+    'ws-port': parseInt(process.env.WS_PORT || '8080'),
     'port': parseInt(process.env.PORT || '3000')
   }
 });
@@ -123,7 +123,7 @@ server.listen(httpPort, '0.0.0.0', () => {
   console.log(`WebSocket server listening on 0.0.0.0:${wsPort}`);
   console.log(`\nUsage: tsx src/server/index.ts [options]`);
   console.log(`  --port <port>     HTTP server port (default: 3000)`);
-  console.log(`  --ws-port <port>  WebSocket server port (default: 8081)`);
+  console.log(`  --ws-port <port>  WebSocket server port (default: 8080)`);
   console.log(`\nPipeline Configuration:`);
   console.log(`  Processors: ${pipeline.getProcessorNames().join(', ')}`);
   console.log(`  Filters: ${pipeline.getFilterNames().join(', ')}`);

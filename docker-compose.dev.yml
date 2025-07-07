@@ -1,29 +1,33 @@
 # Simplified development Docker Compose
-version: '3.8'
-
+# Use .env.development by default, or .env if it exists
+# Docker Compose will automatically load .env file if present
 services:
   shelltender:
     build:
       context: .
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"    # Backend API
-      - "8080:8080"    # WebSocket
-      - "5173:5173"    # Vite dev server
+      - "${PORT:-3000}:${PORT:-3000}"           # Backend API
+      - "${WS_PORT:-8080}:${WS_PORT:-8080}"     # WebSocket
+      - "${VITE_PORT:-5173}:${VITE_PORT:-5173}" # Vite dev server
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
+      - PORT=${PORT:-3000}
+      - WS_PORT=${WS_PORT:-8080}
+      - VITE_PORT=${VITE_PORT:-5173}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8080}
     volumes:
-      # Mount source for hot reload
-      - ./packages:/app/packages
-      - ./apps:/app/apps
-      # Named volumes for node_modules
-      - node_modules:/app/node_modules
-      - demo_node_modules:/app/apps/demo/node_modules
+      # Mount entire app but exclude node_modules
+      - .:/app
+      - /app/node_modules
+      - /app/apps/demo/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/server/node_modules
+      - /app/packages/client/node_modules
+      - /app/packages/shelltender/node_modules
     working_dir: /app/apps/demo
     command: npm run dev
     stdin_open: true
     tty: true
-
-volumes:
-  node_modules:
-  demo_node_modules:

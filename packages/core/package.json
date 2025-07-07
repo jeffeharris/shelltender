@@ -37,7 +37,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --emitDeclarationOnly",
+    "build:js": "tsup --no-dts",
+    "build:types": "tsc --emitDeclarationOnly",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"

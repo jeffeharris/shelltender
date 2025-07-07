@@ -1,0 +1,41 @@
+# Docker Compose Override Example
+# 
+# Docker Compose automatically loads docker-compose.override.yml if it exists.
+# Copy this file to docker-compose.override.yml to customize your local setup
+# without modifying the main docker-compose files.
+#
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # Edit as needed
+#   docker-compose -f docker-compose.dev.yml up
+#
+# The override file will be automatically merged with docker-compose.dev.yml
+
+services:
+  shelltender:
+    # Example: Use different ports
+    ports:
+      - "3001:3000"    # Backend API
+      - "8082:8080"    # WebSocket  
+      - "5174:5173"    # Vite dev server
+    
+    # Example: Add environment variables
+    environment:
+      - DEBUG=shelltender:*
+      - LOG_LEVEL=verbose
+    
+    # Example: Mount additional volumes
+    volumes:
+      - ./my-scripts:/app/scripts
+      - ./my-configs:/app/configs
+    
+    # Example: Change the command
+    # command: npm run dev:debug
+    
+    # Example: Add health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

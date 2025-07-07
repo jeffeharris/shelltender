@@ -191,3 +191,73 @@ shelltender/
 │   └── demo/                  # Demo application
 └── docs/                      # Documentation
 ```
+
+## 🐳 Docker Development
+
+Shelltender includes a comprehensive Docker development environment that handles all dependencies and configuration.
+
+### Quick Start
+
+1. **Copy the environment template:**
+   ```bash
+   cp .env.example .env
+   # Edit .env if you need custom ports
+   ```
+
+2. **Start the development environment:**
+   ```bash
+   docker-compose -f docker-compose.dev.yml up
+   ```
+
+3. **Access the application:**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:3000
+   - WebSocket: ws://localhost:8080
+
+### Features
+
+- ✅ Hot-reloading for both frontend and backend
+- ✅ Pre-installed AI coding assistants (Claude, OpenAI, Gemini CLIs)
+- ✅ All dependencies handled automatically
+- ✅ Persistent sessions stored in Docker volumes
+- ✅ No need to install Node.js or other dependencies locally
+
+### Custom Port Configuration
+
+If the default ports conflict with other services, create a `.env` file:
+
+```env
+# Override default ports
+PORT=3001
+WS_PORT=8082
+VITE_PORT=5174
+
+# Update frontend URLs to match
+VITE_WS_URL=ws://localhost:8082
+VITE_API_URL=http://localhost:3001
+```
+
+### Docker Commands
+
+```bash
+# Start in background
+docker-compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f
+
+# Restart after code changes (if needed)
+docker-compose -f docker-compose.dev.yml restart
+
+# Stop the environment
+docker-compose -f docker-compose.dev.yml down
+
+# Rebuild after dependency changes
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+### Troubleshooting
+
+- **Port conflicts:** Check `.env.example` for port configuration options
+- **Permission errors:** The dev container runs as root to avoid permission issues
+- **Can't connect:** Ensure Docker is running and ports aren't blocked by firewall

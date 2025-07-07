@@ -14,5 +14,8 @@ tsconfig.tsbuildinfo
 .env.production
 .env.*.local
 
+# Docker overrides
+docker-compose.override.yml
+
 # AI Assistant auth
 .claude/
