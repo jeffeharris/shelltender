@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-07-08
+
 ### Added
 - Terminal component now exposes `focus()` method via ref for programmatic focus control
   - Enables proper focus management when switching between hidden/shown terminals
