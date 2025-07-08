@@ -2,7 +2,7 @@
 
 ## Problem
 
-In Vite dev mode, the Terminal component's `ref` might not work due to Vite's dependency pre-bundling stripping the `forwardRef` wrapper.
+The Terminal component's `ref` might not work due to bundler optimizations. This is a known issue with esbuild (used by Vite and tsup) not preserving React's `forwardRef` wrapper during bundling.
 
 ## Symptoms
 
@@ -44,6 +44,10 @@ Vite's dependency pre-bundling optimizes React components by:
 
 This can strip React's `forwardRef` wrapper, making the component lose its ref forwarding capability.
 
-## Fixed in v0.4.4
+## Fixed in v0.4.5
 
-Version 0.4.4 uses a bundler-resistant pattern to preserve `forwardRef`.
+Version 0.4.5 adds `@__PURE__` annotation to preserve `forwardRef` during bundling.
+
+## Technical Details
+
+This is a known esbuild issue (https://github.com/evanw/esbuild/issues/2749) where `React.forwardRef` is not automatically annotated as side-effect-free, preventing proper tree-shaking and sometimes causing the forwardRef wrapper to be optimized away.

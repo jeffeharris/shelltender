@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2025-07-08
+
+### Fixed
+- Terminal forwardRef now properly preserved during bundling with `@__PURE__` annotation
+  - Fixes issue where Terminal ref callback was never called in bundled environments
+  - Addresses known esbuild limitation with React.forwardRef optimization
+  - No API changes - purely a build fix
+
 ## [0.4.4] - 2025-07-08
 
 ### Fixed
