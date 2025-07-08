@@ -56,10 +56,10 @@ Then determine where to resume based on:
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.4.3
-- Last release fixed WebSocketService relative URL handling for proxy support
+- Current version: 0.4.4
+- Last release fixed Terminal ref now works correctly in Vite and bundled environments
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.4.3 release documented
+- The CHANGELOG.md has the v0.4.4 release documented
 
 To check if a release has already been created:
 ```bash
