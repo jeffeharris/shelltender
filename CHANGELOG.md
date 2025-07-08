@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- WebSocketService now properly handles relative URLs (e.g., `/shelltender-ws`) by constructing full WebSocket URLs
+  - Relative paths are converted to full ws:// or wss:// URLs based on current protocol
+  - Enables proper proxy configuration in development environments
+
 ## [0.4.2] - 2025-07-08
 
 ### Fixed

@@ -21,7 +21,14 @@ export class WebSocketService {
 
   constructor(config: WebSocketServiceConfig = {}) {
     if (config.url) {
-      this.url = config.url;
+      // Handle relative URLs by constructing full WebSocket URL
+      if (config.url.startsWith('/')) {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const host = window.location.host; // includes port if present
+        this.url = `${protocol}://${host}${config.url}`;
+      } else {
+        this.url = config.url;
+      }
     } else {
       const protocol = config.protocol || (window.location.protocol === 'https:' ? 'wss' : 'ws');
       const host = window.location.hostname;

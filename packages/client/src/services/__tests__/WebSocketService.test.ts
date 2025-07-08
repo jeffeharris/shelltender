@@ -85,6 +85,41 @@ describe('WebSocketService', () => {
       expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8081');
     });
 
+    it('should handle relative URLs by constructing full WebSocket URL', () => {
+      // Mock window.location
+      const originalLocation = window.location;
+      delete (window as any).location;
+      (window as any).location = {
+        protocol: 'http:',
+        host: 'localhost:3000'
+      };
+      
+      const service = new WebSocketService({ url: '/shelltender-ws' });
+      service.connect();
+      mockWebSocket = (service as any).ws as MockWebSocket;
+      
+      expect(mockWebSocket.url).toBe('ws://localhost:3000/shelltender-ws');
+      
+      // Test with HTTPS
+      (window as any).location.protocol = 'https:';
+      const httpsService = new WebSocketService({ url: '/ws-secure' });
+      httpsService.connect();
+      const httpsWs = (httpsService as any).ws as MockWebSocket;
+      
+      expect(httpsWs.url).toBe('wss://localhost:3000/ws-secure');
+      
+      // Restore location
+      (window as any).location = originalLocation;
+    });
+
+    it('should use full URLs as-is', () => {
+      const service = new WebSocketService({ url: 'ws://custom.example.com:9999/ws' });
+      service.connect();
+      mockWebSocket = (service as any).ws as MockWebSocket;
+      
+      expect(mockWebSocket.url).toBe('ws://custom.example.com:9999/ws');
+    });
+
     it('should call onConnect handler when connected', () => {
       const onConnectHandler = vi.fn();
       service.onConnect(onConnectHandler);
