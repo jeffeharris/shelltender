@@ -8,6 +8,20 @@ React components and hooks for building web-based terminal interfaces with Shell
 npm install @shelltender/client
 ```
 
+### Vite Configuration
+
+If using Vite and experiencing issues with Terminal ref not working, add this to your `vite.config.ts`:
+
+```typescript
+export default defineConfig({
+  optimizeDeps: {
+    exclude: ['@shelltender/client']
+  }
+})
+```
+
+This prevents Vite from pre-bundling the library which can sometimes strip React's forwardRef wrapper.
+
 Note: This package has peer dependencies on React 18+ and React DOM 18+.
 
 ## Quick Start
@@ -112,6 +126,34 @@ const theme: TerminalTheme = {
 />
 ```
 
+#### Using the Ref API
+
+The Terminal component exposes imperative methods via ref:
+
+```tsx
+import { useRef } from 'react';
+import { Terminal, TerminalHandle } from '@shelltender/client';
+
+function MyComponent() {
+  const terminalRef = useRef<TerminalHandle>(null);
+
+  const handleFocus = () => {
+    terminalRef.current?.focus(); // Focus the terminal
+  };
+
+  const handleResize = () => {
+    terminalRef.current?.fit(); // Manually fit terminal to container
+  };
+
+  return (
+    <Terminal
+      ref={terminalRef}
+      sessionId="session-123"
+    />
+  );
+}
+```
+
 #### Props
 - `sessionId?: string` - ID of existing session to connect to (creates new if empty/undefined)
 - `onSessionCreated?: (sessionId: string) => void` - Called when a new session is created
@@ -164,7 +206,7 @@ interface TerminalTheme {
 - Web links addon for clickable URLs
 - Unicode support
 - Connection status indicator
-- Ref-based API for manual control (fit method)
+- Ref-based API for manual control (focus and fit methods)
 
 ### SessionTabs
 

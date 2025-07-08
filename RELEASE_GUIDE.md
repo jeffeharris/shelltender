@@ -2,6 +2,16 @@
 
 This guide provides exact instructions for Claude to execute release procedures autonomously. Every decision point has explicit criteria.
 
+## Pre-Flight Release Summary
+
+Before starting, Claude should output:
+- Current version: X.Y.Z  
+- Proposed new version: X.Y.Z (with reasoning)
+- Branch: main/dev/etc
+- Key changes being released (bullet points)
+- Estimated time: ~10-15 minutes
+- Any known issues that might affect the release
+
 ## Pre-Release Environment Check
 
 Before starting any release, Claude should verify:
@@ -25,18 +35,56 @@ ls -la packages/  # Should show core, server, client, shelltender directories
 
 If any check fails, resolve before proceeding.
 
+## State Recovery for Interrupted Releases
+
+If a release is interrupted, Claude should first check:
+```bash
+# Quick state check
+echo "=== RELEASE STATE CHECK ==="
+echo "Last commit: $(git log -1 --oneline)"
+echo "Current version: $(grep '"version"' packages/core/package.json)"
+echo "NPM published: $(npm view @shelltender/core version)"
+echo "Last tag: $(git describe --tags --abbrev=0)"
+echo "Uncommitted changes: $(git status --porcelain | wc -l)"
+```
+
+Then determine where to resume based on:
+- If version in package.json > npm → Resume at Step 8 (npm publish)
+- If tag exists but not pushed → Resume at Step 7 (push tag)
+- If changes uncommitted → Resume at Step 6 (commit)
+
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.4.2
-- Last release fixed critical WebSocket configuration bug in Terminal component
+- Current version: 0.4.3
+- Last release fixed WebSocketService relative URL handling for proxy support
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.4.2 release documented
+- The CHANGELOG.md has the v0.4.3 release documented
 
 To check if a release has already been created:
 ```bash
 git tag -l "v*" | tail -5  # Show last 5 version tags
 ```
+
+## Common Release Scenarios
+
+### Hotfix Release (like v0.4.3)
+- Usually just a PATCH bump
+- Minimal changes (1-2 commits)
+- Can be released from dev branch
+- Typical time: 5-10 minutes
+
+### Feature Release
+- Usually MINOR bump
+- Multiple features/fixes
+- Should be from main branch
+- Typical time: 10-15 minutes
+
+### Major Release
+- MAJOR bump (breaking changes)
+- Requires extra user confirmation
+- Must list all breaking changes
+- Typical time: 15-20 minutes
 
 ## Claude Tool Usage Pattern
 
@@ -82,7 +130,7 @@ Execute this release using these specific tool patterns:
    # Git status checks across different aspects
    ```
 
-4. **State tracking** - Initialize and maintain throughout:
+5. **State tracking** - Initialize and maintain throughout:
    ```typescript
    // Claude: Initialize these at the start
    const releaseState = {
@@ -121,6 +169,35 @@ Execute this release using these specific tool patterns:
    // Claude should maintain these variables throughout the release
    // Update TodoWrite with current state after each step
    ```
+
+## Optimized Parallel Operations
+
+Claude should run these groups in parallel:
+
+### Group 1 - Initial Checks:
+```bash
+pwd
+git branch --show-current
+git status --short
+git fetch origin
+git status -uno
+ls -la packages/
+```
+
+### Group 2 - Version Verification:
+```bash
+grep '"version"' packages/core/package.json
+git tag -l "v*" | tail -5
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+```
+
+### Group 3 - NPM Checks:
+```bash
+npm view @shelltender/core version
+npm view @shelltender/server version
+npm view @shelltender/client version
+npm view shelltender version
+```
 
 ## Claude Must NEVER
 
@@ -275,6 +352,9 @@ If tests fail, evaluate their severity:
 - Data corruption or loss scenarios
 - Package export test failures affecting runtime
 - Core functionality test failures (SessionManager, BufferManager, WebSocket)
+- Any test failure containing "WebSocketService"
+- Core functionality tests in server package
+- Build failures in main packages (not demo)
 
 **⚠️ Non-Critical Failures (PROCEED WITH CAUTION):**
 - React `act()` warnings in tests
@@ -284,6 +364,27 @@ If tests fail, evaluate their severity:
 - Minor styling test failures
 - Mobile/Touch test failures (generally non-critical)
 - SessionManager UI test failures (non-critical if only display-related)
+- `SessionTabs.test.tsx` - CSS class mismatches
+- `SessionManager.test.tsx` - Display-only failures (e.g., "Unable to find element")
+- `exports.test.ts` - Package configuration tests
+- Any test with "act()" warnings
+- Demo app TypeScript errors (apps/demo)
+
+## Known Test Failure Patterns
+
+Add these specific patterns that Claude has encountered:
+
+### Always Non-Critical:
+- `SessionTabs.test.tsx` - CSS class mismatches
+- `SessionManager.test.tsx` - Display-only failures (e.g., "Unable to find element")
+- `exports.test.ts` - Package configuration tests
+- Any test with "act()" warnings
+- Demo app TypeScript errors (apps/demo)
+
+### Always Critical:
+- Any test failure containing "WebSocketService"
+- Core functionality tests in server package
+- Build failures in main packages (not demo)
 
 ## Common Issues and Recovery
 
@@ -355,6 +456,25 @@ const analyzeTestFailures = (output) => {
 | Security vulnerability (any) | 🛑 Stop - Report exact vulnerability |
 | License compatibility | 🛑 Stop - Report exact license conflict |
 | Missing dependencies | 🛑 Stop - Cannot proceed without deps |
+
+## Quick Recovery Commands
+
+For common issues Claude encounters:
+
+### NPM 409 Error (Version Already Exists)
+```bash
+# Quick fix - bump patch version
+CURRENT=$(grep '"version"' packages/core/package.json | cut -d'"' -f4)
+NEW=$(echo $CURRENT | awk -F. '{print $1"."$2"."$3+1}')
+echo "Bumping from $CURRENT to $NEW"
+# Then re-run Step 3
+```
+
+### Build Failures in Demo App
+```bash
+# If only demo app fails, continue with:
+npm run build --workspaces --if-present -- --ignore-scripts
+```
 
 ## Step 3: Update Version Numbers
 
@@ -609,6 +729,36 @@ gh release create "v$VERSION" \
 rm release_notes.md
 ```
 
+## GitHub Release Notes Template
+
+For consistency, use this structure:
+
+### For Hotfixes:
+```
+### Fixed
+- [Primary fix description]
+  - [Technical detail 1]
+  - [Technical detail 2]
+
+This hotfix ensures [user-facing benefit].
+```
+
+### For Feature Releases:
+```
+### Added
+- [Feature 1]
+- [Feature 2]
+
+### Fixed
+- [Fix 1]
+- [Fix 2]
+
+### Changed
+- [Change 1]
+
+See CHANGELOG.md for full details.
+```
+
 **Alternative: Manual release notes**
 ```bash
 # If automatic extraction fails, create manually
@@ -637,7 +787,112 @@ cd packages/server
 npx tsx examples/minimal-integration.ts
 ```
 
+## Success Checkpoints
+
+Claude should look for these indicators at each step:
+
+- Step 1: ✓ Version numbers match across package.json files
+- Step 2: ✓ Main packages build (ignore demo app)
+- Step 3: ✓ All 4 package.json files updated
+- Step 4: ✓ CHANGELOG has new version section
+- Step 5: ✓ Build completes for core/server/client/shelltender
+- Step 6: ✓ Git commit shows 5 files changed
+- Step 7: ✓ Both pushes succeed (commits and tag)
+- Step 8: ✓ All 4 packages show in npm registry
+- Step 9: ✓ GitHub release URL returned
+- Step 10: ✓ All verifications return new version
+- Step 11: ✓ RELEASE_GUIDE.md updated
+
 ## Step 11: Post-Release Checklist
+
+Complete these final tasks after the release:
+
+```bash
+# Claude: Execute these verification commands
+npm view @shelltender/core version     # Should show X.Y.Z
+npm view @shelltender/server version   # Should show X.Y.Z
+npm view @shelltender/client version   # Should show X.Y.Z
+npm view shelltender version           # Should show X.Y.Z
+
+gh release view vX.Y.Z                 # Should show release details
+git tag -l | grep vX.Y.Z              # Should show the tag
+```
+
+**Claude-Executable Checklist:**
+```typescript
+// Use this exact check sequence
+const postReleaseChecks = {
+  npmPackages: {
+    command: "npm view @shelltender/core version",
+    expected: NEW_VERSION,
+    action: "✅ Confirmed" || "❌ Failed - version mismatch"
+  },
+  githubRelease: {
+    command: "gh release view v" + NEW_VERSION,
+    expected: "shows release",
+    action: "✅ Confirmed" || "❌ Failed - release not found"
+  },
+  gitTag: {
+    command: "git tag -l | grep v" + NEW_VERSION,
+    expected: "v" + NEW_VERSION,
+    action: "✅ Confirmed" || "❌ Failed - tag not found"
+  },
+  guideUpdate: {
+    task: "Update RELEASE_GUIDE.md Current Release Status to " + NEW_VERSION,
+    action: "Use MultiEdit tool"
+  }
+};
+```
+
+## Release Completion Summary
+
+Claude should always end with:
+
+🎉 **Release vX.Y.Z completed successfully!**
+
+✅ All steps completed:
+- Version updated to X.Y.Z in all packages
+- CHANGELOG.md updated with release notes
+- Code committed and tagged as vX.Y.Z
+- All packages published to npm
+- GitHub release created at [URL]
+- Release guide updated
+
+**Published packages:**
+- @shelltender/core@X.Y.Z
+- @shelltender/server@X.Y.Z
+- @shelltender/client@X.Y.Z
+- shelltender@X.Y.Z
+
+[One-line summary of what this release does]
+
+Users can now update with: `npm update shelltender`
+
+**Human-Only Tasks (Claude: Skip these):**
+- ~~Notify teams/users~~
+- ~~Monitor CI/CD~~
+- ~~Social media announcements~~
+
+**Optional: Create announcement**
+```markdown
+# Shelltender vX.Y.Z Released! 🎉
+
+Key changes:
+- [Summary of major fixes/features]
+
+Update with: `npm update shelltender`
+
+Full changelog: [link to release]
+```
+
+## Quick Troubleshooting Tree
+
+If something fails:
+1. Is it a test failure? → Check if it's in the non-critical list
+2. Is it a build failure? → Check if it's just the demo app
+3. Is it an npm error? → Check the specific error code (403/409/etc)
+4. Is it a git error? → Check branch and permissions
+5. Is it a network error? → Retry with exponential backoff
 
 ## Rollback Procedures
 
@@ -695,62 +950,6 @@ If performing a complete rollback:
 - [ ] Delete/edit GitHub release
 - [ ] Document what was rolled back and why
 - [ ] Create new todo list for retry attempt
-
-Complete these final tasks after the release:
-
-```bash
-# Claude: Execute these verification commands
-npm view @shelltender/core version     # Should show X.Y.Z
-npm view @shelltender/server version   # Should show X.Y.Z
-npm view @shelltender/client version   # Should show X.Y.Z
-npm view shelltender version           # Should show X.Y.Z
-
-gh release view vX.Y.Z                 # Should show release details
-git tag -l | grep vX.Y.Z              # Should show the tag
-```
-
-**Claude-Executable Checklist:**
-```typescript
-// Use this exact check sequence
-const postReleaseChecks = {
-  npmPackages: {
-    command: "npm view @shelltender/core version",
-    expected: NEW_VERSION,
-    action: "✅ Confirmed" || "❌ Failed - version mismatch"
-  },
-  githubRelease: {
-    command: "gh release view v" + NEW_VERSION,
-    expected: "shows release",
-    action: "✅ Confirmed" || "❌ Failed - release not found"
-  },
-  gitTag: {
-    command: "git tag -l | grep v" + NEW_VERSION,
-    expected: "v" + NEW_VERSION,
-    action: "✅ Confirmed" || "❌ Failed - tag not found"
-  },
-  guideUpdate: {
-    task: "Update RELEASE_GUIDE.md Current Release Status to " + NEW_VERSION,
-    action: "Use MultiEdit tool"
-  }
-};
-```
-
-**Human-Only Tasks (Claude: Skip these):**
-- ~~Notify teams/users~~
-- ~~Monitor CI/CD~~
-- ~~Social media announcements~~
-
-**Optional: Create announcement**
-```markdown
-# Shelltender vX.Y.Z Released! 🎉
-
-Key changes:
-- [Summary of major fixes/features]
-
-Update with: `npm update shelltender`
-
-Full changelog: [link to release]
-```
 
 ## Claude-Specific Tips
 

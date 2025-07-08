@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2025-07-08
+
+### Fixed
+- Terminal component ref now works correctly in Vite and other bundled environments
+  - Changed export pattern to use `Object.assign()` to prevent bundlers from stripping `forwardRef`
+  - Fixes issue where Terminal ref callback was never called in production builds
+  - Maintains full backward compatibility - no API changes
+
+### Added
+- Documentation explaining Vite optimization issues and workarounds
+- Bundler-resistant pattern for ForwardRef components
+
 ## [0.4.3] - 2025-07-08
 
 ### Fixed

@@ -57,7 +57,7 @@ export interface TerminalHandle {
   focus: () => void;
 }
 
-export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({ 
+const TerminalComponent = ({ 
   sessionId, 
   onSessionCreated,
   onSessionChange,
@@ -70,7 +70,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
   cursorStyle = 'block',
   cursorBlink = true,
   scrollback = 10000
-}, ref) => {
+}: TerminalProps, ref: React.ForwardedRef<TerminalHandle>) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xtermRef = useRef<XTerm | null>(null);
@@ -667,6 +667,11 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
       )}
     </div>
   );
-});
+};
 
-Terminal.displayName = 'Terminal';
+// Export Terminal as a ForwardRef component
+// Using Object.assign to preserve the forwardRef wrapper from bundler optimizations
+export const Terminal = Object.assign(
+  forwardRef<TerminalHandle, TerminalProps>(TerminalComponent),
+  { displayName: 'Terminal' }
+) as React.ForwardRefExoticComponent<TerminalProps & React.RefAttributes<TerminalHandle>>;
