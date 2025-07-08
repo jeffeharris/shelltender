@@ -23,6 +23,7 @@ const mockXTermInstance = {
   onData: vi.fn(),
   attachCustomKeyEventHandler: vi.fn(),
   loadAddon: vi.fn(),
+  focus: vi.fn(),
   unicode: { activeVersion: '11' },
   cols: 80,
   rows: 24,
@@ -343,6 +344,17 @@ describe('Terminal Resize Functionality', () => {
     });
     
     expect(mockFitAddon.fit).toHaveBeenCalled();
+  });
+
+  it('should call focus when manually triggered via ref', () => {
+    const ref = React.createRef<TerminalHandle>();
+    render(<Terminal ref={ref} />);
+    
+    act(() => {
+      ref.current?.focus();
+    });
+    
+    expect(mockXTermInstance.focus).toHaveBeenCalled();
   });
 
   it('should set up ResizeObserver on mount', () => {

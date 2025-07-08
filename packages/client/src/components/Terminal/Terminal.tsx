@@ -53,6 +53,7 @@ interface TerminalProps {
 
 export interface TerminalHandle {
   fit: () => void;
+  focus: () => void;
 }
 
 export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({ 
@@ -279,10 +280,32 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
     }, 100);
   }, [performFit]);
 
-  // Expose fit method via ref
+  // Focus the terminal
+  const performFocus = useCallback(() => {
+    if (!xtermRef.current) {
+      if (debug) {
+        console.log('[Terminal] Focus skipped - terminal not ready');
+      }
+      return;
+    }
+
+    try {
+      xtermRef.current.focus();
+      if (debug) {
+        console.log('[Terminal] Terminal focused');
+      }
+    } catch (error) {
+      if (debug) {
+        console.error('[Terminal] Focus error:', error);
+      }
+    }
+  }, [debug]);
+
+  // Expose fit and focus methods via ref
   useImperativeHandle(ref, () => ({
     fit: performFit,
-  }), [performFit]);
+    focus: performFocus,
+  }), [performFit, performFocus]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
