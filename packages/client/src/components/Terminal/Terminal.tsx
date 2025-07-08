@@ -37,7 +37,7 @@ export interface TerminalTheme {
   brightWhite?: string;
 }
 
-interface TerminalProps {
+export interface TerminalProps {
   sessionId?: string;
   onSessionCreated?: (sessionId: string) => void;
   onSessionChange?: (direction: 'next' | 'prev') => void;
@@ -670,8 +670,6 @@ const TerminalComponent = ({
 };
 
 // Export Terminal as a ForwardRef component
-// Using Object.assign to preserve the forwardRef wrapper from bundler optimizations
-export const Terminal = Object.assign(
-  forwardRef<TerminalHandle, TerminalProps>(TerminalComponent),
-  { displayName: 'Terminal' }
-) as React.ForwardRefExoticComponent<TerminalProps & React.RefAttributes<TerminalHandle>>;
+// Add @__PURE__ annotation to prevent esbuild from stripping forwardRef
+export const Terminal = /* @__PURE__ */ forwardRef<TerminalHandle, TerminalProps>(TerminalComponent);
+Terminal.displayName = 'Terminal';

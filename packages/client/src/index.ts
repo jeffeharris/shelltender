@@ -1,6 +1,7 @@
 // Export components
-export { Terminal } from './components/Terminal/index.js';
-export type { TerminalHandle, TerminalTheme } from './components/Terminal/index.js';
+// Export Terminal directly from source to avoid re-export issues
+export { Terminal } from './components/Terminal/Terminal.js';
+export type { TerminalHandle, TerminalTheme } from './components/Terminal/Terminal.js';
 export { SessionManager } from './components/SessionManager/index.js';
 export { SessionTabs } from './components/SessionTabs/index.js';
 export { SessionList } from './components/SessionList.js';
