@@ -4,9 +4,18 @@ import { Terminal, TerminalHandle } from './Terminal';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { WebSocketService } from '../../services/WebSocketService';
 import React from 'react';
+import { WebSocketProvider } from '../../context/WebSocketContext';
 
 // Mock WebSocket
 vi.mock('../../services/WebSocketService');
+
+// Mock useWebSocket hook
+vi.mock('../../hooks/useWebSocket', () => ({
+  useWebSocket: vi.fn().mockReturnValue({
+    wsService: null,
+    isConnected: false
+  })
+}));
 
 // Mock FitAddon
 const mockFitAddon = {
@@ -473,5 +482,57 @@ describe('Terminal Resize Functionality', () => {
     expect(mockWebSocketService.off).toHaveBeenCalledWith('error', expect.any(Function));
     expect(mockWebSocketService.off).toHaveBeenCalledWith('bell', expect.any(Function));
     expect(mockWebSocketService.off).toHaveBeenCalledWith('exit', expect.any(Function));
+  });
+});
+
+describe('Terminal WebSocket Configuration Fix', () => {
+  it('should use shared WebSocket service from useWebSocket hook', async () => {
+    // Import the actual hook to verify it's being used
+    const { useWebSocket } = await import('../../hooks/useWebSocket');
+    
+    // Create a mock shared service
+    const mockSharedService = {
+      ...mockWebSocketService,
+      isShared: true,  // Marker to identify this is the shared instance
+      isConnected: vi.fn().mockReturnValue(false),
+      onConnect: vi.fn()
+    };
+    
+    // Mock the hook to return our shared service
+    vi.mocked(useWebSocket).mockReturnValue({
+      wsService: mockSharedService,
+      isConnected: false
+    });
+    
+    // Track WebSocketService constructor calls
+    const constructorSpy = vi.fn();
+    vi.mocked(WebSocketService).mockImplementation(constructorSpy);
+    
+    // Need to mock these for Terminal to render
+    global.requestAnimationFrame = ((cb: any) => setTimeout(cb, 0)) as any;
+    global.ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    } as any;
+    
+    try {
+      render(<Terminal />);
+      
+      // The fix: Terminal should NOT create its own WebSocketService
+      expect(constructorSpy).not.toHaveBeenCalled();
+      
+      // It should use the shared service from the hook
+      expect(useWebSocket).toHaveBeenCalled();
+      
+      // And register onConnect handler on the shared service
+      expect(mockSharedService.onConnect).toHaveBeenCalled();
+    } finally {
+      // @ts-ignore
+      delete global.requestAnimationFrame;
+      // @ts-ignore  
+      delete global.ResizeObserver;
+      vi.restoreAllMocks();
+    }
   });
 });

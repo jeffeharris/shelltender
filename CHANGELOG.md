@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2025-07-08
+
+### Fixed
+- **Critical WebSocket configuration bug** - Terminal component now properly uses the shared WebSocket service from `useWebSocket` hook
+  - WebSocketProvider configuration is now respected (custom URLs, ports, protocols)
+  - Terminal no longer creates its own WebSocketService instance
+  - Fixes issue where Terminal would always try to connect to default port 8080
+  - Proper resource sharing - only one WebSocket connection across all components
+  - No breaking changes - existing code continues to work, configuration just works now
+
+### Changed
+- Terminal component now imports and uses `useWebSocket` hook
+- Removed direct WebSocketService instantiation from Terminal
+- Terminal no longer manages WebSocket lifecycle (connect/disconnect)
+
+### Added
+- Test coverage for WebSocket configuration behavior
+- Documentation explaining the fix and proper usage
+
 ## [0.4.1] - 2025-07-08
 
 ### Added

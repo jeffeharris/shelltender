@@ -28,10 +28,10 @@ If any check fails, resolve before proceeding.
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.4.0
-- Last release added Terminal customization options, improved resize handling, and enhanced mobile support
+- Current version: 0.4.1
+- Last release added Terminal focus() method for programmatic focus control
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.4.0 release documented
+- The CHANGELOG.md has the v0.4.1 release documented
 
 To check if a release has already been created:
 ```bash

@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import { WebSocketService } from '../../services/WebSocketService.js';
+import { useWebSocket } from '../../hooks/useWebSocket.js';
 import { useTerminalTouchGestures } from '../../hooks/useTouchGestures.js';
 import { useMobileDetection } from '../../hooks/useMobileDetection.js';
 import { useToast } from '../Toast/index.js';
@@ -11,6 +11,7 @@ import { ContextMenu, ContextMenuItem } from '../ContextMenu/index.js';
 import { MobileTerminalInput } from '../mobile/MobileTerminalInput.js';
 import { SPECIAL_KEYS, Z_INDEX } from '../../constants/mobile.js';
 import type { TerminalData } from '@shelltender/core';
+import type { WebSocketService } from '../../services/WebSocketService.js';
 
 export interface TerminalTheme {
   background?: string;
@@ -74,8 +75,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const { wsService, isConnected: wsConnected } = useWebSocket();
   const wsRef = useRef<WebSocketService | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const isConnected = wsConnected;
   const currentSessionIdRef = useRef<string | null>(null);
   const isInitializedRef = useRef(false);
   const isReadyRef = useRef(false);
@@ -390,8 +392,12 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
     
     requestAnimationFrame(() => attemptInitialFit());
 
-    // Initialize WebSocket
-    const ws = new WebSocketService();
+    // Use shared WebSocket service from context
+    if (!wsService) {
+      console.error('[Terminal] WebSocket service not available');
+      return;
+    }
+    const ws = wsService;
     wsRef.current = ws;
 
     // Handle terminal data messages
@@ -438,10 +444,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
     ws.on('bell', handleTerminalMessage);
     ws.on('exit', handleTerminalMessage);
 
-    ws.onConnect(() => {
-      setIsConnected(true);
-      
-      // Only handle session on first connect, not reconnects
+    // Handle session initialization
+    const initializeSession = () => {
       if (!isInitializedRef.current) {
         isInitializedRef.current = true;
         
@@ -463,14 +467,20 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
         // On reconnect, reconnect to current session
         ws.send({ type: 'connect', sessionId: currentSessionIdRef.current });
       }
+    };
+
+    // If already connected, initialize immediately
+    if (ws.isConnected()) {
+      initializeSession();
+    }
+
+    // Also handle future connections
+    ws.onConnect(() => {
+      initializeSession();
     });
 
-    ws.onDisconnect(() => {
-      setIsConnected(false);
-    });
-
-    // Connect WebSocket
-    ws.connect();
+    // Note: We don't need onDisconnect or connect() since the shared service
+    // manages its own lifecycle and we're using isConnected from the hook
 
     // Handle terminal input
     term.onData((data: string) => {
@@ -562,7 +572,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(({
       ws.off('exit', handleTerminalMessage);
       
       term.dispose();
-      ws.disconnect();
+      // Note: We don't disconnect the shared WebSocket service
+      // as it may be used by other components
     };
   }, [isMobile, debug, performFit, debouncedFit, fontSize, fontFamily, theme, cursorStyle, cursorBlink, scrollback, padding, handlePaste]); // Include all dependencies
 

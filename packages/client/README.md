@@ -13,31 +13,71 @@ Note: This package has peer dependencies on React 18+ and React DOM 18+.
 ## Quick Start
 
 ```tsx
-import { Terminal, SessionTabs } from '@shelltender/client';
+import { Terminal, SessionTabs, WebSocketProvider } from '@shelltender/client';
 import '@shelltender/client/styles/terminal.css';
 
 function App() {
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
 
+  // Configure WebSocket connection
+  const wsConfig = {
+    url: '/ws',  // Or specify full URL: 'ws://localhost:8081'
+    // Alternative configuration:
+    // protocol: 'ws',
+    // host: 'localhost',
+    // port: '8081'
+  };
+
   return (
-    <div className="flex flex-col h-screen">
-      <SessionTabs
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        onSelectSession={setCurrentSessionId}
-        onNewSession={() => setCurrentSessionId('')}
-        onCloseSession={handleCloseSession}
-        onShowSessionManager={() => setShowManager(true)}
-      />
-      <Terminal
-        sessionId={currentSessionId}
-        onSessionCreated={handleSessionCreated}
-      />
-    </div>
+    <WebSocketProvider config={wsConfig}>
+      <div className="flex flex-col h-screen">
+        <SessionTabs
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onSelectSession={setCurrentSessionId}
+          onNewSession={() => setCurrentSessionId('')}
+          onCloseSession={handleCloseSession}
+          onShowSessionManager={() => setShowManager(true)}
+        />
+        <Terminal
+          sessionId={currentSessionId}
+          onSessionCreated={handleSessionCreated}
+        />
+      </div>
+    </WebSocketProvider>
   );
 }
 ```
+
+## WebSocket Configuration
+
+All Shelltender components must be wrapped in a `WebSocketProvider` to configure the WebSocket connection:
+
+```tsx
+import { WebSocketProvider } from '@shelltender/client';
+
+// Option 1: Full URL
+<WebSocketProvider config={{ url: 'ws://localhost:8081' }}>
+  {/* Your app */}
+</WebSocketProvider>
+
+// Option 2: Individual parts
+<WebSocketProvider config={{ 
+  protocol: 'wss',
+  host: 'api.example.com',
+  port: '443'
+}}>
+  {/* Your app */}
+</WebSocketProvider>
+
+// Option 3: Path only (for proxying)
+<WebSocketProvider config={{ url: '/shelltender-ws' }}>
+  {/* Your app */}
+</WebSocketProvider>
+```
+
+If no config is provided, defaults to `ws://[window.location.hostname]:8081`.
 
 ## Components
 
