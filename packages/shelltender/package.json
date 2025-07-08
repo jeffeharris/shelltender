@@ -1,6 +1,6 @@
 {
   "name": "shelltender",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "All-in-one package combining @shelltender/core, @shelltender/server, and @shelltender/client",
   "type": "module",
   "main": "dist/index.cjs",
@@ -42,9 +42,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shelltender/core": "^0.4.2",
-    "@shelltender/server": "^0.4.2",
-    "@shelltender/client": "^0.4.2"
+    "@shelltender/core": "^0.4.3",
+    "@shelltender/server": "^0.4.3",
+    "@shelltender/client": "^0.4.3"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
