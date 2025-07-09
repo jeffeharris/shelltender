@@ -2,7 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import minimist from 'minimist';
 import { 
   SessionManager, 
   BufferManager, 
@@ -18,13 +17,9 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Parse command line arguments
-const argv = minimist(process.argv.slice(2), {
-  default: {
-    'ws-port': parseInt(process.env.WS_PORT || '8080'),
-    'port': parseInt(process.env.PORT || '3000')
-  }
-});
+// Configuration
+const wsPort = parseInt(process.env.WS_PORT || '8080');
+const httpPort = parseInt(process.env.PORT || '3000');
 
 const app = express();
 const server = createServer(app);
@@ -61,7 +56,6 @@ pipeline.addFilter('no-binary', CommonFilters.noBinary());
 pipeline.addFilter('max-size', CommonFilters.maxDataSize(10 * 1024)); // 10KB max per chunk
 
 // Initialize WebSocket server
-const wsPort = argv['ws-port'];
 const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager, eventManager);
 
 // Set up integration
@@ -117,7 +111,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
 });
 
-const httpPort = argv.port;
 server.listen(httpPort, '0.0.0.0', () => {
   console.log(`HTTP server listening on 0.0.0.0:${httpPort}`);
   console.log(`WebSocket server listening on 0.0.0.0:${wsPort}`);
