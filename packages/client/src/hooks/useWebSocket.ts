@@ -5,31 +5,38 @@ import { useWebSocketConfig } from '../context/WebSocketContext.js';
 let sharedWsService: WebSocketService | null = null;
 let connectionCount = 0;
 
+function getOrCreateWebSocketService(config: WebSocketServiceConfig): WebSocketService {
+  if (!sharedWsService) {
+    sharedWsService = new WebSocketService(config);
+    sharedWsService.connect();
+  }
+  return sharedWsService;
+}
+
 export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
-  const wsServiceRef = useRef<WebSocketService | null>(null);
   const { config } = useWebSocketConfig();
+  
+  // Get or create service synchronously to ensure it's always available
+  const wsService = getOrCreateWebSocketService(config);
 
   useEffect(() => {
-    // Use shared WebSocket instance
-    if (!sharedWsService) {
-      sharedWsService = new WebSocketService(config);
-      sharedWsService.connect();
-    }
-
     connectionCount++;
-    wsServiceRef.current = sharedWsService;
 
     const handleConnect = () => setIsConnected(true);
     const handleDisconnect = () => setIsConnected(false);
 
-    sharedWsService.onConnect(handleConnect);
-    sharedWsService.onDisconnect(handleDisconnect);
+    wsService.onConnect(handleConnect);
+    wsService.onDisconnect(handleDisconnect);
 
     // Check initial connection state
-    setIsConnected(sharedWsService.isConnected());
+    setIsConnected(wsService.isConnected());
 
     return () => {
+      // Clean up event handlers
+      wsService.removeConnectHandler(handleConnect);
+      wsService.removeDisconnectHandler(handleDisconnect);
+      
       connectionCount--;
       
       // Only disconnect if no other components are using it
@@ -38,10 +45,10 @@ export function useWebSocket() {
         sharedWsService = null;
       }
     };
-  }, []);
+  }, [wsService]);
 
   return {
-    wsService: wsServiceRef.current,
+    wsService,
     isConnected
   };
 }

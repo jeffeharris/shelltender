@@ -16,8 +16,8 @@ export class WebSocketService {
   private reconnectDelay = 1000;
   private messageQueue: WebSocketMessage[] = [];
   private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
-  private onConnectHandler: (() => void) | null = null;
-  private onDisconnectHandler: (() => void) | null = null;
+  private connectHandlers: Set<() => void> = new Set();
+  private disconnectHandlers: Set<() => void> = new Set();
 
   constructor(config: WebSocketServiceConfig = {}) {
     if (config.url) {
@@ -53,9 +53,8 @@ export class WebSocketService {
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
       this.flushMessageQueue();
-      if (this.onConnectHandler) {
-        this.onConnectHandler();
-      }
+      // Notify all connect handlers
+      this.connectHandlers.forEach(handler => handler());
     };
 
     this.ws.onmessage = (event) => {
@@ -68,9 +67,8 @@ export class WebSocketService {
     };
 
     this.ws.onclose = () => {
-      if (this.onDisconnectHandler) {
-        this.onDisconnectHandler();
-      }
+      // Notify all disconnect handlers
+      this.disconnectHandlers.forEach(handler => handler());
       this.scheduleReconnect();
     };
 
@@ -130,11 +128,23 @@ export class WebSocketService {
 
 
   onConnect(handler: () => void): void {
-    this.onConnectHandler = handler;
+    this.connectHandlers.add(handler);
+    // If already connected, call immediately
+    if (this.isConnected()) {
+      handler();
+    }
   }
 
   onDisconnect(handler: () => void): void {
-    this.onDisconnectHandler = handler;
+    this.disconnectHandlers.add(handler);
+  }
+
+  removeConnectHandler(handler: () => void): void {
+    this.connectHandlers.delete(handler);
+  }
+
+  removeDisconnectHandler(handler: () => void): void {
+    this.disconnectHandlers.delete(handler);
   }
 
   disconnect(): void {
