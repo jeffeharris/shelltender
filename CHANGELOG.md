@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.6] - TBD
+
+### Fixed
+- WebSocket connection race condition in useWebSocket hook
+  - Service is now synchronously initialized to ensure availability on first render
+  - Eliminates "WebSocket service not available" errors
+  - No API changes - purely an internal fix
+
+### Added
+- Unified server support in WebSocketServer
+  - New factory method `WebSocketServer.create()` for flexible initialization
+  - Can now attach to existing HTTP servers via `WebSocketServerOptions`
+  - Maintains backward compatibility with port-only initialization
+  - Enables integration with existing Express/HTTP server setups
+- Post-build validation script for Terminal component
+  - Verifies @__PURE__ annotation preservation in bundled output
+  - Ensures forwardRef optimization issues don't resurface
+  - Run automatically after build via `npm run build`
+- Bundler compatibility documentation
+  - Comprehensive guide for Terminal component integration
+  - Covers known issues with Vite, Webpack, and other bundlers
+  - Includes troubleshooting steps and workarounds
+
+### Changed
+- Enhanced WebSocketService event handling
+  - Migrated from single handlers to Set-based collections
+  - Supports multiple event listeners without conflicts
+  - Improved cleanup with proper handler removal
+
+### Developer Notes
+- Two Terminal component tests marked as technical debt (skipped)
+- Tests need refactoring to reduce mocking and improve maintainability
+
 ## [0.4.5] - 2025-07-08
 
 ### Fixed
