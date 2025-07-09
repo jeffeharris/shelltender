@@ -39,13 +39,14 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -f tsconfig.tsbuildinfo && tsup && tsc --emitDeclarationOnly",
+    "build": "rm -f tsconfig.tsbuildinfo && tsup && tsc --emitDeclarationOnly && npm run verify:build",
     "build:js": "tsup --no-dts",
     "build:types": "rm -f tsconfig.tsbuildinfo && tsc --emitDeclarationOnly",
     "build:tsc": "tsc && node ../../scripts/transform-imports.js client",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:build": "node scripts/verify-build.cjs"
   },
   "dependencies": {
     "@shelltender/core": "^0.4.5",
