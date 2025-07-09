@@ -30,7 +30,7 @@ async function minimalIntegration() {
 
   // Step 3: Create WebSocket server
   const wsPort = 8082;
-  const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager);
+  const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager);
   console.log(`   ✓ WebSocket server listening on port ${wsPort}`);
 
   // Step 4: Set up integration to connect all components

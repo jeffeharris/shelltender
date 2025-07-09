@@ -1,4 +1,6 @@
 import { WebSocketServer as WSServer } from 'ws';
+import { Server as HTTPServer } from 'http';
+import { Server as HTTPSServer } from 'https';
 import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
 import { SessionStore } from './SessionStore.js';
@@ -13,6 +15,17 @@ import {
   TerminalEventMessage
 } from '@shelltender/core';
 
+export interface WebSocketServerOptions {
+  port?: number;
+  server?: HTTPServer | HTTPSServer;
+  noServer?: boolean;
+  host?: string;
+  path?: string;
+  perMessageDeflate?: boolean | object;
+  maxPayload?: number;
+  clientTracking?: boolean;
+}
+
 export class WebSocketServer {
   private wss: WSServer;
   private sessionManager: SessionManager;
@@ -24,18 +37,18 @@ export class WebSocketServer {
   private clientEventSubscriptions = new Map<string, Set<string>>();
   private monitorClients = new Set<string>();
 
-  constructor(
-    port: number, 
+  private constructor(
+    wss: WSServer,
     sessionManager: SessionManager, 
     bufferManager: BufferManager, 
     eventManager?: EventManager,
     sessionStore?: SessionStore
   ) {
+    this.wss = wss;
     this.sessionManager = sessionManager;
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
     this.sessionStore = sessionStore;
-    this.wss = new WSServer({ port, host: '0.0.0.0' });
 
     // Set up event system if available
     if (this.eventManager) {
@@ -43,6 +56,42 @@ export class WebSocketServer {
     }
 
     this.setupWebSocketHandlers();
+  }
+
+  static create(
+    config: number | WebSocketServerOptions,
+    sessionManager: SessionManager,
+    bufferManager: BufferManager,
+    eventManager?: EventManager,
+    sessionStore?: SessionStore
+  ): WebSocketServer {
+    let wss: WSServer;
+
+    if (typeof config === 'number') {
+      // Legacy: port number only
+      wss = new WSServer({ port: config, host: '0.0.0.0' });
+    } else {
+      const { server, port, noServer, ...wsOptions } = config;
+      
+      if (server) {
+        // Attach to existing HTTP/HTTPS server
+        wss = new WSServer({ server, ...wsOptions });
+      } else if (noServer) {
+        // No server mode for manual upgrade handling
+        wss = new WSServer({ noServer: true, ...wsOptions });
+      } else if (port !== undefined) {
+        // Standalone server with options
+        wss = new WSServer({ 
+          port, 
+          host: wsOptions.host || '0.0.0.0',
+          ...wsOptions 
+        });
+      } else {
+        throw new Error('WebSocketServer requires either port, server, or noServer option');
+      }
+    }
+
+    return new WebSocketServer(wss, sessionManager, bufferManager, eventManager, sessionStore);
   }
 
   private setupWebSocketHandlers(): void {

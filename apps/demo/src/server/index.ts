@@ -62,7 +62,7 @@ pipeline.addFilter('max-size', CommonFilters.maxDataSize(10 * 1024)); // 10KB ma
 
 // Initialize WebSocket server
 const wsPort = argv['ws-port'];
-const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager, eventManager);
+const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager, eventManager);
 
 // Set up integration
 const integration = new PipelineIntegration(

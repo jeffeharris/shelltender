@@ -52,7 +52,7 @@ describe('PipelineIntegration', () => {
     sessionStore = new SessionStore();
     sessionManager = new SessionManager(sessionStore);
     bufferManager = new BufferManager();
-    wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
+    wsServer = WebSocketServer.create(8080, sessionManager, bufferManager);
     eventManager = new EventManager();
 
     // Wait for async initialization

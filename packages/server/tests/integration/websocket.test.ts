@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
+import { createServer } from 'http';
 import { WebSocketServer } from '../../src/WebSocketServer.js';
 import { SessionManager } from '../../src/SessionManager.js';
 import { BufferManager } from '../../src/BufferManager.js';
@@ -57,7 +58,7 @@ describe('WebSocket Integration', () => {
     await sessionStore.initialize();
     sessionManager = new SessionManager(sessionStore);
     
-    wsServer = new WebSocketServer(testPort, sessionManager, bufferManager);
+    wsServer = WebSocketServer.create(testPort, sessionManager, bufferManager);
   });
 
   afterEach(async () => {

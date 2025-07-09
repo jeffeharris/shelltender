@@ -153,7 +153,7 @@ class AIMonitorServer {
     }, 5);
     
     // WebSocket server
-    const wsServer = new WebSocketServer(
+    const wsServer = WebSocketServer.create(
       this.config.wsPort,
       this.sessionManager,
       bufferManager,

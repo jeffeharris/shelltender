@@ -20,7 +20,7 @@ const sessionManager = new SessionManager(sessionStore);
 
 // Initialize WebSocket server
 const wsPort = parseInt(process.env.WS_PORT || '8282');
-const wsServer = new WebSocketServer(wsPort, sessionManager, bufferManager);
+const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager);
 
 // Serve static files from the client build
 app.use(express.static(path.join(__dirname, '../../client/dist')));
