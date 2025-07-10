@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Can now attach to existing HTTP servers via `WebSocketServerOptions`
   - Maintains backward compatibility with port-only initialization
   - Enables integration with existing Express/HTTP server setups
+- Single port mode as default deployment configuration
+  - HTTP API and WebSocket now share the same port (default: 8080)
+  - Automatic client detection of server mode via /api/health endpoint
+  - Simplifies deployment, proxy configuration, and firewall rules
+  - Dual port mode still available via SINGLE_PORT=false
 - Post-build validation script for Terminal component
   - Verifies @__PURE__ annotation preservation in bundled output
   - Ensures forwardRef optimization issues don't resurface
@@ -35,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Migrated from single handlers to Set-based collections
   - Supports multiple event listeners without conflicts
   - Improved cleanup with proper handler removal
+- Default deployment configuration to single port mode
+  - Demo app now defaults to port 8080 for both HTTP and WebSocket
+  - Docker compose updated to use single port configuration
+  - All README examples updated to show single port setup
+  - Environment template (.env.example) updated with new defaults
 
 ### Developer Notes
 - Two Terminal component tests marked as technical debt (skipped)
