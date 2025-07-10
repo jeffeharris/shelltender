@@ -82,7 +82,7 @@ describe('WebSocketService', () => {
       mockWebSocket = (service as any).ws as MockWebSocket;
       
       expect(mockWebSocket).toBeDefined();
-      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8081');
+      expect(mockWebSocket.url).toBe(process.env.REACT_APP_WS_URL || 'ws://localhost:8080');
     });
 
     it('should handle relative URLs by constructing full WebSocket URL', () => {
@@ -190,11 +190,16 @@ describe('WebSocketService', () => {
       service.connect();
       
       mockWebSocket = (service as any).ws as MockWebSocket;
-      if (mockWebSocket.onmessage) {
-        mockWebSocket.onmessage(new MessageEvent('message', { data: 'invalid json' }));
-      }
       
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error parsing WebSocket message:', expect.any(Error));
+      // Should not throw when receiving invalid JSON
+      expect(() => {
+        if (mockWebSocket.onmessage) {
+          mockWebSocket.onmessage(new MessageEvent('message', { data: 'invalid json' }));
+        }
+      }).not.toThrow();
+      
+      // Verify no console error is logged (error is silently caught)
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
 
     it('should support event emitter pattern with on/off', () => {

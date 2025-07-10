@@ -16,9 +16,9 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@shelltender/client": "^0.2.1",
-    "@shelltender/core": "^0.2.1",
-    "@shelltender/server": "^0.2.1",
+    "@shelltender/client": "^0.4.5",
+    "@shelltender/core": "^0.4.5",
+    "@shelltender/server": "^0.4.5",
     "dotenv": "^17.0.0",
     "express": "^4.21.2",
     "lucide-react": "^0.525.0",
