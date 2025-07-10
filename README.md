@@ -45,6 +45,12 @@ Starting with v0.2.4, you must properly initialize the SessionStore:
 
 ```typescript
 import { SessionManager, BufferManager, SessionStore, WebSocketServer } from '@shelltender/server';
+import { createServer } from 'http';
+import express from 'express';
+
+// Create Express app and HTTP server
+const app = express();
+const server = createServer(app);
 
 // Initialize components in the correct order
 const bufferManager = new BufferManager();
@@ -54,10 +60,23 @@ const sessionStore = new SessionStore();
 await sessionStore.initialize();
 
 const sessionManager = new SessionManager(sessionStore);
-const wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
+
+// Create WebSocket server attached to HTTP server (single port mode)
+const wsServer = WebSocketServer.create(
+  { server, path: '/ws' },
+  sessionManager,
+  bufferManager
+);
+
+// Start the server
+server.listen(8080, () => {
+  console.log('Server running on port 8080');
+  console.log('HTTP API: http://localhost:8080');
+  console.log('WebSocket: ws://localhost:8080/ws');
+});
 ```
 
-See the [minimal integration example](packages/server/examples/minimal-integration.ts) for a complete working setup.
+See the [unified server example](packages/server/examples/unified-server.ts) for a complete working setup.
 
 ## 🛠️ Development
 
@@ -110,13 +129,13 @@ npm run dev
 - **Improved**: WebSocket error handling and logging
 - **Fixed**: Working directory persistence in sessions
 
-[See full changelog](CHANGELOG.md)
+[See full changelog](docs/CHANGELOG.md)
 
 ## 📖 Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
 - [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Release Guide](RELEASE_GUIDE.md) - How to create and publish releases
+- [Release Guide](docs/RELEASE_GUIDE.md) - How to create and publish releases
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
 - [Terminal Resize Behavior](docs/terminal-resize.md) - Flexbox-aware resize handling
@@ -143,13 +162,27 @@ npm run test:coverage
 
 ## 📚 Example Usage
 
-### Server Setup
+### Server Setup (Single Port Mode)
 
 ```typescript
-import { SessionManager, WebSocketServer } from '@shelltender/server';
+import { SessionManager, BufferManager, WebSocketServer } from '@shelltender/server';
+import { createServer } from 'http';
+import express from 'express';
+
+const app = express();
+const server = createServer(app);
 
 const sessionManager = new SessionManager();
-const wsServer = new WebSocketServer(8080, sessionManager);
+const bufferManager = new BufferManager();
+
+// Single port mode - HTTP and WebSocket on same port
+const wsServer = WebSocketServer.create(
+  { server, path: '/ws' },
+  sessionManager,
+  bufferManager
+);
+
+server.listen(8080);
 ```
 
 ### Client Setup
@@ -216,9 +249,10 @@ Shelltender includes a comprehensive Docker development environment that handles
    ```
 
 3. **Access the application:**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3000
-   - WebSocket: ws://localhost:8080
+   - Development server: http://localhost:5173
+   - Production server (single port): http://localhost:8080
+     - HTTP API: http://localhost:8080/api
+     - WebSocket: ws://localhost:8080/ws
 
 ### Features
 
@@ -233,14 +267,17 @@ Shelltender includes a comprehensive Docker development environment that handles
 If the default ports conflict with other services, create a `.env` file:
 
 ```env
-# Override default ports
-PORT=3001
-WS_PORT=8082
-VITE_PORT=5174
+# Single port mode (default)
+PORT=8080                    # Single port for both HTTP and WebSocket
+SINGLE_PORT=true            # Set to 'false' for dual-port mode
 
-# Update frontend URLs to match
-VITE_WS_URL=ws://localhost:8082
-VITE_API_URL=http://localhost:3001
+# Development server
+VITE_PORT=5174              # Vite dev server port
+
+# Dual port mode (optional)
+SINGLE_PORT=false           # Enable dual-port mode
+PORT=3000                   # HTTP port
+WS_PORT=8081               # WebSocket port
 ```
 
 ### Docker Commands

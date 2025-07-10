@@ -8,14 +8,14 @@ services:
       dockerfile: Dockerfile.dev
     container_name: shelltender-dev
     ports:
-      - "3001:3000"    # Backend HTTP API
-      - "8081:8080"    # WebSocket server
-      - "5173:5173"    # Vite dev server (frontend)
+      - "${PORT:-8080}:8080"    # Single port for HTTP + WebSocket
+      - "${VITE_PORT:-5173}:5173"    # Vite dev server (frontend)
     environment:
       - NODE_ENV=development
-      - PORT=3000
-      - WS_PORT=8080
-      - VITE_WS_URL=ws://localhost:8081
+      - PORT=${PORT:-8080}
+      - SINGLE_PORT=${SINGLE_PORT:-true}
+      - WS_PORT=${WS_PORT:-8081}  # Only used if SINGLE_PORT=false
+      - VITE_WS_URL=${VITE_WS_URL:-}  # Auto-detected by client
       - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
       # AI Assistant API Keys (loaded from .env file)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -48,7 +48,7 @@ services:
     tty: true
     stdin_open: true
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
