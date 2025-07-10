@@ -1,4 +1,4 @@
-# Unified Server Support for Shelltender v0.4.6
+# Unified Server Support for Shelltender v0.5.0
 
 ## Problem Statement
 
@@ -252,10 +252,10 @@ export class WebSocketServer {
    // Before (v0.4.5 and earlier)
    const wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
 
-   // After (v0.4.6+) - Option 1: Keep same behavior
+   // After (v0.5.0+) - Option 1: Keep same behavior
    const wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
 
-   // After (v0.4.6+) - Option 2: Attach to existing server
+   // After (v0.5.0+) - Option 2: Attach to existing server
    const wsServer = new WebSocketServer(
      { server: httpServer },
      sessionManager,
@@ -327,7 +327,7 @@ The proposed solution maintains 100% backward compatibility:
 
 ### Version Strategy
 
-- **v0.4.6**: Introduce unified server support as opt-in feature
+- **v0.5.0**: Introduce unified server support as opt-in feature
 - **v0.5.0**: Consider deprecation warnings for standalone mode (if desired)
 - **v1.0.0**: Could make unified mode the default (breaking change)
 

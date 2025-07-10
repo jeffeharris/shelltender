@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.6] - TBD
+## [0.5.0] - TBD
+
+### ⚠️ BREAKING CHANGES
+- Default server configuration changed to single port mode
+  - Previously: HTTP on port 3000, WebSocket on port 8080 (separate)
+  - Now: Both HTTP and WebSocket on port 8080 (single port)
+  - WebSocket endpoint moved from `ws://host:8080` to `ws://host:8080/ws`
+  - To use old behavior: set `SINGLE_PORT=false PORT=3000 WS_PORT=8080`
 
 ### Fixed
 - WebSocket connection race condition in useWebSocket hook

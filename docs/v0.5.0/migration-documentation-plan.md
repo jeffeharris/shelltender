@@ -1,4 +1,4 @@
-# Migration Documentation Plan for Shelltender v0.4.6
+# Migration Documentation Plan for Shelltender v0.5.0
 
 ## Overview
 

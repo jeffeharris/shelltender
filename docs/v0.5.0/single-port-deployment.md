@@ -2,7 +2,7 @@
 
 ## Overview
 
-As of v0.4.6, Shelltender defaults to **single port mode**, where both HTTP API and WebSocket connections share the same port (default: 8080). This simplifies deployment and is now the recommended configuration.
+As of v0.5.0, Shelltender defaults to **single port mode**, where both HTTP API and WebSocket connections share the same port (default: 8080). This simplifies deployment and is now the recommended configuration.
 
 ## Key Changes
 

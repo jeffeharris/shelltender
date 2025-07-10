@@ -305,7 +305,7 @@ The implementation maintains full backward compatibility:
 
 ## Migration Path
 
-### Phase 1: Add Feature (v0.4.6)
+### Phase 1: Add Feature (v0.5.0)
 - Implement auto-creation as opt-in feature
 - Default to disabled for backward compatibility
 - Add comprehensive logging
