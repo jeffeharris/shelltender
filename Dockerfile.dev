@@ -47,6 +47,12 @@ COPY . .
 # Rebuild native modules to ensure they work in the container
 RUN npm rebuild
 
+# Build packages in dependency order
+RUN npm run build -w @shelltender/core && \
+    npm run build -w @shelltender/server && \
+    npm run build -w @shelltender/client && \
+    npm run build -w shelltender
+
 # Create directory for sessions
 RUN mkdir -p /app/sessions /app/ai-monitor-data
 
@@ -54,13 +60,11 @@ RUN mkdir -p /app/sessions /app/ai-monitor-data
 # USER node
 
 # Expose all development ports
-EXPOSE 3000 5173 8080
+EXPOSE 9090 5174
 
 # Set development environment
 ENV NODE_ENV=development
-ENV PORT=3000
-ENV WS_PORT=8080
-ENV VITE_WS_URL=ws://localhost:8080
+# Let other env vars come from .env file
 
 # Start in the demo app directory
 WORKDIR /app/apps/demo

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shelltender Terminal Demo - Single Port Mode</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: #fff; 
+            font-family: monospace;
+        }
+        #terminal {
+            width: 800px;
+            height: 400px;
+            background: #000;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #444;
+        }
+        #input {
+            width: 780px;
+            margin-top: 10px;
+            padding: 5px;
+            background: #222;
+            color: #0f0;
+            border: 1px solid #444;
+            font-family: monospace;
+        }
+        button {
+            margin: 10px 5px;
+            padding: 5px 15px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #555;
+        }
+        .status {
+            margin: 10px 0;
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shelltender Demo - Single Port Mode (Port 9090)</h1>
+    <div class="status" id="status">Disconnected</div>
+    <div>
+        <button id="connect">Connect</button>
+        <button id="create">Create New Session</button>
+        <button id="clear">Clear Terminal</button>
+    </div>
+    <div id="terminal"></div>
+    <input type="text" id="input" placeholder="Type command and press Enter" disabled>
+    
+    <script>
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('input');
+        const status = document.getElementById('status');
+        let ws = null;
+        let sessionId = null;
+        
+        function updateStatus(text, color = '#0f0') {
+            status.textContent = text;
+            status.style.color = color;
+        }
+        
+        function appendToTerminal(text) {
+            // Handle ANSI escape codes minimally
+            text = text.replace(/\x1b\[[0-9;]*m/g, ''); // Remove color codes
+            text = text.replace(/\x1b\[\?2004[hl]/g, ''); // Remove bracketed paste mode
+            terminal.textContent += text;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        document.getElementById('connect').addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                updateStatus('Already connected!', '#ff0');
+                return;
+            }
+            
+            updateStatus('Connecting...');
+            ws = new WebSocket('ws://localhost:9090/ws');
+            
+            ws.onopen = () => {
+                updateStatus('Connected! Click "Create New Session" to start');
+                input.disabled = true;
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'created' && data.sessionId) {
+                    sessionId = data.sessionId;
+                    updateStatus(`Session created: ${sessionId}`);
+                    input.disabled = false;
+                    input.focus();
+                } else if (data.type === 'output' && data.data) {
+                    appendToTerminal(data.data);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                updateStatus('WebSocket error!', '#f00');
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                updateStatus('Disconnected', '#f00');
+                input.disabled = true;
+                sessionId = null;
+            };
+        });
+        
+        document.getElementById('create').addEventListener('click', () => {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                updateStatus('Connect first!', '#ff0');
+                return;
+            }
+            
+            terminal.textContent = '';
+            ws.send(JSON.stringify({
+                type: 'create',
+                rows: 24,
+                cols: 80
+            }));
+            updateStatus('Creating session...');
+        });
+        
+        document.getElementById('clear').addEventListener('click', () => {
+            terminal.textContent = '';
+        });
+        
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && sessionId && ws && ws.readyState === WebSocket.OPEN) {
+                const command = input.value;
+                ws.send(JSON.stringify({
+                    type: 'input',
+                    sessionId: sessionId,
+                    data: command + '\n'
+                }));
+                input.value = '';
+            }
+        });
+        
+        // Auto-connect on load
+        setTimeout(() => {
+            document.getElementById('connect').click();
+        }, 500);
+    </script>
+</body>
+</html>

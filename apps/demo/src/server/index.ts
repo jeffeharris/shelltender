@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import { 
   SessionManager, 
   BufferManager, 
@@ -16,6 +17,12 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file
+// In Docker, working directory is /app/apps/demo, so .env is at ../../.env
+// Locally, it might be at different relative path
+const envPath = path.join(__dirname, '..', '..', '..', '..', '.env');
+dotenv.config({ path: envPath });
 
 // Configuration
 const port = parseInt(process.env.PORT || '8080');
@@ -81,8 +88,9 @@ const integration = new PipelineIntegration(
 );
 integration.setup();
 
-// Serve static files from the client build
-app.use(express.static(path.join(__dirname, '../../client/dist')));
+// Serve static files from multiple locations
+app.use(express.static(path.join(__dirname, '../../dist')));
+app.use(express.static(path.join(__dirname, '../..'))); // Serve from demo root too
 
 // API endpoints
 app.get('/api/sessions', (req, res) => {
@@ -126,7 +134,7 @@ app.get('/api/pipeline/status', (req, res) => {
 
 // Serve the React app for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  res.sendFile(path.join(__dirname, '../../dist/index.html'));
 });
 
 server.listen(port, '0.0.0.0', () => {

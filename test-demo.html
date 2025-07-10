@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shelltender Demo Test</title>
+</head>
+<body>
+    <h1>Shelltender Single Port Mode Test</h1>
+    <div>
+        <button id="test-api">Test API</button>
+        <button id="test-ws">Test WebSocket</button>
+        <button id="create-session">Create Session</button>
+    </div>
+    <pre id="log"></pre>
+    
+    <script>
+        const log = document.getElementById('log');
+        let ws = null;
+        
+        function addLog(msg) {
+            log.textContent += new Date().toISOString() + ' - ' + msg + '\n';
+            console.log(msg);
+        }
+        
+        document.getElementById('test-api').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:9090/api/health');
+                const data = await response.json();
+                addLog('API Response: ' + JSON.stringify(data, null, 2));
+            } catch (err) {
+                addLog('API Error: ' + err.message);
+            }
+        });
+        
+        document.getElementById('test-ws').addEventListener('click', () => {
+            addLog('Connecting to WebSocket...');
+            ws = new WebSocket('ws://localhost:9090/ws');
+            
+            ws.onopen = () => {
+                addLog('WebSocket connected!');
+            };
+            
+            ws.onmessage = (event) => {
+                addLog('WS Received: ' + event.data);
+            };
+            
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error);
+            };
+            
+            ws.onclose = () => {
+                addLog('WebSocket closed');
+            };
+        });
+        
+        document.getElementById('create-session').addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msg = {
+                    type: 'create',
+                    rows: 24,
+                    cols: 80
+                };
+                ws.send(JSON.stringify(msg));
+                addLog('Sent: ' + JSON.stringify(msg));
+            } else {
+                addLog('WebSocket not connected!');
+            }
+        });
+    </script>
+</body>
+</html>

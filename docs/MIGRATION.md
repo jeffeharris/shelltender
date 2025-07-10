@@ -11,8 +11,8 @@
 - WebSocket: Port 8080 (separate server)
 
 **After (v0.5.0):**
-- HTTP + WebSocket: Port 8080 (single server)
-- WebSocket available at `/ws` path
+- HTTP + WebSocket: Port 8080 (single server, configurable via PORT env)
+- WebSocket available at `/ws` path on the same port
 
 **Migration Options:**
 
@@ -81,6 +81,25 @@ const { wsService, isConnected } = useWebSocket();
 // wsService is always available from first render
 ```
 
+#### 3. WebSocketServer Factory Method
+
+New `create()` factory method for flexible server creation:
+
+```typescript
+// Option 1: Standalone server (port number)
+const wsServer = WebSocketServer.create(8080, sessionManager, bufferManager);
+
+// Option 2: Attach to existing HTTP server
+const wsServer = WebSocketServer.create(
+  { 
+    server: httpServer,  // Your express/http server
+    path: '/ws'          // Optional, defaults to '/ws'
+  },
+  sessionManager,
+  bufferManager
+);
+```
+
 ### Step-by-Step Migration
 
 #### For Docker Users
@@ -146,6 +165,36 @@ const wsUrl = process.env.NODE_ENV === 'production'
   : 'ws://localhost:8080/ws';
 ```
 
+#### Vite Development Server Configuration
+
+When using Vite for development, configure the proxy to forward API requests:
+
+```javascript
+// vite.config.js
+export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
+      // Note: WebSocket connections bypass Vite proxy
+      // Connect directly to ws://localhost:8080/ws
+    }
+  }
+});
+```
+
+**Important:** Vite's proxy only handles HTTP requests. WebSocket connections should connect directly to the backend server:
+
+```javascript
+// Development with Vite
+const wsUrl = 'ws://localhost:8080/ws';  // Direct connection, not through Vite
+
+// Production
+const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+```
+
 ### Nginx Configuration
 
 If using nginx as a reverse proxy, update to support WebSocket upgrade on `/ws`:
@@ -164,12 +213,50 @@ location /ws {
 }
 ```
 
+### Development vs Production Configuration
+
+#### Development Setup
+- Frontend dev server (e.g., Vite) on port 5173
+- Shelltender backend on port 8080 (single port mode)
+- API requests proxied through dev server
+- WebSocket connects directly to backend
+
+```bash
+# .env.development
+PORT=8080
+VITE_WS_URL=ws://localhost:8080/ws
+```
+
+#### Production Setup
+- Single server serving both frontend and backend
+- Everything on one port (e.g., 8080 or 443 for HTTPS)
+- No proxy needed - direct connections
+
+```bash
+# .env.production
+PORT=8080
+# Client auto-detects WebSocket URL from window.location
+```
+
 ### Troubleshooting
 
 #### "WebSocket connection failed"
 - Ensure your proxy/load balancer forwards the `/ws` path
 - Check that WebSocket upgrade headers are preserved
 - Verify firewall allows traffic on the single port
+
+#### Testing Single Port Mode
+To verify single port mode is working:
+```bash
+# Check API endpoint
+curl http://localhost:8080/api/health
+# Should return: {"status":"ok","port":8080,"mode":"single-port","wsPath":"/ws"}
+
+# Test WebSocket connection
+wscat -c ws://localhost:8080/ws
+> {"type":"create","rows":24,"cols":80}
+# Should receive: {"type":"created","sessionId":"..."}
+```
 
 #### "Session not found" errors
 - The API hasn't changed - ensure you're calling `create` before `connect`

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>Shelltender WebSocket Test</h1>
+    <button id="connect">Connect</button>
+    <button id="create">Create Session</button>
+    <pre id="log"></pre>
+    
+    <script>
+        const log = document.getElementById('log');
+        let ws = null;
+        let sessionId = null;
+        
+        function addLog(msg) {
+            log.textContent += msg + '\n';
+            console.log(msg);
+        }
+        
+        document.getElementById('connect').addEventListener('click', () => {
+            ws = new WebSocket('ws://localhost:9090/ws');
+            
+            ws.onopen = () => {
+                addLog('WebSocket connected!');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                addLog('Received: ' + JSON.stringify(data, null, 2));
+                
+                if (data.type === 'session-created' && data.sessionId) {
+                    sessionId = data.sessionId;
+                    addLog('Session created with ID: ' + sessionId);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error);
+            };
+            
+            ws.onclose = () => {
+                addLog('WebSocket closed');
+            };
+        });
+        
+        document.getElementById('create').addEventListener('click', () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msg = {
+                    type: 'create-session',
+                    rows: 24,
+                    cols: 80
+                };
+                ws.send(JSON.stringify(msg));
+                addLog('Sent: ' + JSON.stringify(msg));
+            } else {
+                addLog('WebSocket not connected!');
+            }
+        });
+    </script>
+</body>
+</html>
