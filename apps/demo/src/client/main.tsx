@@ -13,17 +13,41 @@ import { applySafetyPatches, checkForCrashes } from './utils/safetyPatch'
 applySafetyPatches();
 checkForCrashes();
 
-// Configure WebSocket based on environment
-const wsConfig = {
-  port: import.meta.env?.VITE_WS_PORT || '8081'
+// Detect server mode and configure WebSocket accordingly
+async function getWebSocketConfig() {
+  try {
+    const response = await fetch('/api/health');
+    const health = await response.json();
+    
+    if (health.mode === 'single-port') {
+      // Single port mode - use relative WebSocket URL
+      return {
+        url: '/ws' // Will automatically use ws:// or wss:// based on current protocol
+      };
+    } else {
+      // Dual port mode - use separate WebSocket port
+      return {
+        port: health.wsPort?.toString() || import.meta.env?.VITE_WS_PORT || '8081'
+      };
+    }
+  } catch (error) {
+    // Fallback to environment config if health check fails
+    console.warn('Failed to detect server mode, using default config:', error);
+    return {
+      port: import.meta.env?.VITE_WS_PORT || '8081'
+    };
+  }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <WebSocketProvider config={wsConfig}>
-      <ToastProvider>
-        <AppRouter />
-      </ToastProvider>
-    </WebSocketProvider>
-  </ErrorBoundary>
-)
+// Initialize app with detected config
+getWebSocketConfig().then(wsConfig => {
+  createRoot(document.getElementById('root')!).render(
+    <ErrorBoundary>
+      <WebSocketProvider config={wsConfig}>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </WebSocketProvider>
+    </ErrorBoundary>
+  )
+});

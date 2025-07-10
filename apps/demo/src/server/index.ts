@@ -18,8 +18,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const wsPort = parseInt(process.env.WS_PORT || '8080');
-const httpPort = parseInt(process.env.PORT || '3000');
+const port = parseInt(process.env.PORT || '8080');
+const useSinglePort = process.env.SINGLE_PORT !== 'false'; // Default to true
 
 const app = express();
 const server = createServer(app);
@@ -56,7 +56,19 @@ pipeline.addFilter('no-binary', CommonFilters.noBinary());
 pipeline.addFilter('max-size', CommonFilters.maxDataSize(10 * 1024)); // 10KB max per chunk
 
 // Initialize WebSocket server
-const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager, eventManager);
+const wsServer = useSinglePort 
+  ? WebSocketServer.create(
+      { server, path: '/ws' }, // Attach to HTTP server on /ws path
+      sessionManager, 
+      bufferManager, 
+      eventManager
+    )
+  : WebSocketServer.create(
+      parseInt(process.env.WS_PORT || '8081'), // Separate port if SINGLE_PORT=false
+      sessionManager, 
+      bufferManager, 
+      eventManager
+    );
 
 // Set up integration
 const integration = new PipelineIntegration(
@@ -79,7 +91,13 @@ app.get('/api/sessions', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', wsPort });
+  res.json({ 
+    status: 'ok', 
+    port,
+    mode: useSinglePort ? 'single-port' : 'dual-port',
+    wsPath: useSinglePort ? '/ws' : undefined,
+    wsPort: useSinglePort ? undefined : parseInt(process.env.WS_PORT || '8081')
+  });
 });
 
 // Delete a session
@@ -111,12 +129,24 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
 });
 
-server.listen(httpPort, '0.0.0.0', () => {
-  console.log(`HTTP server listening on 0.0.0.0:${httpPort}`);
-  console.log(`WebSocket server listening on 0.0.0.0:${wsPort}`);
-  console.log(`\nUsage: tsx src/server/index.ts [options]`);
-  console.log(`  --port <port>     HTTP server port (default: 3000)`);
-  console.log(`  --ws-port <port>  WebSocket server port (default: 8080)`);
+server.listen(port, '0.0.0.0', () => {
+  if (useSinglePort) {
+    console.log(`✅ Server running in SINGLE PORT mode on 0.0.0.0:${port}`);
+    console.log(`   HTTP API: http://localhost:${port}/api`);
+    console.log(`   WebSocket: ws://localhost:${port}/ws`);
+    console.log(`   Static files: http://localhost:${port}`);
+  } else {
+    const wsPort = parseInt(process.env.WS_PORT || '8081');
+    console.log(`Server running in DUAL PORT mode`);
+    console.log(`   HTTP server: http://localhost:${port}`);
+    console.log(`   WebSocket server: ws://localhost:${wsPort}`);
+  }
+  console.log(`\nEnvironment Variables:`);
+  console.log(`  PORT=${port} (HTTP/unified port)`);
+  console.log(`  SINGLE_PORT=${useSinglePort} (set to 'false' for dual-port mode)`);
+  if (!useSinglePort) {
+    console.log(`  WS_PORT=${process.env.WS_PORT || '8081'} (WebSocket port in dual-port mode)`);
+  }
   console.log(`\nPipeline Configuration:`);
   console.log(`  Processors: ${pipeline.getProcessorNames().join(', ')}`);
   console.log(`  Filters: ${pipeline.getFilterNames().join(', ')}`);
