@@ -10,6 +10,16 @@ export { EventManager } from './events/EventManager.js';
 export { TerminalDataPipeline, CommonProcessors, CommonFilters } from './TerminalDataPipeline.js';
 export { PipelineIntegration } from './integration/PipelineIntegration.js';
 
+// Export convenience functions
+export { 
+  createShelltender, 
+  createShelltenderServer, 
+  startShelltender,
+  detectEnvironment,
+  validateConfiguration
+} from './createServer.js';
+export type { ShelltenderConfig, ShelltenderInstance } from './createServer.js';
+
 // Export interfaces
 export type { ISessionManager, IDataEmitter } from './interfaces/ISessionManager.js';
 

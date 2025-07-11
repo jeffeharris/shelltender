@@ -7,6 +7,10 @@ export { SessionTabs } from './components/SessionTabs/index.js';
 export { SessionList } from './components/SessionList.js';
 export { TerminalEventMonitor } from './components/TerminalEventMonitor.js';
 
+// Export convenience components
+export { ShelltenderApp, QuickTerminal } from './ShelltenderApp.js';
+export type { ShelltenderAppProps } from './ShelltenderApp.js';
+
 // Export mobile components
 export { MobileApp, MobileSessionTabs, MobileBottomTabs, VirtualKeyboard, KeySetEditor } from './components/mobile/index.js';
 
@@ -25,6 +29,7 @@ export { useWebSocket } from './hooks/useWebSocket.js';
 export { useMobileDetection, useBreakpoint } from './hooks/useMobileDetection.js';
 export { useTouchGestures, useTerminalTouchGestures } from './hooks/useTouchGestures.js';
 export { useCustomKeySets } from './hooks/useCustomKeySets.js';
+export { useShelltender } from './hooks/useShelltender.js';
 export type { UseTerminalEventsReturn, UseTerminalEventsOptions } from './hooks/useTerminalEvents.js';
 export type { MobileDetection } from './hooks/useMobileDetection.js';
 export type { TouchGestureOptions } from './hooks/useTouchGestures.js';

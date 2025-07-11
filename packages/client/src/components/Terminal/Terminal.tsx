@@ -39,6 +39,7 @@ export interface TerminalTheme {
 
 export interface TerminalProps {
   sessionId?: string;
+  sessionConfig?: any; // Configuration passed to session creation (cwd, env, etc.)
   onSessionCreated?: (sessionId: string) => void;
   onSessionChange?: (direction: 'next' | 'prev') => void;
   onShowVirtualKeyboard?: () => void;
@@ -50,6 +51,7 @@ export interface TerminalProps {
   cursorStyle?: 'block' | 'underline' | 'bar';
   cursorBlink?: boolean;
   scrollback?: number;
+  className?: string;
 }
 
 export interface TerminalHandle {
@@ -59,6 +61,7 @@ export interface TerminalHandle {
 
 const TerminalComponent = ({ 
   sessionId, 
+  sessionConfig,
   onSessionCreated,
   onSessionChange,
   onShowVirtualKeyboard,
@@ -69,7 +72,8 @@ const TerminalComponent = ({
   theme,
   cursorStyle = 'block',
   cursorBlink = true,
-  scrollback = 10000
+  scrollback = 10000,
+  className
 }: TerminalProps, ref: React.ForwardedRef<TerminalHandle>) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -456,12 +460,25 @@ const TerminalComponent = ({
             type: 'create',
             cols: term.cols,
             rows: term.rows,
+            ...sessionConfig, // Pass any additional config (cwd, env, etc.)
           });
         } else {
-          // Connect to existing session
+          // Connect to existing session or create with specific ID
           currentSessionIdRef.current = sessionId;
-          isReadyRef.current = true;
-          ws.send({ type: 'connect', sessionId });
+          
+          // If sessionConfig is provided, create new session with specific ID
+          if (sessionConfig) {
+            ws.send({
+              type: 'create',
+              options: { id: sessionId, ...sessionConfig },
+              cols: term.cols,
+              rows: term.rows,
+            });
+          } else {
+            // Otherwise just connect to existing session
+            isReadyRef.current = true;
+            ws.send({ type: 'connect', sessionId });
+          }
         }
       } else if (currentSessionIdRef.current) {
         // On reconnect, reconnect to current session
@@ -616,7 +633,7 @@ const TerminalComponent = ({
   return (
     <div 
       ref={containerRef}
-      className={`relative h-full w-full bg-black ${isMobile ? 'mobile-terminal-container mobile-no-zoom' : ''}`}
+      className={`relative h-full w-full bg-black ${isMobile ? 'mobile-terminal-container mobile-no-zoom' : ''} ${className || ''}`}
     >
       {!isConnected && (
         <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm" style={{ zIndex: Z_INDEX.TERMINAL }}>

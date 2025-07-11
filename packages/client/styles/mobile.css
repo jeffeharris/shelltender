@@ -1,0 +1,190 @@
+/* Mobile-specific styles for Shelltender */
+
+/* Breakpoints */
+:root {
+  --mobile-breakpoint: 768px;
+  --tablet-breakpoint: 1024px;
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+  --safe-area-left: env(safe-area-inset-left);
+  --safe-area-right: env(safe-area-inset-right);
+}
+
+/* Prevent unwanted behaviors on mobile */
+@media (max-width: 1024px) {
+  /* Disable text selection in UI elements */
+  .mobile-no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Prevent zoom on double tap */
+  .mobile-no-zoom {
+    touch-action: manipulation;
+  }
+  
+  /* Smooth scrolling */
+  .mobile-smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Minimum touch target size (44x44px) */
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Safe area padding for notched devices */
+  .mobile-safe-padding {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
+  }
+  
+  /* Prevent iOS bounce effect */
+  .mobile-no-bounce {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Hide scrollbars on mobile */
+  .mobile-hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .mobile-hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Mobile-specific terminal adjustments */
+@media (max-width: 768px) {
+  /* Ensure readable font size on mobile */
+  .xterm {
+    font-size: 14px !important;
+  }
+  
+  /* Terminal container adjustments */
+  .terminal-container {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  /* Prevent iOS keyboard issues */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+}
+
+/* Tablet-specific adjustments */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .xterm {
+    font-size: 16px !important;
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-width: 1024px) and (orientation: landscape) {
+  /* Reduce vertical space usage in landscape */
+  .mobile-landscape-compact {
+    max-height: 48px;
+  }
+}
+
+/* Virtual keyboard handling */
+.keyboard-visible {
+  /* Adjust layout when virtual keyboard is shown */
+  height: calc(100vh - env(keyboard-inset-height, 0));
+}
+
+/* Touch gesture indicators */
+.touch-indicator {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: touch-ripple 0.6s ease-out;
+}
+
+@keyframes touch-ripple {
+  from {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* Mobile-optimized focus styles */
+@media (max-width: 1024px) {
+  :focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+  
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* Performance optimizations for mobile */
+@media (max-width: 768px) {
+  /* Use GPU acceleration for transforms */
+  .mobile-gpu {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* Reduce animation complexity on mobile */
+  .mobile-reduce-motion {
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
+  }
+}
+
+/* Accessibility improvements for mobile */
+@media (max-width: 1024px) {
+  /* Larger tap targets for interactive elements */
+  button,
+  a,
+  [role="button"],
+  [role="link"] {
+    position: relative;
+  }
+  
+  button::after,
+  a::after,
+  [role="button"]::after,
+  [role="link"]::after {
+    content: "";
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+  }
+}

@@ -1,0 +1,31 @@
+/* Terminal-specific styles */
+.terminal-container {
+  height: 100%;
+  width: 100%;
+  background-color: #000000;
+  /* Padding is now controlled via the padding prop in Terminal component */
+  box-sizing: border-box;
+}
+
+/* Ensure xterm.js terminal fills container properly */
+.terminal-container .xterm {
+  height: 100%;
+  width: 100%;
+}
+
+/* Fix for character alignment */
+.terminal-container .xterm-viewport {
+  background-color: #000000;
+}
+
+/* Ensure proper font rendering */
+.terminal-container .xterm-screen {
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fix cursor positioning */
+.terminal-container .xterm-cursor-layer {
+  z-index: 4;
+}
