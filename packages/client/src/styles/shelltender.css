@@ -1,0 +1,13 @@
+/* Import Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import terminal styles */
+@import './terminal.css';
+@import './mobile.css';
+
+/* Additional component styles if needed */
+.shelltender-root {
+  @apply h-full w-full;
+}

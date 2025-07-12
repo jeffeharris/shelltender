@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelltender v0.6.0 - Best Practices</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 { 
+      color: #10b981; 
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .section {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    pre {
+      background: #1a1a1a;
+      color: #10b981;
+      padding: 1.5rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+      color: #10b981;
+    }
+    .demo-link {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+    .demo-link:hover {
+      background: #059669;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍹 Shelltender v0.6.0 Best Practices</h1>
+    
+    <div class="section">
+      <h2>1. Server Setup - Zero Configuration</h2>
+      <p>v0.6.0 introduces <code>createShelltenderServer()</code> for instant setup:</p>
+      <pre>import { createShelltenderServer } from '@shelltender/server';
+
+// One line to create a fully-featured terminal server
+const { url } = await createShelltenderServer({ 
+  port: 8080,
+  staticDir: './public'
+});
+
+console.log(`Server running at ${url}`);</pre>
+      
+      <p><strong>This automatically provides:</strong></p>
+      <div class="feature">✓ Express server with WebSocket support</div>
+      <div class="feature">✓ Session persistence across restarts</div>
+      <div class="feature">✓ Health monitoring endpoints</div>
+      <div class="feature">✓ Security pipeline (redacts passwords, credit cards)</div>
+      <div class="feature">✓ Static file serving</div>
+    </div>
+
+    <div class="section">
+      <h2>2. Client Integration - React Components</h2>
+      <p>Use the provided React components from <code>@shelltender/client</code>:</p>
+      <pre>import { ShelltenderApp, Terminal, SessionTabs, useShelltender } from '@shelltender/client';
+
+function App() {
+  return (
+    &lt;ShelltenderApp wsUrl="/ws"&gt;
+      &lt;MyTerminalApp /&gt;
+    &lt;/ShelltenderApp&gt;
+  );
+}
+
+function MyTerminalApp() {
+  const { sessions, activeSession, createSession } = useShelltender();
+  
+  return (
+    &lt;&gt;
+      &lt;SessionTabs /&gt;
+      &lt;Terminal sessionId={activeSession} /&gt;
+    &lt;/&gt;
+  );
+}</pre>
+    </div>
+
+    <div class="section">
+      <h2>3. Key v0.6.0 Features</h2>
+      
+      <h3>Automatic Reconnection</h3>
+      <pre>// Sessions persist across browser refreshes and network interruptions
+// The Terminal component handles reconnection automatically</pre>
+
+      <h3>Health Monitoring</h3>
+      <pre>// Built-in health endpoint
+fetch('/api/health')
+  .then(res => res.json())
+  .then(health => console.log(health));
+// Returns: { status: 'ok', sessions: 3, uptime: 12345 }</pre>
+
+      <h3>Session Management</h3>
+      <pre>const { 
+  sessions,        // Array of all sessions
+  activeSession,   // Current session ID
+  createSession,   // Create new session
+  killSession,     // Terminate session
+  setActiveSession // Switch sessions
+} = useShelltender();</pre>
+    </div>
+
+    <div class="section">
+      <h2>4. Environment Configuration</h2>
+      <pre>// Configure shell environment
+await createShelltenderServer({
+  shell: '/bin/bash',
+  shellArgs: ['-l'],  // Login shell
+  env: {
+    TERM: 'xterm-256color',
+    PS1: '\\u@\\h:\\w\\$ '
+  },
+  defaultDirectory: (sessionId) => `/tmp/sessions/${sessionId}`
+});</pre>
+    </div>
+
+    <div class="section">
+      <h2>5. Pipeline & Security</h2>
+      <p>v0.6.0 includes automatic security filtering:</p>
+      <ul>
+        <li>Password redaction in terminal output</li>
+        <li>Credit card number masking</li>
+        <li>Binary data filtering</li>
+        <li>Rate limiting (1MB/s default)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Live Demo</h2>
+      <p>See these features in action:</p>
+      <a href="/terminal.html" class="demo-link">Open Terminal Demo →</a>
+    </div>
+  </div>
+</body>
+</html>
