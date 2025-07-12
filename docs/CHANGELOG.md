@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Convenience APIs for zero-configuration setup
+  - `createShelltenderServer()` - Single-line server setup with all features
+  - `startShelltender()` - Automatic server startup with logging
+  - `createShelltender()` - Programmatic server creation
+- Bundled CSS support for @shelltender/client package
+  - Components now include all required styles
+  - Import with `import '@shelltender/client/styles.css'`
+  - No external CSS dependencies required
+- Comprehensive quickstart guide and v0.6.0 documentation
+- Minimal demo application showcasing best practices
+
+### Fixed
+- Terminal component session isolation - terminals only display their assigned session's output
+- Session tab switching no longer causes text scrambling
+- Client package CSS exports now work correctly with Vite and other bundlers
+- Removed unnecessary output state tracking in useShelltender hook that caused performance issues
+
+### Changed
+- Improved developer experience with simpler API surface
+- Better error messages when WebSocket connections fail
+- Cleaner separation between server and client concerns
+
 ## [0.5.0] - 2025-07-10
 
 ### ⚠️ BREAKING CHANGES

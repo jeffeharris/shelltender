@@ -99,9 +99,6 @@ const TerminalComponent = ({
     const selection = window.getSelection()?.toString();
     if (selection) {
       navigator.clipboard.writeText(selection).catch((err) => {
-        if (debug) {
-          console.error('[Terminal] Copy failed:', err);
-        }
         if (isMobile) showToast('Copy failed - check permissions');
       });
       if (isMobile) showToast('Copied to clipboard');
@@ -207,50 +204,24 @@ const TerminalComponent = ({
   // Manual fit function with proper debouncing
   const performFit = useCallback(() => {
     if (!fitAddonRef.current || !xtermRef.current) {
-      if (debug) {
-        console.log('[Terminal] Fit skipped - addon or terminal not ready');
-      }
       return;
     }
 
     const container = containerRef.current;
     if (!container) {
-      if (debug) {
-        console.log('[Terminal] Fit skipped - container not available');
-      }
       return;
     }
 
     // Check if container has valid dimensions
     const { clientWidth, clientHeight } = container;
     if (clientWidth === 0 || clientHeight === 0) {
-      if (debug) {
-        console.log('[Terminal] Fit skipped - container has zero dimensions', {
-          width: clientWidth,
-          height: clientHeight
-        });
-      }
       return;
     }
 
     try {
-      if (debug) {
-        console.log('[Terminal] Performing fit', {
-          containerWidth: clientWidth,
-          containerHeight: clientHeight,
-          currentCols: xtermRef.current.cols,
-          currentRows: xtermRef.current.rows,
-        });
-      }
 
       fitAddonRef.current.fit();
 
-      if (debug) {
-        console.log('[Terminal] Fit completed', {
-          newCols: xtermRef.current.cols,
-          newRows: xtermRef.current.rows,
-        });
-      }
 
       // Validate dimensions before sending to server
       const cols = xtermRef.current.cols;
@@ -265,13 +236,7 @@ const TerminalComponent = ({
             rows,
           });
         }
-      } else if (debug) {
-        console.warn('[Terminal] Invalid dimensions after fit', { cols, rows });
-      }
     } catch (error) {
-      if (debug) {
-        console.error('[Terminal] Fit error:', error);
-      }
     }
   }, [debug]);
 
@@ -289,21 +254,12 @@ const TerminalComponent = ({
   // Focus the terminal
   const performFocus = useCallback(() => {
     if (!xtermRef.current) {
-      if (debug) {
-        console.log('[Terminal] Focus skipped - terminal not ready');
-      }
       return;
     }
 
     try {
       xtermRef.current.focus();
-      if (debug) {
-        console.log('[Terminal] Terminal focused');
-      }
     } catch (error) {
-      if (debug) {
-        console.error('[Terminal] Focus error:', error);
-      }
     }
   }, [debug]);
 
@@ -376,9 +332,6 @@ const TerminalComponent = ({
     // Wait for layout to stabilize before initial fit with retry mechanism
     const attemptInitialFit = (retries = 5) => {
       if (retries === 0) {
-        if (debug) {
-          console.error('[Terminal] Failed to fit after 5 retries');
-        }
         return;
       }
       
@@ -388,9 +341,6 @@ const TerminalComponent = ({
         return;
       }
       
-      if (debug) {
-        console.log('[Terminal] Performing initial fit after layout');
-      }
       performFit();
     };
     
@@ -406,6 +356,12 @@ const TerminalComponent = ({
 
     // Handle terminal data messages
     const handleTerminalMessage = (data: TerminalData) => {
+      
+      // Only process messages for our session
+      if (data.sessionId && currentSessionIdRef.current && data.sessionId !== currentSessionIdRef.current) {
+        return;
+      }
+      
       switch (data.type) {
         case 'created':
           if (data.sessionId) {
@@ -434,6 +390,7 @@ const TerminalComponent = ({
           }
           break;
         case 'error':
+          console.error('[Terminal] Error:', data);
           // Terminal error occurred
           break;
       }
@@ -450,45 +407,45 @@ const TerminalComponent = ({
 
     // Handle session initialization
     const initializeSession = () => {
+      
       if (!isInitializedRef.current) {
         isInitializedRef.current = true;
         
         // Handle initial session creation/connection
         if (!sessionId || sessionId === '') {
           // Create new session
-          ws.send({
-            type: 'create',
+          const createMsg = {
+            type: 'create' as const,
             cols: term.cols,
             rows: term.rows,
             ...sessionConfig, // Pass any additional config (cwd, env, etc.)
-          });
+          };
+          ws.send(createMsg);
         } else {
-          // Connect to existing session or create with specific ID
+          // Always create a new session when sessionId is provided but session doesn't exist
           currentSessionIdRef.current = sessionId;
           
-          // If sessionConfig is provided, create new session with specific ID
-          if (sessionConfig) {
-            ws.send({
-              type: 'create',
-              options: { id: sessionId, ...sessionConfig },
-              cols: term.cols,
-              rows: term.rows,
-            });
-          } else {
-            // Otherwise just connect to existing session
-            isReadyRef.current = true;
-            ws.send({ type: 'connect', sessionId });
-          }
+          // Create new session with specific ID
+          const createMsg = {
+            type: 'create' as const,
+            sessionId: sessionId,
+            cols: term.cols,
+            rows: term.rows,
+            ...sessionConfig, // Pass any additional config (cwd, env, etc.)
+          };
+          ws.send(createMsg);
         }
       } else if (currentSessionIdRef.current) {
         // On reconnect, reconnect to current session
-        ws.send({ type: 'connect', sessionId: currentSessionIdRef.current });
+        const reconnectMsg = { type: 'connect' as const, sessionId: currentSessionIdRef.current };
+        ws.send(reconnectMsg);
       }
     };
 
     // If already connected, initialize immediately
     if (ws.isConnected()) {
       initializeSession();
+    } else {
     }
 
     // Also handle future connections
@@ -540,12 +497,6 @@ const TerminalComponent = ({
       resizeObserverRef.current = new ResizeObserver((entries) => {
         for (const entry of entries) {
           if (entry.target === containerRef.current) {
-            if (debug) {
-              console.log('[Terminal] ResizeObserver detected size change', {
-                width: entry.contentRect.width,
-                height: entry.contentRect.height,
-              });
-            }
             debouncedFit();
           }
         }
@@ -556,9 +507,6 @@ const TerminalComponent = ({
     
     // Also listen to window resize as fallback
     const handleWindowResize = () => {
-      if (debug) {
-        console.log('[Terminal] Window resize detected');
-      }
       debouncedFit();
     };
     

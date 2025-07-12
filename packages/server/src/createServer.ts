@@ -261,7 +261,7 @@ export async function createShelltenderServer(config: ShelltenderConfig = {}) {
   const shelltender = await createShelltender(app, config);
   
   // Start server if not already started
-  if (shelltender.port === 0) {
+  if (!shelltender.server!.listening) {
     await new Promise<void>((resolve) => {
       shelltender.server!.listen((config.port as number) || 0, config.host || '0.0.0.0', () => {
         const addr = shelltender.server!.address() as AddressInfo;

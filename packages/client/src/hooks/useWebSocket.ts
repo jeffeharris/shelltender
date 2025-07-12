@@ -17,6 +17,7 @@ export function useWebSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const { config } = useWebSocketConfig();
   
+  
   // Get or create service synchronously to ensure it's always available
   const wsService = getOrCreateWebSocketService(config);
 
@@ -40,9 +41,16 @@ export function useWebSocket() {
       connectionCount--;
       
       // Only disconnect if no other components are using it
+      // Add a small delay to handle React StrictMode double-mounting
       if (connectionCount === 0 && sharedWsService) {
-        sharedWsService.disconnect();
-        sharedWsService = null;
+        const serviceToDisconnect = sharedWsService;
+        setTimeout(() => {
+          // Check again in case a new connection was made
+          if (connectionCount === 0 && sharedWsService === serviceToDisconnect) {
+            serviceToDisconnect.disconnect();
+            sharedWsService = null;
+          }
+        }, 100);
       }
     };
   }, [wsService]);

@@ -62,7 +62,7 @@ export class WebSocketService {
         const data: WebSocketMessage = JSON.parse(event.data);
         this.handleMessage(data);
       } catch (error) {
-        // Error parsing WebSocket message
+        console.error('Error parsing WebSocket message:', error);
       }
     };
 
@@ -101,7 +101,7 @@ export class WebSocketService {
         const serialized = JSON.stringify(data);
         this.ws.send(serialized);
       } catch (error) {
-        // Failed to send message
+        console.error('Failed to send WebSocket message:', error);
       }
     } else {
       this.messageQueue.push(data);
@@ -122,7 +122,17 @@ export class WebSocketService {
   private handleMessage(data: WebSocketMessage): void {
     const handlers = this.messageHandlers.get(data.type);
     if (handlers) {
-      handlers.forEach(handler => handler(data));
+      handlers.forEach(handler => {
+        handler(data);
+      });
+    }
+    
+    // Also check for 'message' handlers (generic)
+    const messageHandlers = this.messageHandlers.get('message');
+    if (messageHandlers) {
+      messageHandlers.forEach(handler => {
+        handler(data);
+      });
     }
   }
 

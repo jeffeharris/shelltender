@@ -71,10 +71,32 @@ export class WebSocketServer {
       // Legacy: port number only
       wss = new WSServer({ port: config, host: '0.0.0.0' });
     } else {
-      const { server, port, noServer, ...wsOptions } = config;
+      const { server, port, noServer, path, ...wsOptions } = config;
       
-      if (server) {
-        // Attach to existing HTTP/HTTPS server
+      if (server && path) {
+        // When both server and path are provided, use noServer mode and handle upgrade manually
+        wss = new WSServer({ noServer: true, ...wsOptions });
+        
+        // Set up the upgrade handler on the HTTP server
+        server.on('upgrade', function upgrade(request, socket, head) {
+          // Handle socket errors
+          socket.on('error', (err) => {
+            console.error('Socket error:', err);
+          });
+          
+          const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+          
+          if (pathname === path) {
+            wss.handleUpgrade(request, socket, head, function done(ws) {
+              wss.emit('connection', ws, request);
+            });
+          } else {
+            // Destroy the socket if the path doesn't match
+            socket.destroy();
+          }
+        });
+      } else if (server) {
+        // Attach to existing HTTP/HTTPS server (all paths)
         wss = new WSServer({ server, ...wsOptions });
       } else if (noServer) {
         // No server mode for manual upgrade handling
@@ -171,15 +193,18 @@ export class WebSocketServer {
       if (data.rows) options.rows = data.rows;
       
       const session = this.sessionManager.createSession(options);
+      
       this.sessionManager.addClient(session.id, clientId);
       ws.sessionId = session.id;
       
-      ws.send(JSON.stringify({
+      const response = {
         type: 'created',
         sessionId: session.id,
         session,
-      }));
+      };
+      ws.send(JSON.stringify(response));
     } catch (error) {
+      console.error('[WebSocketServer] Error creating session:', error);
       ws.send(JSON.stringify({
         type: 'error',
         data: error instanceof Error ? error.message : 'Failed to create session',

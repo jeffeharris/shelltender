@@ -10,7 +10,7 @@ interface WebSocketContextValue {
   config: WebSocketConfig;
 }
 
-const WebSocketContext = createContext<WebSocketContextValue | undefined>(undefined);
+export const WebSocketContext = createContext<WebSocketContextValue | undefined>(undefined);
 
 interface WebSocketProviderProps {
   children: ReactNode;
@@ -19,10 +19,7 @@ interface WebSocketProviderProps {
 
 export function WebSocketProvider({ children, config = {} }: WebSocketProviderProps) {
   const value: WebSocketContextValue = {
-    config: {
-      port: '8081',
-      ...config
-    }
+    config: config
   };
 
   return (
@@ -35,11 +32,9 @@ export function WebSocketProvider({ children, config = {} }: WebSocketProviderPr
 export function useWebSocketConfig() {
   const context = useContext(WebSocketContext);
   if (!context) {
-    // Return defaults if not in provider
+    // Return empty config if not in provider
     return {
-      config: {
-        port: '8081'
-      }
+      config: {}
     };
   }
   return context;

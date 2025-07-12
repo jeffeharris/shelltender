@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useWebSocket } from './useWebSocket';
 import { Terminal as XTerm } from '@xterm/xterm';
+import type { TerminalSession } from '@shelltender/core';
 
 interface SessionOutput {
   [sessionId: string]: string;
@@ -13,7 +14,7 @@ interface SessionOutput {
 export function useShelltender() {
   const { wsService: service, isConnected } = useWebSocket();
   const isConnecting = !isConnected && !!service;
-  const [sessions, setSessions] = useState<string[]>([]);
+  const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [output, setOutput] = useState<SessionOutput>({});
   const terminalRef = useRef<XTerm | null>(null);
@@ -24,23 +25,24 @@ export function useShelltender() {
 
     const handleMessage = (message: any) => {
       if (message.type === 'output' && message.sessionId) {
-        setOutput(prev => ({
-          ...prev,
-          [message.sessionId]: (prev[message.sessionId] || '') + message.data
-        }));
+        // Skip output messages - Terminal component handles these directly
+        // This prevents re-renders on every keypress
+        return;
       } else if (message.type === 'created' || message.type === 'connected') {
-        const sessionId = message.sessionId;
-        setSessions(prev => 
-          prev.includes(sessionId) ? prev : [...prev, sessionId]
-        );
+        const session = message.session || { id: message.sessionId };
+        setSessions(prev => {
+          const exists = prev.some(s => s.id === session.id);
+          return exists ? prev : [...prev, session];
+        });
         if (!activeSession) {
-          setActiveSession(sessionId);
+          setActiveSession(session.id);
         }
       } else if (message.type === 'sessionEnded') {
         const sessionId = message.sessionId;
-        setSessions(prev => prev.filter(id => id !== sessionId));
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
         if (activeSession === sessionId) {
-          setActiveSession(sessions[0] || null);
+          const remaining = sessions.filter(s => s.id !== sessionId);
+          setActiveSession(remaining[0]?.id || null);
         }
         setOutput(prev => {
           const newOutput = { ...prev };
@@ -82,10 +84,11 @@ export function useShelltender() {
       };
 
       service.on('message', handleResponse);
-      service.send({
+      const createMessage: any = {
         type: 'create',
         options: { id: sessionId, ...options }
-      });
+      };
+      service.send(createMessage);
     });
   }, [service]);
 
@@ -150,7 +153,7 @@ export function useShelltender() {
 
   // Switch active session
   const switchSession = useCallback((sessionId: string) => {
-    if (sessions.includes(sessionId)) {
+    if (sessions.some(s => s.id === sessionId)) {
       setActiveSession(sessionId);
     }
   }, [sessions]);
