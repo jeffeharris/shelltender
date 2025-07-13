@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session tab switching no longer causes text scrambling
 - Client package CSS exports now work correctly with Vite and other bundlers
 - Removed unnecessary output state tracking in useShelltender hook that caused performance issues
+- Duplicate session creation when using both useShelltender and Terminal components
+  - WebSocketServer now checks for existing sessions before creating new ones
+  - Prevents creation of duplicate sessions with the same ID
 
 ### Changed
 - Improved developer experience with simpler API surface
