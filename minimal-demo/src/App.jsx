@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { ShelltenderApp, Terminal, SessionTabs, useShelltender } from '@shelltender/client';
 import '@xterm/xterm/css/xterm.css';
-import '@shelltender/client/styles.css';
 
 function TerminalDemo() {
   const { 
@@ -12,7 +11,6 @@ function TerminalDemo() {
     switchSession,
     isConnected 
   } = useShelltender();
-
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
