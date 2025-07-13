@@ -236,6 +236,7 @@ const TerminalComponent = ({
             rows,
           });
         }
+      }
     } catch (error) {
     }
   }, [debug]);

@@ -192,6 +192,28 @@ export class WebSocketServer {
       if (data.cols) options.cols = data.cols;
       if (data.rows) options.rows = data.rows;
       
+      // Handle sessionId from either location
+      const requestedSessionId = data.sessionId || (data.options && data.options.id);
+      if (requestedSessionId) {
+        options.id = requestedSessionId;
+        
+        // Check if session already exists
+        const existingSession = this.sessionManager.getSession(requestedSessionId);
+        if (existingSession) {
+          // Session already exists, just connect to it
+          this.sessionManager.addClient(requestedSessionId, clientId);
+          ws.sessionId = requestedSessionId;
+          
+          const response = {
+            type: 'created',
+            sessionId: requestedSessionId,
+            session: existingSession,
+          };
+          ws.send(JSON.stringify(response));
+          return;
+        }
+      }
+      
       const session = this.sessionManager.createSession(options);
       
       this.sessionManager.addClient(session.id, clientId);
