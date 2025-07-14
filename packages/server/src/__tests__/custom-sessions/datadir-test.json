@@ -1,8 +1,8 @@
 {
   "session": {
     "id": "datadir-test",
-    "createdAt": "2025-07-14T05:50:31.030Z",
-    "lastAccessedAt": "2025-07-14T05:50:31.030Z",
+    "createdAt": "2025-07-14T05:52:45.033Z",
+    "lastAccessedAt": "2025-07-14T05:52:45.033Z",
     "cols": 80,
     "rows": 24,
     "command": "/bin/sh"
