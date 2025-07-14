@@ -3,6 +3,7 @@ import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { 
   SessionManager, 
   BufferManager, 
@@ -517,8 +518,24 @@ function setupApiRoutes(
   
   // Serve admin UI
   app.get('/admin', (req, res) => {
-    // Use a more compatible approach for both ESM and CJS
-    const adminPath = path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'index.html');
-    res.sendFile(adminPath);
+    // For ES modules, we need to use import.meta.url instead of __dirname
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // Try multiple possible locations for the admin HTML file
+    const possiblePaths = [
+      path.join(__dirname, 'admin', 'index.html'), // Built distribution
+      path.join(__dirname, '..', 'src', 'admin', 'index.html'), // Development
+      path.join(process.cwd(), 'packages', 'server', 'dist', 'admin', 'index.html'), // Monorepo dist
+      path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'index.html'), // Monorepo src
+    ];
+    
+    for (const adminPath of possiblePaths) {
+      if (fs.existsSync(adminPath)) {
+        return res.sendFile(adminPath);
+      }
+    }
+    
+    res.status(404).send('Admin UI not found. Please ensure the admin files are built and deployed.');
   });
 }
