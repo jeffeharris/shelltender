@@ -121,9 +121,9 @@ export class SessionManager extends EventEmitter implements ISessionManager {
     };
 
     // Set up shell command and environment
-    let command = options.command || '/bin/bash';
+    let command = options.command || process.env.SHELL || '/bin/sh';  // Better default
     let args = options.args || [];
-    let cwd = options.cwd || process.env.HOME;
+    let cwd = options.cwd || process.cwd();  // Use cwd not HOME
     
     // Ensure UTF-8 locale
     let env = {
@@ -155,7 +155,27 @@ export class SessionManager extends EventEmitter implements ISessionManager {
         env,
       });
     } catch (error) {
-      throw error;
+      // Provide better error context
+      const errorMessage = `Failed to create PTY session: ${error.message}`;
+      const debugInfo = {
+        command,
+        args,
+        cwd,
+        cols,
+        rows,
+        platform: process.platform,
+        shell: command,
+        error: error.message,
+        stack: error.stack
+      };
+      console.error(errorMessage, debugInfo);
+      
+      // Check common issues
+      if (error.message.includes('ENOENT')) {
+        throw new Error(`Shell not found: ${command}. Try using /bin/sh or install ${command}`);
+      }
+      
+      throw new Error(`${errorMessage} (command: ${command}, cwd: ${cwd})`);
     }
 
     this.sessions.set(sessionId, {
