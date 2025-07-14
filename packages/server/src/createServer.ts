@@ -240,7 +240,7 @@ export async function createShelltender(
     pipeline,
     integration,
     server: httpServer,
-    port: finalConfig.port as number,
+    port: finalConfig.port === 'auto' ? 0 : (finalConfig.port as number),
     config: { ...finalConfig, isReady: true },
     
     // Convenience methods
@@ -309,21 +309,21 @@ export async function createShelltenderServer(config: ShelltenderConfig = {}) {
   const app = express();
   const shelltender = await createShelltender(app, config);
   
-  // Start server if not already started
-  if (!shelltender.server!.listening) {
-    await new Promise<void>((resolve) => {
-      shelltender.server!.listen((config.port as number) || 0, config.host || '0.0.0.0', () => {
-        const addr = shelltender.server!.address() as AddressInfo;
-        shelltender.port = addr.port;
-        shelltender.url = `http://localhost:${addr.port}`;
-        shelltender.wsUrl = `ws://localhost:${addr.port}${shelltender.config.wsPath}`;
-        resolve();
-      });
+  // With our v0.6.1 changes, we need to call app.listen() to create the server
+  const server = await new Promise<Server>((resolve) => {
+    const srv = app.listen((config.port as number) || 0, config.host || '0.0.0.0', () => {
+      const addr = srv.address() as AddressInfo;
+      shelltender.port = addr.port;
+      shelltender.url = `http://localhost:${addr.port}`;
+      shelltender.wsUrl = `ws://localhost:${addr.port}${shelltender.config.wsPath}`;
+      // Update shelltender.server reference
+      shelltender.server = srv;
+      resolve(srv);
     });
-  }
+  });
   
   return {
-    server: shelltender.server!,
+    server,
     shelltender,
     port: shelltender.port!,
     url: shelltender.url!,
