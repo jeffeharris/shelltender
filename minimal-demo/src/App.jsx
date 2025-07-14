@@ -66,8 +66,11 @@ function TerminalDemo() {
 }
 
 export default function App() {
+  // Use environment variable if available, otherwise use relative URL
+  const wsUrl = import.meta.env.VITE_WS_URL || "/ws";
+  
   return (
-    <ShelltenderApp wsUrl="/ws">
+    <ShelltenderApp wsUrl={wsUrl}>
       <TerminalDemo />
     </ShelltenderApp>
   );
