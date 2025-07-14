@@ -1,6 +1,6 @@
 {
   "name": "@shelltender/core",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Shared types, interfaces, and utilities for Shelltender",
   "type": "module",
   "main": "dist/index.cjs",

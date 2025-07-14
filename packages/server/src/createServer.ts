@@ -289,7 +289,7 @@ export async function createShelltender(
       }
       if (httpServer && httpServer.listening) {
         await new Promise<void>((resolve) => {
-          httpServer.close(() => resolve());
+          httpServer!.close(() => resolve());
         });
       }
     }

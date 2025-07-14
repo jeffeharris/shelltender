@@ -156,7 +156,7 @@ export class SessionManager extends EventEmitter implements ISessionManager {
       });
     } catch (error) {
       // Provide better error context
-      const errorMessage = `Failed to create PTY session: ${error.message}`;
+      const errorMessage = `Failed to create PTY session: ${error instanceof Error ? error.message : String(error)}`;
       const debugInfo = {
         command,
         args,
@@ -165,13 +165,13 @@ export class SessionManager extends EventEmitter implements ISessionManager {
         rows,
         platform: process.platform,
         shell: command,
-        error: error.message,
-        stack: error.stack
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       };
       console.error(errorMessage, debugInfo);
       
       // Check common issues
-      if (error.message.includes('ENOENT')) {
+      if (error instanceof Error && error.message.includes('ENOENT')) {
         throw new Error(`Shell not found: ${command}. Try using /bin/sh or install ${command}`);
       }
       
