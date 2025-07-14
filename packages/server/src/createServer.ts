@@ -210,7 +210,7 @@ export async function createShelltender(
   // Override session creation to support default directory and transform
   if (defaultDirectory || transformSessionConfig) {
     const originalCreate = sessionManager.createSession.bind(sessionManager);
-    (sessionManager as any).createSession = (options: any) => {
+    (sessionManager as any).createSession = async (options: any) => {
       let finalOptions = { ...sessionOptions, ...options };
       
       // Apply default directory if not specified
@@ -218,12 +218,14 @@ export async function createShelltender(
         finalOptions.cwd = defaultDirectory(finalOptions.id || '');
       }
       
-      // Transform config if handler provided - handle async transform
+      // Transform config if handler provided - properly await async transform
       if (transformSessionConfig) {
-        const transformPromise = transformSessionConfig(finalOptions, finalOptions.id || '');
-        transformPromise.then((transformed) => {
-          finalOptions = transformed;
-        });
+        try {
+          finalOptions = await transformSessionConfig(finalOptions, finalOptions.id || '');
+        } catch (error) {
+          console.error('Error in transformSessionConfig:', error);
+          // Continue with non-transformed options
+        }
       }
       
       return originalCreate(finalOptions);
