@@ -12,7 +12,7 @@ services:
       - "${VITE_PORT:-5173}:5173"    # Vite dev server (frontend)
     environment:
       - NODE_ENV=development
-      - PORT=${PORT:-8080}
+      - PORT=8080
       - SINGLE_PORT=${SINGLE_PORT:-true}
       - WS_PORT=${WS_PORT:-8081}  # Only used if SINGLE_PORT=false
       - VITE_WS_URL=${VITE_WS_URL:-}  # Auto-detected by client
@@ -28,7 +28,7 @@ services:
     volumes:
       # Mount source code for hot reloading
       - ./packages:/app/packages:delegated
-      - ./apps:/app/apps:delegated
+      - ./minimal-demo:/app/minimal-demo:delegated
       - ./scripts:/app/scripts:delegated
       
       # Exclude node_modules to avoid conflicts
@@ -37,7 +37,6 @@ services:
       - /app/packages/server/node_modules
       - /app/packages/client/node_modules
       - /app/packages/shelltender/node_modules
-      - /app/apps/demo/node_modules
       
       # Persist session data
       - shelltender-sessions:/app/sessions
