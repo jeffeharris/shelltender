@@ -473,4 +473,26 @@ export class WebSocketServer {
       sessionCount: this.sessionManager.getAllSessions().length
     }));
   }
+
+  // Get number of clients connected to a specific session
+  public getSessionClientCount(sessionId: string): number {
+    let count = 0;
+    this.clients.forEach((ws) => {
+      if (ws.sessionId === sessionId && ws.readyState === ws.OPEN) {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  // Get all client connections grouped by session
+  public getClientsBySession(): Map<string, number> {
+    const sessionClients = new Map<string, number>();
+    this.clients.forEach((ws) => {
+      if (ws.sessionId && ws.readyState === ws.OPEN) {
+        sessionClients.set(ws.sessionId, (sessionClients.get(ws.sessionId) || 0) + 1);
+      }
+    });
+    return sessionClients;
+  }
 }

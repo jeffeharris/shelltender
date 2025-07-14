@@ -28,3 +28,4 @@ export * from './patterns/index.js';
 
 // Export types that are specific to the server
 export type { StoredSession } from './SessionStore.js';
+export type { SessionMetadata } from './routes/admin.js';

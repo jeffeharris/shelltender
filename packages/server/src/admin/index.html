@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelltender Admin</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #fff;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .system-info {
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .info-card {
+      background: #333;
+      padding: 10px 15px;
+      border-radius: 4px;
+    }
+
+    .info-card h3 {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    .info-card .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    .actions {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #1976D2;
+    }
+
+    .btn.danger {
+      background: #f44336;
+    }
+
+    .btn.danger:hover {
+      background: #d32f2f;
+    }
+
+    .btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    table {
+      width: 100%;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      overflow: hidden;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #333;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #fff;
+      border-bottom: 1px solid #3a3a3a;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #3a3a3a;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background: #333;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status.active {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .status.idle {
+      background: #FF9800;
+      color: white;
+    }
+
+    .status.exited {
+      background: #757575;
+      color: white;
+    }
+
+    .checkbox-cell {
+      width: 40px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: relative;
+      background: #2a2a2a;
+      margin: 5% auto;
+      padding: 20px;
+      width: 90%;
+      max-width: 800px;
+      border-radius: 8px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .close {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .close:hover {
+      color: #fff;
+    }
+
+    .terminal-output {
+      background: #1a1a1a;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      padding: 15px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .detail-label {
+      font-weight: bold;
+      color: #999;
+    }
+
+    .no-sessions {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    @media (max-width: 768px) {
+      .system-info {
+        grid-template-columns: 1fr;
+      }
+      
+      table {
+        font-size: 14px;
+      }
+      
+      td, th {
+        padding: 8px;
+      }
+      
+      .actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <span>Shelltender Admin</span>
+      <button class="btn" onclick="refreshData()">Refresh</button>
+    </h1>
+
+    <div class="system-info" id="systemInfo">
+      <div class="info-card">
+        <h3>Active Sessions</h3>
+        <div class="value" id="activeCount">-</div>
+      </div>
+      <div class="info-card">
+        <h3>Memory Usage</h3>
+        <div class="value" id="memoryUsage">-</div>
+      </div>
+      <div class="info-card">
+        <h3>Platform</h3>
+        <div class="value" id="platform">-</div>
+      </div>
+      <div class="info-card">
+        <h3>Uptime</h3>
+        <div class="value" id="uptime">-</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="createSession()">New Session</button>
+      <button class="btn danger" onclick="killSelected()" id="killSelectedBtn" disabled>Kill Selected</button>
+      <button class="btn danger" onclick="killAll()">Kill All</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="checkbox-cell">
+            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+          </th>
+          <th>ID</th>
+          <th>Command</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Clients</th>
+          <th>Memory</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="sessionTable">
+        <tr>
+          <td colspan="8" class="no-sessions">Loading sessions...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="detailModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2 id="modalTitle">Session Details</h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    let sessions = [];
+    let selectedSessions = new Set();
+
+    function formatBytes(bytes) {
+      if (!bytes) return '-';
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDuration(ms) {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (days > 0) return `${days}d ${hours % 24}h`;
+      if (hours > 0) return `${hours}h ${minutes % 60}m`;
+      if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+      return `${seconds}s`;
+    }
+
+    function formatUptime(seconds) {
+      return formatDuration(seconds * 1000);
+    }
+
+    async function refreshData() {
+      try {
+        const response = await fetch('/api/admin/sessions');
+        const data = await response.json();
+        
+        sessions = data.sessions;
+        
+        // Update system info
+        document.getElementById('activeCount').textContent = sessions.length;
+        document.getElementById('memoryUsage').textContent = formatBytes(data.system.totalMemory - data.system.freeMemory);
+        document.getElementById('platform').textContent = data.system.platform;
+        document.getElementById('uptime').textContent = formatUptime(data.system.uptime);
+        
+        // Update table
+        updateSessionTable();
+      } catch (error) {
+        console.error('Failed to refresh data:', error);
+      }
+    }
+
+    function updateSessionTable() {
+      const tbody = document.getElementById('sessionTable');
+      
+      if (sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="no-sessions">No active sessions</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = sessions.map(session => `
+        <tr>
+          <td class="checkbox-cell">
+            <input type="checkbox" 
+                   value="${session.id}" 
+                   onchange="toggleSession('${session.id}')"
+                   ${selectedSessions.has(session.id) ? 'checked' : ''}>
+          </td>
+          <td><code>${session.id.substring(0, 8)}</code></td>
+          <td>${session.command} ${session.args.join(' ')}</td>
+          <td><span class="status ${session.status}">${session.status}</span></td>
+          <td>${formatDuration(session.duration)}</td>
+          <td>${session.clientCount}</td>
+          <td>${formatBytes(session.memory)}</td>
+          <td>
+            <button class="btn" onclick="viewDetails('${session.id}')" style="padding: 5px 10px; font-size: 12px;">View</button>
+            <button class="btn danger" onclick="killSession('${session.id}')" style="padding: 5px 10px; font-size: 12px;">Kill</button>
+          </td>
+        </tr>
+      `).join('');
+      
+      updateKillButton();
+    }
+
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('selectAll');
+      const checkboxes = document.querySelectorAll('#sessionTable input[type="checkbox"]');
+      
+      checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+        if (selectAll.checked) {
+          selectedSessions.add(cb.value);
+        } else {
+          selectedSessions.delete(cb.value);
+        }
+      });
+      
+      updateKillButton();
+    }
+
+    function toggleSession(id) {
+      if (selectedSessions.has(id)) {
+        selectedSessions.delete(id);
+      } else {
+        selectedSessions.add(id);
+      }
+      updateKillButton();
+    }
+
+    function updateKillButton() {
+      const btn = document.getElementById('killSelectedBtn');
+      btn.disabled = selectedSessions.size === 0;
+      btn.textContent = selectedSessions.size > 0 
+        ? `Kill Selected (${selectedSessions.size})` 
+        : 'Kill Selected';
+    }
+
+    async function killSession(id) {
+      if (!confirm('Are you sure you want to kill this session?')) return;
+      
+      try {
+        const response = await fetch(`/api/admin/sessions/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          refreshData();
+        }
+      } catch (error) {
+        console.error('Failed to kill session:', error);
+      }
+    }
+
+    async function killSelected() {
+      if (!confirm(`Are you sure you want to kill ${selectedSessions.size} sessions?`)) return;
+      
+      try {
+        const response = await fetch('/api/admin/sessions/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'kill',
+            sessionIds: Array.from(selectedSessions)
+          })
+        });
+        
+        if (response.ok) {
+          selectedSessions.clear();
+          refreshData();
+        }
+      } catch (error) {
+        console.error('Failed to kill sessions:', error);
+      }
+    }
+
+    async function killAll() {
+      if (!confirm('Are you sure you want to kill ALL sessions? This cannot be undone.')) return;
+      
+      try {
+        const response = await fetch('/api/admin/sessions/kill-all', { method: 'POST' });
+        if (response.ok) {
+          refreshData();
+        }
+      } catch (error) {
+        console.error('Failed to kill all sessions:', error);
+      }
+    }
+
+    async function viewDetails(id) {
+      try {
+        const response = await fetch(`/api/admin/sessions/${id}`);
+        const session = await response.json();
+        
+        document.getElementById('modalTitle').textContent = `Session ${id.substring(0, 8)}`;
+        document.getElementById('modalBody').innerHTML = `
+          <div class="detail-grid">
+            <div class="detail-label">ID:</div>
+            <div>${session.id}</div>
+            
+            <div class="detail-label">Command:</div>
+            <div>${session.command} ${(session.args || []).join(' ')}</div>
+            
+            <div class="detail-label">Created:</div>
+            <div>${new Date(session.createdAt).toLocaleString()}</div>
+            
+            <div class="detail-label">Last Activity:</div>
+            <div>${session.lastAccessedAt ? new Date(session.lastAccessedAt).toLocaleString() : 'Never'}</div>
+            
+            <div class="detail-label">Terminal Size:</div>
+            <div>${session.cols}x${session.rows}</div>
+            
+            <div class="detail-label">Working Directory:</div>
+            <div>${session.cwd || 'Unknown'}</div>
+            
+            <div class="detail-label">Buffer Size:</div>
+            <div>${formatBytes(session.bufferSize)}</div>
+          </div>
+          
+          <h3>Recent Output</h3>
+          <div class="terminal-output">${session.recentOutput || 'No output available'}</div>
+          
+          <h3>Environment</h3>
+          <div class="terminal-output">${Object.entries(session.environment || {})
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n')}</div>
+        `;
+        
+        document.getElementById('detailModal').style.display = 'block';
+      } catch (error) {
+        console.error('Failed to fetch session details:', error);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').style.display = 'none';
+    }
+
+    function createSession() {
+      // This would typically open a dialog or redirect to create a new session
+      alert('Create session functionality not implemented yet');
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('detailModal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    }
+
+    // Initial load and periodic refresh
+    refreshData();
+    setInterval(refreshData, 5000); // Refresh every 5 seconds
+  </script>
+</body>
+</html>

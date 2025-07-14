@@ -1,6 +1,8 @@
 import express from 'express';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { 
   SessionManager, 
   BufferManager, 
@@ -12,6 +14,7 @@ import {
   CommonProcessors,
   CommonFilters
 } from './index.js';
+import { createAdminRouter } from './routes/admin.js';
 
 export interface ShelltenderConfig {
   port?: number | 'auto';
@@ -397,6 +400,8 @@ function setupApiRoutes(
   pipeline: TerminalDataPipeline | undefined,
   config: ShelltenderConfig
 ) {
+  // Enable JSON body parsing for admin routes
+  app.use(express.json());
   // Health check
   app.get('/api/health', (req, res) => {
     res.json({
@@ -505,4 +510,15 @@ function setupApiRoutes(
       });
     });
   }
+  
+  // Mount admin routes
+  const adminRouter = createAdminRouter(sessionManager, wsServer, bufferManager);
+  app.use('/api/admin', adminRouter);
+  
+  // Serve admin UI
+  app.get('/admin', (req, res) => {
+    // Use a more compatible approach for both ESM and CJS
+    const adminPath = path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'index.html');
+    res.sendFile(adminPath);
+  });
 }
