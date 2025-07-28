@@ -101,6 +101,7 @@ npm run dev
 - **Scrollback Buffer**: Maintains up to 10,000 lines of history server-side
 - **Session Reconnection**: Reconnect to existing sessions and see the full history
 - **Multi-Tab Sync**: Multiple tabs connected to the same session see real-time updates
+- **Multi-Session WebSocket**: Single WebSocket connection can subscribe to multiple terminal sessions simultaneously
 - **Session Management**: Built-in UI for managing open and backgrounded sessions
 - **Admin UI**: Web-based administration interface for monitoring and managing all sessions
 - **Restricted Sessions**: Create sandboxed sessions with filesystem restrictions
@@ -137,6 +138,7 @@ npm run dev
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
 - [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Release Guide](docs/RELEASE_GUIDE.md) - How to create and publish releases
+- [WebSocket Multi-Session Support](docs/WEBSOCKET_MULTI_SESSION.md) - Multiple sessions per connection
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
 - [Terminal Resize Behavior](docs/terminal-resize.md) - Flexbox-aware resize handling

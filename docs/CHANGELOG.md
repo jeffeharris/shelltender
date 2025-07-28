@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Multi-Session WebSocket Support**: Fixed issue where only the most recently connected session would receive live updates
+  - WebSocket connections can now properly subscribe to multiple terminal sessions simultaneously
+  - Each client maintains a set of subscribed sessions instead of a single session
+  - Backward compatible - existing single-session clients continue to work unchanged
+  - Reported by PocketDev team
+
 ## [0.6.1] - 2025-07-14
 
 ### Fixed
