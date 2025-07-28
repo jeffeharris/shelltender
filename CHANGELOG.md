@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2025-07-28
+
+### Fixed
+- Multi-session WebSocket support for handling multiple terminal sessions
+- Incremental buffer updates to prevent duplicate terminal output
+
+### Changed
+- Switched from Alpine to standard Node image in Dockerfile for better compatibility
+
+### Documentation
+- Updated release guide for improved release process
+
 ## [0.6.1] - 2025-07-14
 
 ### Added
