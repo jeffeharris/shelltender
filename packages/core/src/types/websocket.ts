@@ -11,6 +11,13 @@ export interface TerminalData {
   exitCode?: number;
   options?: SessionOptions;  // For create message
   session?: any;  // For created message
+  
+  // Incremental update fields
+  sequence?: number;  // For output messages
+  lastSequence?: number;  // For connect responses
+  incrementalData?: string;  // For incremental connect responses
+  fromSequence?: number;  // For incremental connect responses
+  useIncrementalUpdates?: boolean;  // For connect requests
 }
 
 // Event System WebSocket Messages
