@@ -5,6 +5,7 @@ import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
 import { SessionStore } from './SessionStore.js';
 import { EventManager } from './events/EventManager.js';
+import { AdminSessionProxy } from './admin/AdminSessionProxy.js';
 import { 
   TerminalData, 
   WebSocketMessage,
@@ -45,6 +46,8 @@ export class WebSocketServer {
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
   private monitorClients = new Set<string>();
+  private adminProxy: AdminSessionProxy;
+  private adminClients: Map<string, Set<any>> = new Map();
 
   private constructor(
     wss: WSServer,
@@ -58,6 +61,7 @@ export class WebSocketServer {
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
     this.sessionStore = sessionStore;
+    this.adminProxy = new AdminSessionProxy(this.sessionManager);
 
     // Set up event system if available
     if (this.eventManager) {
@@ -170,6 +174,14 @@ export class WebSocketServer {
           }
         }
         
+        // Clean up admin client connections
+        this.adminClients.forEach((adminSet, sessionId) => {
+          adminSet.delete(ws);
+          if (adminSet.size === 0) {
+            this.adminClients.delete(sessionId);
+          }
+        });
+        
         this.clients.delete(clientId);
         this.clientStates.delete(clientId);
         this.clientPatterns.delete(clientId);
@@ -184,6 +196,11 @@ export class WebSocketServer {
   }
 
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
+    // Check if it's an admin message first
+    if (data.type.startsWith('admin-')) {
+      return this.handleAdminMessage(clientId, ws, data as any);
+    }
+
     const handlers: Record<string, (clientId: string, ws: any, data: any) => void> = {
       'create': this.handleCreateSession.bind(this),
       'connect': this.handleConnectSession.bind(this),
@@ -390,6 +407,62 @@ export class WebSocketServer {
     }
   }
 
+  private async handleAdminMessage(
+    clientId: string, 
+    ws: any, 
+    message: any
+  ): Promise<void> {
+    try {
+      switch (message.type) {
+        case 'admin-list-sessions':
+          const sessions = this.sessionManager.getAllSessionMetadata();
+          ws.send(JSON.stringify({ 
+            type: 'admin-sessions-list', 
+            sessions 
+          }));
+          break;
+          
+        case 'admin-attach':
+          if (!message.sessionId) return;
+          
+          await this.adminProxy.attachToSession(message.sessionId, message.mode);
+          
+          // Track this admin client
+          if (!this.adminClients.has(message.sessionId)) {
+            this.adminClients.set(message.sessionId, new Set());
+          }
+          this.adminClients.get(message.sessionId)!.add(ws);
+          
+          // Send current buffer
+          const buffer = this.bufferManager.getBuffer(message.sessionId);
+          ws.send(JSON.stringify({
+            type: 'buffer',
+            sessionId: message.sessionId,
+            data: buffer
+          }));
+          break;
+          
+        case 'admin-detach':
+          if (!message.sessionId) return;
+          
+          await this.adminProxy.detachFromSession(message.sessionId);
+          this.adminClients.get(message.sessionId)?.delete(ws);
+          break;
+          
+        case 'admin-input':
+          if (!message.sessionId || !message.data) return;
+          
+          await this.adminProxy.writeToSession(message.sessionId, message.data);
+          break;
+      }
+    } catch (error: any) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: error.message
+      }));
+    }
+  }
+
   public broadcastToSession(sessionId: string, data: any): void {
     // Send to clients connected to this session
     this.clients.forEach((ws, clientId) => {
@@ -418,6 +491,17 @@ export class WebSocketServer {
         const ws = this.clients.get(monitorId);
         if (ws && ws.readyState === ws.OPEN) {
           ws.send(JSON.stringify(monitorMessage));
+        }
+      });
+    }
+
+    // Send to admin viewers
+    const adminViewers = this.adminClients.get(sessionId);
+    if (adminViewers && adminViewers.size > 0) {
+      const adminData = JSON.stringify(data);
+      adminViewers.forEach(ws => {
+        if (ws.readyState === ws.OPEN) {
+          ws.send(adminData);
         }
       });
     }
