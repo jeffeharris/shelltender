@@ -1,5 +1,6 @@
 // Export all server components
 export { SessionManager } from './SessionManager.js';
+export type { SessionMetadata } from './SessionManager.js';
 export { BufferManager } from './BufferManager.js';
 export { SessionStore } from './SessionStore.js';
 export { RestrictedShell } from './RestrictedShell.js';
@@ -28,7 +29,6 @@ export * from './patterns/index.js';
 
 // Export types that are specific to the server
 export type { StoredSession } from './SessionStore.js';
-export type { SessionMetadata } from './routes/admin.js';
 
 // Export admin components
 export { AdminSessionProxy } from './admin/AdminSessionProxy.js';
