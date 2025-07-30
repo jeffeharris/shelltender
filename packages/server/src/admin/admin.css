@@ -1,0 +1,146 @@
+.admin-panel {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.admin-layout {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.session-list {
+  width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow-y: auto;
+  padding: 1rem;
+  background: #2a2a2a;
+}
+
+.session-list h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.terminal-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #2a2a2a;
+}
+
+.session-item {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #333;
+  transition: all 0.2s;
+}
+
+.session-item:hover {
+  background: #3a3a3a;
+  border-color: #4a4a4a;
+}
+
+.session-item.selected {
+  background: #1976d2;
+  border-color: #2196f3;
+}
+
+.session-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 0.25rem;
+}
+
+.session-item.selected .session-id {
+  color: #ccc;
+}
+
+.session-command {
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+
+.session-time {
+  font-size: 12px;
+  color: #666;
+}
+
+.session-item.selected .session-time {
+  color: #aaa;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: #333;
+  border-bottom: 1px solid #444;
+  color: #fff;
+}
+
+.mode-button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #444;
+  color: #fff;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.mode-button:hover {
+  background: #555;
+  border-color: #666;
+}
+
+.mode-button.read-only {
+  background: #4caf50;
+  border-color: #66bb6a;
+}
+
+.mode-button.interactive {
+  background: #ff9800;
+  border-color: #ffa726;
+}
+
+.admin-terminal {
+  flex: 1;
+  background: #000;
+}
+
+.no-session {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  font-size: 18px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  
+  .session-list {
+    width: 100%;
+    max-height: 200px;
+  }
+}

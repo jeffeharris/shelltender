@@ -585,4 +585,25 @@ function setupApiRoutes(
     
     res.status(404).send('Admin UI not found. Please ensure the admin files are built and deployed.');
   });
+
+  // Serve admin monitor UI (WebSocket-based session monitor)
+  app.get('/admin/monitor', (req, res) => {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    const possiblePaths = [
+      path.join(__dirname, 'admin', 'session-monitor.html'),
+      path.join(__dirname, '..', 'src', 'admin', 'session-monitor.html'),
+      path.join(process.cwd(), 'packages', 'server', 'dist', 'admin', 'session-monitor.html'),
+      path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'session-monitor.html'),
+    ];
+    
+    for (const monitorPath of possiblePaths) {
+      if (fs.existsSync(monitorPath)) {
+        return res.sendFile(monitorPath);
+      }
+    }
+    
+    res.status(404).send('Admin Monitor UI not found.');
+  });
 }

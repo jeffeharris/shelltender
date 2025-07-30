@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelltender Admin - Session Monitor</title>
+  
+  <!-- Import xterm CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@xterm/xterm@5/css/xterm.css" />
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .admin-panel {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+
+    h1 {
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+
+    .admin-layout {
+      display: flex;
+      gap: 1rem;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .session-list {
+      width: 300px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      overflow-y: auto;
+      padding: 1rem;
+      background: #2a2a2a;
+    }
+
+    .session-list h2 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .terminal-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #444;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #2a2a2a;
+    }
+
+    .session-item {
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #333;
+      transition: all 0.2s;
+    }
+
+    .session-item:hover {
+      background: #3a3a3a;
+      border-color: #4a4a4a;
+    }
+
+    .session-item.selected {
+      background: #1976d2;
+      border-color: #2196f3;
+    }
+
+    .session-id {
+      font-family: monospace;
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 0.25rem;
+    }
+
+    .session-item.selected .session-id {
+      color: #ccc;
+    }
+
+    .session-command {
+      font-weight: 500;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+
+    .session-time {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .session-item.selected .session-time {
+      color: #aaa;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: #333;
+      border-bottom: 1px solid #444;
+      color: #fff;
+    }
+
+    .mode-button {
+      padding: 0.5rem 1rem;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #444;
+      color: #fff;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .mode-button:hover {
+      background: #555;
+      border-color: #666;
+    }
+
+    .mode-button.read-only {
+      background: #4caf50;
+      border-color: #66bb6a;
+    }
+
+    .mode-button.interactive {
+      background: #ff9800;
+      border-color: #ffa726;
+    }
+
+    #terminal {
+      flex: 1;
+      background: #000;
+      padding: 10px;
+    }
+
+    .no-session {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #666;
+      font-size: 18px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    /* Terminal styling */
+    .xterm {
+      height: 100%;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .admin-layout {
+        flex-direction: column;
+      }
+      
+      .session-list {
+        width: 100%;
+        max-height: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-panel">
+    <h1>Shelltender Admin - Session Monitor</h1>
+    
+    <div class="admin-layout">
+      <div class="session-list">
+        <h2>Active Sessions</h2>
+        <div id="sessionsList" class="loading">Connecting...</div>
+      </div>
+      
+      <div class="terminal-container">
+        <div id="terminalContent" class="no-session">Select a session to monitor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import xterm -->
+  <script src="https://unpkg.com/@xterm/xterm@5/lib/xterm.js"></script>
+  
+  <script>
+    let ws = null;
+    let terminal = null;
+    let selectedSessionId = null;
+    let currentMode = 'read-only';
+    let sessions = [];
+
+    // Connect to WebSocket server
+    function connect() {
+      ws = new WebSocket('ws://localhost:8080');
+      
+      ws.onopen = () => {
+        console.log('Connected to WebSocket server');
+        // Request session list
+        ws.send(JSON.stringify({ type: 'admin-list-sessions' }));
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+        // Try to reconnect after 3 seconds
+        setTimeout(connect, 3000);
+      };
+    }
+
+    // Handle incoming WebSocket messages
+    function handleMessage(data) {
+      switch (data.type) {
+        case 'admin-sessions-list':
+          updateSessionList(data.sessions);
+          break;
+          
+        case 'output':
+          if (terminal && data.sessionId === selectedSessionId) {
+            terminal.write(data.data);
+          }
+          break;
+          
+        case 'buffer':
+          if (terminal && data.sessionId === selectedSessionId) {
+            terminal.write(data.data);
+          }
+          break;
+          
+        case 'exit':
+          if (data.sessionId === selectedSessionId) {
+            terminal?.write('\r\n[Session ended]\r\n');
+          }
+          // Refresh session list
+          ws.send(JSON.stringify({ type: 'admin-list-sessions' }));
+          break;
+          
+        case 'error':
+          console.error('Error:', data.message);
+          break;
+      }
+    }
+
+    // Update the session list UI
+    function updateSessionList(sessionData) {
+      sessions = sessionData;
+      const container = document.getElementById('sessionsList');
+      
+      if (sessions.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #666;">No active sessions</div>';
+        return;
+      }
+      
+      container.innerHTML = sessions.map(session => {
+        const isSelected = session.id === selectedSessionId;
+        return `
+          <div class="session-item ${isSelected ? 'selected' : ''}" 
+               onclick="selectSession('${session.id}')">
+            <div class="session-id">${session.id.substring(0, 8)}...</div>
+            <div class="session-command">${session.command}</div>
+            <div class="session-time">${new Date(session.createdAt).toLocaleTimeString()}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Select a session to monitor
+    function selectSession(sessionId) {
+      // Detach from previous session
+      if (selectedSessionId) {
+        ws.send(JSON.stringify({ 
+          type: 'admin-detach', 
+          sessionId: selectedSessionId 
+        }));
+      }
+      
+      selectedSessionId = sessionId;
+      currentMode = 'read-only'; // Always start in read-only mode
+      
+      // Update UI
+      updateSessionList(sessions);
+      showTerminal();
+      
+      // Attach to new session
+      ws.send(JSON.stringify({ 
+        type: 'admin-attach', 
+        sessionId: sessionId,
+        mode: currentMode
+      }));
+    }
+
+    // Show terminal interface
+    function showTerminal() {
+      const container = document.getElementById('terminalContent');
+      container.innerHTML = `
+        <div class="terminal-header">
+          <span>Session: ${selectedSessionId.substring(0, 8)}...</span>
+          <button class="mode-button ${currentMode}" onclick="toggleMode()">
+            ${currentMode === 'read-only' ? '👁️ Read Only' : '✏️ Interactive'}
+          </button>
+        </div>
+        <div id="terminal"></div>
+      `;
+      
+      // Initialize xterm
+      terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 14,
+        fontFamily: 'Consolas, "Courier New", monospace',
+        theme: {
+          background: '#1a1a1a',
+          foreground: '#e0e0e0'
+        }
+      });
+      
+      terminal.open(document.getElementById('terminal'));
+      
+      // Handle input in interactive mode
+      terminal.onData((data) => {
+        if (currentMode === 'interactive' && ws && selectedSessionId) {
+          ws.send(JSON.stringify({
+            type: 'admin-input',
+            sessionId: selectedSessionId,
+            data: data
+          }));
+        }
+      });
+    }
+
+    // Toggle between read-only and interactive mode
+    function toggleMode() {
+      const newMode = currentMode === 'read-only' ? 'interactive' : 'read-only';
+      
+      // Detach and reattach with new mode
+      ws.send(JSON.stringify({ 
+        type: 'admin-detach', 
+        sessionId: selectedSessionId 
+      }));
+      
+      currentMode = newMode;
+      
+      ws.send(JSON.stringify({ 
+        type: 'admin-attach', 
+        sessionId: selectedSessionId,
+        mode: newMode
+      }));
+      
+      // Update button
+      const button = document.querySelector('.mode-button');
+      button.className = `mode-button ${newMode}`;
+      button.innerHTML = newMode === 'read-only' ? '👁️ Read Only' : '✏️ Interactive';
+    }
+
+    // Start the application
+    connect();
+    
+    // Refresh session list periodically
+    setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'admin-list-sessions' }));
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelltender Admin - Session Monitor</title>
+  
+  <!-- Import React and dependencies -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Import xterm CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@xterm/xterm@5/css/xterm.css" />
+  
+  <!-- Admin styles -->
+  <link rel="stylesheet" href="admin.css" />
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    
+    #root {
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <!-- Import Shelltender client library -->
+  <script type="module">
+    import { AdminPanel } from '/shelltender-client.js';
+    
+    // Mount the admin panel
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(AdminPanel));
+  </script>
+</body>
+</html>
