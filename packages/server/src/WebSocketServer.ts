@@ -198,7 +198,8 @@ export class WebSocketServer {
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
     // Check if it's an admin message first
     if (data.type.startsWith('admin-')) {
-      return this.handleAdminMessage(clientId, ws, data as any);
+      this.handleAdminMessage(clientId, ws, data as any);
+      return;
     }
 
     const handlers: Record<string, (clientId: string, ws: any, data: any) => void> = {

@@ -47,6 +47,12 @@ app.delete('/api/sessions/:id', (req, res) => {
   }
 });
 
+// Serve admin monitor UI
+app.get('/admin/monitor', (req, res) => {
+  const monitorPath = path.join(__dirname, 'admin', 'session-monitor.html');
+  res.sendFile(monitorPath);
+});
+
 // Serve the React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/dist/index.html'));

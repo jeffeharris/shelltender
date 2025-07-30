@@ -40,7 +40,7 @@ export class AdminSessionProxy extends EventEmitter {
       throw new Error('Session not in interactive mode');
     }
 
-    this.sessionManager.write(sessionId, data);
+    this.sessionManager.writeToSession(sessionId, data);
   }
   
   getAttachedSessions(): AdminSessionHandle[] {

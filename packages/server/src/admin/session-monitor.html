@@ -218,7 +218,9 @@
 
     // Connect to WebSocket server
     function connect() {
-      ws = new WebSocket('ws://localhost:8080');
+      // Try default port 8080, fallback to 8282
+      const wsPort = window.location.port === '3000' ? '8282' : '8080';
+      ws = new WebSocket(`ws://localhost:${wsPort}`);
       
       ws.onopen = () => {
         console.log('Connected to WebSocket server');

@@ -1,0 +1,42 @@
+# Dockerfile for Shelltender with Admin Monitor
+FROM node:20-slim
+
+# Install dependencies for node-pty
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY packages/core/package*.json ./packages/core/
+COPY packages/server/package*.json ./packages/server/
+COPY packages/client/package*.json ./packages/client/
+
+# Install dependencies
+RUN npm ci
+
+# Copy source files
+COPY . .
+
+# Build the packages
+RUN npm run build:core && \
+    npm run build:server
+
+# Expose ports
+EXPOSE 3000 8282
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV WS_PORT=8282
+
+# Install tsx for running TypeScript
+RUN npm install -g tsx
+
+# Start the server
+CMD ["tsx", "packages/server/src/app.ts"]
