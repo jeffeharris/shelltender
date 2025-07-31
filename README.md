@@ -101,7 +101,9 @@ npm run dev
 - **Scrollback Buffer**: Maintains up to 10,000 lines of history server-side
 - **Session Reconnection**: Reconnect to existing sessions and see the full history
 - **Multi-Tab Sync**: Multiple tabs connected to the same session see real-time updates
+- **Multi-Session WebSocket**: Single WebSocket connection can subscribe to multiple terminal sessions simultaneously
 - **Session Management**: Built-in UI for managing open and backgrounded sessions
+- **Admin UI**: Web-based administration interface for monitoring and managing all sessions
 - **Restricted Sessions**: Create sandboxed sessions with filesystem restrictions
 - **Special Key Support**: Full support for ctrl-c, ctrl-d, ctrl-z, ctrl-r, tab, escape, and arrow keys
 - **Automatic Reconnection**: Client automatically reconnects with exponential backoff
@@ -136,6 +138,7 @@ npm run dev
 - [Architecture](docs/ARCHITECTURE.md) - Detailed monorepo structure and design
 - [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Release Guide](docs/RELEASE_GUIDE.md) - How to create and publish releases
+- [WebSocket Multi-Session Support](docs/WEBSOCKET_MULTI_SESSION.md) - Multiple sessions per connection
 - [Terminal Event System](docs/TERMINAL_EVENT_SYSTEM.md) - Pattern matching and event detection
 - [Terminal Events API](docs/TERMINAL_EVENTS_API.md) - Event system API reference
 - [Terminal Resize Behavior](docs/terminal-resize.md) - Flexbox-aware resize handling
@@ -200,12 +203,42 @@ function App() {
 }
 ```
 
+## 🛡️ Admin UI
+
+Shelltender includes a built-in administration interface for managing terminal sessions:
+
+### Accessing the Admin UI
+
+The admin UI is available at `/admin` when using the standard server setup:
+
+```typescript
+const { url } = await createShelltenderServer({ port: 8080 });
+console.log(`Admin UI: ${url}/admin`);
+```
+
+### Features
+
+- **Session Overview**: View all active sessions with metadata
+- **Resource Monitoring**: Track CPU and memory usage per session
+- **Bulk Operations**: Select and manage multiple sessions at once
+- **System Stats**: Monitor overall system resource usage
+- **Real-time Updates**: Auto-refreshes every 5 seconds
+
+### Admin API Endpoints
+
+- `GET /api/admin/sessions` - List all sessions
+- `GET /api/admin/sessions/:id` - Get session details
+- `DELETE /api/admin/sessions/:id` - Terminate a session
+- `POST /api/admin/sessions/bulk` - Bulk session operations
+- `POST /api/admin/sessions/kill-all` - Terminate all sessions
+
 ## 🔒 Security Considerations
 
 This application provides full shell access on the server. In production:
 - Implement proper authentication and authorization
 - Run terminal sessions in isolated containers or VMs
 - Set resource limits per session
+- Secure the admin UI with authentication middleware
 - Use HTTPS and WSS for encrypted communication
 - Consider using the RestrictedShell for sandboxed sessions
 

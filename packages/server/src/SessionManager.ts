@@ -12,6 +12,15 @@ interface PtyProcess {
   clients: Set<string>;
 }
 
+// Simple metadata without user tracking
+export interface SessionMetadata {
+  id: string;
+  command: string;
+  args: string[];
+  createdAt: Date;
+  isActive: boolean;
+}
+
 export class SessionManager extends EventEmitter implements ISessionManager {
   private sessions: Map<string, PtyProcess> = new Map();
   private sessionStore: SessionStore;
@@ -25,7 +34,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
   }
 
   private async restoreSessions(): Promise<void> {
-    console.log('Restoring saved sessions...');
     const savedSessions = await this.sessionStore.loadAllSessions();
     
     for (const [sessionId, storedSession] of savedSessions) {
@@ -71,7 +79,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
           this.emit('data', sessionId, storedSession.buffer, { source: 'restored' });
         }
 
-        console.log(`Restored session ${sessionId} with ${storedSession.buffer.length} bytes of history`);
       } catch (error) {
         console.error(`Failed to restore session ${sessionId}:`, error);
         await this.sessionStore.deleteSession(sessionId);
@@ -121,9 +128,9 @@ export class SessionManager extends EventEmitter implements ISessionManager {
     };
 
     // Set up shell command and environment
-    let command = options.command || '/bin/bash';
+    let command = options.command || process.env.SHELL || '/bin/sh';  // Better default
     let args = options.args || [];
-    let cwd = options.cwd || process.env.HOME;
+    let cwd = options.cwd || process.cwd();  // Use cwd not HOME
     
     // Ensure UTF-8 locale
     let env = {
@@ -155,7 +162,27 @@ export class SessionManager extends EventEmitter implements ISessionManager {
         env,
       });
     } catch (error) {
-      throw error;
+      // Provide better error context
+      const errorMessage = `Failed to create PTY session: ${error instanceof Error ? error.message : String(error)}`;
+      const debugInfo = {
+        command,
+        args,
+        cwd,
+        cols,
+        rows,
+        platform: process.platform,
+        shell: command,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      };
+      console.error(errorMessage, debugInfo);
+      
+      // Check common issues
+      if (error instanceof Error && error.message.includes('ENOENT')) {
+        throw new Error(`Shell not found: ${command}. Try using /bin/sh or install ${command}`);
+      }
+      
+      throw new Error(`${errorMessage} (command: ${command}, cwd: ${cwd})`);
     }
 
     this.sessions.set(sessionId, {
@@ -288,5 +315,24 @@ export class SessionManager extends EventEmitter implements ISessionManager {
 
   getActiveSessionIds(): string[] {
     return Array.from(this.sessions.keys());
+  }
+
+  getSessionMetadata(sessionId: string): SessionMetadata | null {
+    const processInfo = this.sessions.get(sessionId);
+    if (!processInfo) return null;
+    
+    return {
+      id: sessionId,
+      command: processInfo.session.command || '/bin/bash',
+      args: processInfo.session.args || [],
+      createdAt: processInfo.session.createdAt,
+      isActive: true
+    };
+  }
+
+  getAllSessionMetadata(): SessionMetadata[] {
+    return Array.from(this.sessions.keys())
+      .map(id => this.getSessionMetadata(id))
+      .filter(Boolean) as SessionMetadata[];
   }
 }

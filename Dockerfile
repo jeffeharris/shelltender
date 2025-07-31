@@ -1,8 +1,13 @@
 # Multi-stage build for Shelltender
-FROM node:20-alpine AS builder
+FROM node:20 AS builder
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++ git
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -32,14 +37,18 @@ RUN npm run build -w @shelltender/client
 # Build the combined package
 RUN npm run build -w shelltender
 
-# Finally build the demo app
-RUN npm run build -w apps/demo
+# Skip demo app build - not needed for production
 
 # Production stage
-FROM node:20-alpine
+FROM node:20
 
 # Install runtime dependencies for PTY support
-RUN apk add --no-cache python3 make g++
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install AI coding assistant CLIs
 RUN npm install -g \
@@ -56,8 +65,8 @@ COPY --from=builder /app/apps ./apps
 COPY --from=builder /app/node_modules ./node_modules
 
 # Create a non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs -s /bin/bash -m nodejs
 
 # Create necessary directories
 RUN mkdir -p /app/sessions && \

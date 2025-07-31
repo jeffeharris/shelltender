@@ -1,6 +1,9 @@
 import express from 'express';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { 
   SessionManager, 
   BufferManager, 
@@ -12,6 +15,7 @@ import {
   CommonProcessors,
   CommonFilters
 } from './index.js';
+import { createAdminRouter } from './routes/admin.js';
 
 export interface ShelltenderConfig {
   port?: number | 'auto';
@@ -32,6 +36,7 @@ export interface ShelltenderConfig {
   apiRoutes?: boolean;
   defaultDirectory?: (sessionId: string) => string;
   transformSessionConfig?: (config: any, sessionId: string) => Promise<any>;
+  dataDir?: string;
 }
 
 export interface ShelltenderInstance {
@@ -50,6 +55,9 @@ export interface ShelltenderInstance {
   
   // Convenience methods
   createSession: (options?: any) => any;
+  getSession: (sessionId: string) => any;
+  getAllSessions: () => any[];
+  resizeSession: (sessionId: string, cols: number, rows: number) => boolean;
   killSession: (sessionId: string) => boolean;
   broadcast: (message: any) => void;
   getActiveSessionCount: () => number;
@@ -94,7 +102,7 @@ export async function createShelltender(
   };
 
   // Initialize components (reuse if provided)
-  const sessionStore = config.sessionStore || new SessionStore();
+  const sessionStore = config.sessionStore || new SessionStore(config.dataDir || '.sessions');
   if (!config.sessionStore) {
     await sessionStore.initialize();
   }
@@ -103,16 +111,54 @@ export async function createShelltender(
   const eventManager = new EventManager();
   const sessionManager = config.sessionManager || new SessionManager(sessionStore);
   
-  // Create HTTP server if not provided
-  const httpServer = server || createServer(app);
+  // Don't create HTTP server when using Express - let user call app.listen()
+  let httpServer = server;
+  let wsServer: WebSocketServer;
   
-  // Create WebSocket server
-  const wsServer = WebSocketServer.create(
-    { server: httpServer, path: wsPath },
-    sessionManager,
-    bufferManager,
-    eventManager
-  );
+  if (!server) {
+    // We need to defer WebSocket setup until after app.listen() is called
+    // For now, create WebSocket in noServer mode
+    wsServer = WebSocketServer.create(
+      { noServer: true },
+      sessionManager,
+      bufferManager,
+      eventManager
+    );
+    
+    // Monkey-patch app.listen to set up WebSocket when server starts
+    const originalListen = app.listen.bind(app);
+    (app as any).listen = function(...args: any[]) {
+      const server = originalListen(...args);
+      
+      // Now set up WebSocket upgrade handling
+      server.on('upgrade', function upgrade(request: any, socket: any, head: any) {
+        socket.on('error', (err: Error) => {
+          console.error('Socket error:', err);
+        });
+        
+        const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+        
+        if (pathname === wsPath) {
+          (wsServer as any).wss.handleUpgrade(request, socket, head, function done(ws: any) {
+            (wsServer as any).wss.emit('connection', ws, request);
+          });
+        } else {
+          socket.destroy();
+        }
+      });
+      
+      httpServer = server;
+      return server;
+    };
+  } else {
+    // Server provided, use it directly
+    wsServer = WebSocketServer.create(
+      { server: httpServer, path: wsPath },
+      sessionManager,
+      bufferManager,
+      eventManager
+    );
+  }
   
   let pipeline: TerminalDataPipeline | undefined;
   let integration: PipelineIntegration | undefined;
@@ -164,7 +210,7 @@ export async function createShelltender(
   // Override session creation to support default directory and transform
   if (defaultDirectory || transformSessionConfig) {
     const originalCreate = sessionManager.createSession.bind(sessionManager);
-    (sessionManager as any).createSession = (options: any) => {
+    (sessionManager as any).createSession = async (options: any) => {
       let finalOptions = { ...sessionOptions, ...options };
       
       // Apply default directory if not specified
@@ -172,12 +218,14 @@ export async function createShelltender(
         finalOptions.cwd = defaultDirectory(finalOptions.id || '');
       }
       
-      // Transform config if handler provided - handle async transform
+      // Transform config if handler provided - properly await async transform
       if (transformSessionConfig) {
-        const transformPromise = transformSessionConfig(finalOptions, finalOptions.id || '');
-        transformPromise.then((transformed) => {
-          finalOptions = transformed;
-        });
+        try {
+          finalOptions = await transformSessionConfig(finalOptions, finalOptions.id || '');
+        } catch (error) {
+          console.error('Error in transformSessionConfig:', error);
+          // Continue with non-transformed options
+        }
       }
       
       return originalCreate(finalOptions);
@@ -194,11 +242,14 @@ export async function createShelltender(
     pipeline,
     integration,
     server: httpServer,
-    port: finalConfig.port as number,
+    port: finalConfig.port === 'auto' ? 0 : (finalConfig.port as number),
     config: { ...finalConfig, isReady: true },
     
     // Convenience methods
     createSession: (options) => sessionManager.createSession({ ...sessionOptions, ...options }),
+    getSession: (sessionId) => sessionManager.getSession(sessionId),
+    getAllSessions: () => sessionManager.getAllSessions(),
+    resizeSession: (sessionId, cols, rows) => sessionManager.resizeSession(sessionId, cols, rows),
     killSession: (sessionId) => sessionManager.killSession(sessionId),
     broadcast: (message) => {
       // Broadcast to all connected clients
@@ -238,7 +289,7 @@ export async function createShelltender(
       }
       if (httpServer && httpServer.listening) {
         await new Promise<void>((resolve) => {
-          httpServer.close(() => resolve());
+          httpServer!.close(() => resolve());
         });
       }
     }
@@ -260,21 +311,21 @@ export async function createShelltenderServer(config: ShelltenderConfig = {}) {
   const app = express();
   const shelltender = await createShelltender(app, config);
   
-  // Start server if not already started
-  if (!shelltender.server!.listening) {
-    await new Promise<void>((resolve) => {
-      shelltender.server!.listen((config.port as number) || 0, config.host || '0.0.0.0', () => {
-        const addr = shelltender.server!.address() as AddressInfo;
-        shelltender.port = addr.port;
-        shelltender.url = `http://localhost:${addr.port}`;
-        shelltender.wsUrl = `ws://localhost:${addr.port}${shelltender.config.wsPath}`;
-        resolve();
-      });
+  // With our v0.6.1 changes, we need to call app.listen() to create the server
+  const server = await new Promise<Server>((resolve) => {
+    const srv = app.listen((config.port as number) || 0, config.host || '0.0.0.0', () => {
+      const addr = srv.address() as AddressInfo;
+      shelltender.port = addr.port;
+      shelltender.url = `http://localhost:${addr.port}`;
+      shelltender.wsUrl = `ws://localhost:${addr.port}${shelltender.config.wsPath}`;
+      // Update shelltender.server reference
+      shelltender.server = srv;
+      resolve(srv);
     });
-  }
+  });
   
   return {
-    server: shelltender.server!,
+    server,
     shelltender,
     port: shelltender.port!,
     url: shelltender.url!,
@@ -397,6 +448,8 @@ function setupApiRoutes(
   pipeline: TerminalDataPipeline | undefined,
   config: ShelltenderConfig
 ) {
+  // Enable JSON body parsing for admin routes
+  app.use(express.json());
   // Health check
   app.get('/api/health', (req, res) => {
     res.json({
@@ -505,4 +558,52 @@ function setupApiRoutes(
       });
     });
   }
+  
+  // Mount admin routes
+  const adminRouter = createAdminRouter(sessionManager, wsServer, bufferManager);
+  app.use('/api/admin', adminRouter);
+  
+  // Serve admin UI
+  app.get('/admin', (req, res) => {
+    // For ES modules, we need to use import.meta.url instead of __dirname
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // Try multiple possible locations for the admin HTML file
+    const possiblePaths = [
+      path.join(__dirname, 'admin', 'index.html'), // Built distribution
+      path.join(__dirname, '..', 'src', 'admin', 'index.html'), // Development
+      path.join(process.cwd(), 'packages', 'server', 'dist', 'admin', 'index.html'), // Monorepo dist
+      path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'index.html'), // Monorepo src
+    ];
+    
+    for (const adminPath of possiblePaths) {
+      if (fs.existsSync(adminPath)) {
+        return res.sendFile(adminPath);
+      }
+    }
+    
+    res.status(404).send('Admin UI not found. Please ensure the admin files are built and deployed.');
+  });
+
+  // Serve admin monitor UI (WebSocket-based session monitor)
+  app.get('/admin/monitor', (req, res) => {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    const possiblePaths = [
+      path.join(__dirname, 'admin', 'session-monitor.html'),
+      path.join(__dirname, '..', 'src', 'admin', 'session-monitor.html'),
+      path.join(process.cwd(), 'packages', 'server', 'dist', 'admin', 'session-monitor.html'),
+      path.join(process.cwd(), 'packages', 'server', 'src', 'admin', 'session-monitor.html'),
+    ];
+    
+    for (const monitorPath of possiblePaths) {
+      if (fs.existsSync(monitorPath)) {
+        return res.sendFile(monitorPath);
+      }
+    }
+    
+    res.status(404).send('Admin Monitor UI not found.');
+  });
 }

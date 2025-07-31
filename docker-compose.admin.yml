@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  shelltender:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    ports:
+      - "3000:3000"    # Single port for both HTTP and WebSocket
+    environment:
+      - NODE_ENV=production
+      - SHELLTENDER_PORT=3000
+    volumes:
+      # Persist session data
+      - ./sessions:/app/sessions
+    restart: unless-stopped

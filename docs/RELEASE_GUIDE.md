@@ -56,10 +56,10 @@ Then determine where to resume based on:
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.6.0
-- Last release introduced developer-friendly convenience APIs (createShelltenderServer, startShelltender, createShelltender)
+- Current version: 0.6.1
+- Last release introduced critical fixes for PocketDev integration and admin UI feature
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.6.0 release documented
+- The CHANGELOG.md has the v0.6.1 release documented
 
 To check if a release has already been created:
 ```bash

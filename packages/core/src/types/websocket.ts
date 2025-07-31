@@ -11,6 +11,13 @@ export interface TerminalData {
   exitCode?: number;
   options?: SessionOptions;  // For create message
   session?: any;  // For created message
+  
+  // Incremental update fields
+  sequence?: number;  // For output messages
+  lastSequence?: number;  // For connect responses
+  incrementalData?: string;  // For incremental connect responses
+  fromSequence?: number;  // For incremental connect responses
+  useIncrementalUpdates?: boolean;  // For connect requests
 }
 
 // Event System WebSocket Messages
@@ -72,6 +79,25 @@ export interface PatternsListMessage {
   requestId?: string;
 }
 
+// Admin WebSocket Messages - Simple admin messages without auth
+export interface AdminWebSocketMessage {
+  type: 'admin-attach' | 'admin-detach' | 'admin-input' | 'admin-list-sessions';
+  sessionId?: string;
+  mode?: 'read-only' | 'interactive';
+  data?: string;
+}
+
+export interface AdminSessionsListMessage {
+  type: 'admin-sessions-list';
+  sessions: Array<{
+    id: string;
+    command: string;
+    args: string[];
+    createdAt: Date;
+    isActive: boolean;
+  }>;
+}
+
 // Union type for all WebSocket messages
 export type WebSocketMessage = 
   | TerminalData 
@@ -83,4 +109,6 @@ export type WebSocketMessage =
   | SubscribeEventsMessage
   | UnsubscribeEventsMessage
   | GetPatternsMessage
-  | PatternsListMessage;
+  | PatternsListMessage
+  | AdminWebSocketMessage
+  | AdminSessionsListMessage;

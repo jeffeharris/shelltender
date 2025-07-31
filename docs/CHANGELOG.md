@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Multi-Session WebSocket Support**: Fixed issue where only the most recently connected session would receive live updates
+  - WebSocket connections can now properly subscribe to multiple terminal sessions simultaneously
+  - Each client maintains a set of subscribed sessions instead of a single session
+  - Backward compatible - existing single-session clients continue to work unchanged
+  - Reported by PocketDev team
+
+## [0.6.1] - 2025-07-14
+
+### Fixed
+- **Critical**: WebSocket connections now work correctly when using `createShelltender()` with Express
+  - Fixed issue where WebSocket upgrade handler wasn't attached when user calls `app.listen()`
+  - WebSocket path (e.g., `/ws`) now properly handles upgrade requests
+- **Critical**: Session creation no longer crashes in Alpine Linux containers
+  - Default shell changed from `/bin/bash` to `process.env.SHELL || '/bin/sh'`
+  - Better error messages when shell is not found
+  - Improved error context for debugging PTY creation failures
+- Session persistence now respects `dataDir` configuration option
+  - Previously always saved to `.sessions/` regardless of configuration
+- Missing convenience methods added to main instance
+  - `getSession()`, `getAllSessions()`, and `resizeSession()` now available directly
+  - Provides consistent API without needing to access `sessionManager` property
+- Server lifecycle fixed when using Express integration
+  - No longer creates unused internal HTTP server
+  - Properly defers WebSocket setup until after `app.listen()` is called
+
+### Changed
+- Better default working directory (uses `process.cwd()` instead of `$HOME`)
+- Improved error handling throughout session creation process
+
+### Developer Notes
+This release addresses critical issues discovered by the PocketDev team when implementing Shelltender v0.6.0 in Docker containers. The fixes ensure that the "convenience" APIs actually provide convenience rather than confusion.
+
 ## [0.6.0] - 2025-07-13
 
 ### Added

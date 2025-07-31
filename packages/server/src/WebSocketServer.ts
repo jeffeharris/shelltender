@@ -5,6 +5,7 @@ import { SessionManager } from './SessionManager.js';
 import { BufferManager } from './BufferManager.js';
 import { SessionStore } from './SessionStore.js';
 import { EventManager } from './events/EventManager.js';
+import { AdminSessionProxy } from './admin/AdminSessionProxy.js';
 import { 
   TerminalData, 
   WebSocketMessage,
@@ -12,7 +13,8 @@ import {
   UnregisterPatternMessage,
   SubscribeEventsMessage,
   UnsubscribeEventsMessage,
-  TerminalEventMessage
+  TerminalEventMessage,
+  AdminWebSocketMessage
 } from '@shelltender/core';
 
 export interface WebSocketServerOptions {
@@ -26,6 +28,14 @@ export interface WebSocketServerOptions {
   clientTracking?: boolean;
 }
 
+interface ClientState {
+  clientId: string;
+  sessionIds: Set<string>;
+  lastReceivedSequence: Map<string, number>;
+  connectionTime: number;
+  isIncrementalClient: boolean;
+}
+
 export class WebSocketServer {
   private wss: WSServer;
   private sessionManager: SessionManager;
@@ -33,9 +43,12 @@ export class WebSocketServer {
   private sessionStore?: SessionStore;
   private eventManager?: EventManager;
   private clients: Map<string, any> = new Map();
+  private clientStates: Map<string, ClientState> = new Map();
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
   private monitorClients = new Set<string>();
+  private adminProxy: AdminSessionProxy;
+  private adminClients: Map<string, Set<any>> = new Map();
 
   private constructor(
     wss: WSServer,
@@ -49,6 +62,7 @@ export class WebSocketServer {
     this.bufferManager = bufferManager;
     this.eventManager = eventManager;
     this.sessionStore = sessionStore;
+    this.adminProxy = new AdminSessionProxy(this.sessionManager);
 
     // Set up event system if available
     if (this.eventManager) {
@@ -120,6 +134,15 @@ export class WebSocketServer {
     this.wss.on('connection', (ws) => {
       const clientId = Math.random().toString(36).substring(7);
       this.clients.set(clientId, ws);
+      
+      // Initialize client state
+      this.clientStates.set(clientId, {
+        clientId,
+        sessionIds: new Set(),
+        lastReceivedSequence: new Map(),
+        connectionTime: Date.now(),
+        isIncrementalClient: false
+      });
 
       ws.on('message', (message: string) => {
         try {
@@ -132,9 +155,12 @@ export class WebSocketServer {
       });
 
       ws.on('close', () => {
-        // Remove client from all sessions
-        for (const session of this.sessionManager.getAllSessions()) {
-          this.sessionManager.removeClient(session.id, clientId);
+        // Remove client from all subscribed sessions
+        const clientState = this.clientStates.get(clientId);
+        if (clientState) {
+          clientState.sessionIds.forEach(sessionId => {
+            this.sessionManager.removeClient(sessionId, clientId);
+          });
         }
         
         // Clean up event subscriptions and patterns
@@ -149,7 +175,16 @@ export class WebSocketServer {
           }
         }
         
+        // Clean up admin client connections
+        this.adminClients.forEach((adminSet, sessionId) => {
+          adminSet.delete(ws);
+          if (adminSet.size === 0) {
+            this.adminClients.delete(sessionId);
+          }
+        });
+        
         this.clients.delete(clientId);
+        this.clientStates.delete(clientId);
         this.clientPatterns.delete(clientId);
         this.clientEventSubscriptions.delete(clientId);
         this.monitorClients.delete(clientId);
@@ -162,6 +197,12 @@ export class WebSocketServer {
   }
 
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
+    // Check if it's an admin message first
+    if (data.type.startsWith('admin-')) {
+      this.handleAdminMessage(clientId, ws, data as AdminWebSocketMessage);
+      return;
+    }
+
     const handlers: Record<string, (clientId: string, ws: any, data: any) => void> = {
       'create': this.handleCreateSession.bind(this),
       'connect': this.handleConnectSession.bind(this),
@@ -202,7 +243,12 @@ export class WebSocketServer {
         if (existingSession) {
           // Session already exists, just connect to it
           this.sessionManager.addClient(requestedSessionId, clientId);
-          ws.sessionId = requestedSessionId;
+          
+          // Add session to client's subscribed sessions
+          const clientState = this.clientStates.get(clientId);
+          if (clientState) {
+            clientState.sessionIds.add(requestedSessionId);
+          }
           
           const response = {
             type: 'created',
@@ -217,7 +263,12 @@ export class WebSocketServer {
       const session = this.sessionManager.createSession(options);
       
       this.sessionManager.addClient(session.id, clientId);
-      ws.sessionId = session.id;
+      
+      // Add session to client's subscribed sessions
+      const clientState = this.clientStates.get(clientId);
+      if (clientState) {
+        clientState.sessionIds.add(session.id);
+      }
       
       const response = {
         type: 'created',
@@ -247,14 +298,59 @@ export class WebSocketServer {
     const session = this.sessionManager.getSession(data.sessionId);
     if (session) {
       this.sessionManager.addClient(data.sessionId, clientId);
-      ws.sessionId = data.sessionId;
       
-      ws.send(JSON.stringify({
+      const clientState = this.clientStates.get(clientId);
+      if (!clientState) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          data: 'Client state not found',
+        }));
+        return;
+      }
+
+      // Add session to client's subscribed sessions
+      clientState.sessionIds.add(data.sessionId);
+      
+      // Check if client wants incremental updates
+      const useIncremental = data.useIncrementalUpdates === true || data.incremental === true;
+      clientState.isIncrementalClient = useIncremental;
+
+      let response: any = {
         type: 'connect',
         sessionId: data.sessionId,
         session,
-        scrollback: this.bufferManager.getBuffer(data.sessionId),
-      }));
+      };
+
+      if (useIncremental && data.lastSequence !== undefined) {
+        // Client supports incremental updates and has a sequence
+        const lastClientSequence = data.lastSequence;
+        const { data: incrementalData, lastSequence } = this.bufferManager.getIncrementalData(
+          data.sessionId, 
+          lastClientSequence
+        );
+        
+        if (incrementalData) {
+          response.incrementalData = incrementalData;
+          response.fromSequence = lastClientSequence;
+          response.lastSequence = lastSequence;
+        } else {
+          // No new data
+          response.lastSequence = lastClientSequence;
+        }
+        
+        clientState.lastReceivedSequence.set(data.sessionId, lastSequence);
+      } else {
+        // Legacy behavior or first connection
+        const { data: scrollback, lastSequence } = this.bufferManager.getBufferWithSequence(data.sessionId);
+        response.scrollback = scrollback;
+        response.lastSequence = lastSequence;
+        
+        if (useIncremental) {
+          clientState.lastReceivedSequence.set(data.sessionId, lastSequence);
+        }
+      }
+      
+      ws.send(JSON.stringify(response));
     } else {
       ws.send(JSON.stringify({
         type: 'error',
@@ -303,14 +399,83 @@ export class WebSocketServer {
   private handleSessionDisconnect(clientId: string, ws: any, data: any): void {
     if (data.sessionId) {
       this.sessionManager.removeClient(data.sessionId, clientId);
-      ws.sessionId = undefined;
+      
+      // Remove session from client's subscribed sessions
+      const clientState = this.clientStates.get(clientId);
+      if (clientState) {
+        clientState.sessionIds.delete(data.sessionId);
+        clientState.lastReceivedSequence.delete(data.sessionId);
+      }
+    }
+  }
+
+  private async handleAdminMessage(
+    clientId: string, 
+    ws: any, 
+    message: AdminWebSocketMessage
+  ): Promise<void> {
+    try {
+      switch (message.type) {
+        case 'admin-list-sessions':
+          const sessions = this.sessionManager.getAllSessionMetadata();
+          ws.send(JSON.stringify({ 
+            type: 'admin-sessions-list', 
+            sessions 
+          }));
+          break;
+          
+        case 'admin-attach':
+          if (!message.sessionId) return;
+          
+          await this.adminProxy.attachToSession(message.sessionId, message.mode);
+          
+          // Track this admin client
+          if (!this.adminClients.has(message.sessionId)) {
+            this.adminClients.set(message.sessionId, new Set());
+          }
+          this.adminClients.get(message.sessionId)!.add(ws);
+          
+          // Send current buffer
+          const buffer = this.bufferManager.getBuffer(message.sessionId);
+          ws.send(JSON.stringify({
+            type: 'buffer',
+            sessionId: message.sessionId,
+            data: buffer
+          }));
+          break;
+          
+        case 'admin-detach':
+          if (!message.sessionId) return;
+          
+          await this.adminProxy.detachFromSession(message.sessionId);
+          this.adminClients.get(message.sessionId)?.delete(ws);
+          break;
+          
+        case 'admin-input':
+          if (!message.sessionId || !message.data) return;
+          
+          await this.adminProxy.writeToSession(message.sessionId, message.data);
+          break;
+      }
+    } catch (error: any) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: error.message
+      }));
     }
   }
 
   public broadcastToSession(sessionId: string, data: any): void {
     // Send to clients connected to this session
     this.clients.forEach((ws, clientId) => {
-      if (ws.sessionId === sessionId && ws.readyState === ws.OPEN) {
+      const clientState = this.clientStates.get(clientId);
+      if (clientState && clientState.sessionIds.has(sessionId) && ws.readyState === ws.OPEN) {
+        // Update client's sequence tracking if this is output data with a sequence
+        if (data.type === 'output' && data.sequence !== undefined) {
+          if (clientState.isIncrementalClient) {
+            clientState.lastReceivedSequence.set(sessionId, data.sequence);
+          }
+        }
         ws.send(JSON.stringify(data));
       }
     });
@@ -328,6 +493,17 @@ export class WebSocketServer {
         const ws = this.clients.get(monitorId);
         if (ws && ws.readyState === ws.OPEN) {
           ws.send(JSON.stringify(monitorMessage));
+        }
+      });
+    }
+
+    // Send to admin viewers
+    const adminViewers = this.adminClients.get(sessionId);
+    if (adminViewers && adminViewers.size > 0) {
+      const adminData = JSON.stringify(data);
+      adminViewers.forEach(ws => {
+        if (ws.readyState === ws.OPEN) {
+          ws.send(adminData);
         }
       });
     }
@@ -472,5 +648,32 @@ export class WebSocketServer {
       message: 'Successfully enabled monitor mode. You will receive all terminal output.',
       sessionCount: this.sessionManager.getAllSessions().length
     }));
+  }
+
+  // Get number of clients connected to a specific session
+  public getSessionClientCount(sessionId: string): number {
+    let count = 0;
+    this.clients.forEach((ws, clientId) => {
+      const clientState = this.clientStates.get(clientId);
+      if (clientState && clientState.sessionIds.has(sessionId) && ws.readyState === ws.OPEN) {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  // Get all client connections grouped by session
+  public getClientsBySession(): Map<string, number> {
+    const sessionClients = new Map<string, number>();
+    this.clients.forEach((ws, clientId) => {
+      const clientState = this.clientStates.get(clientId);
+      if (clientState && ws.readyState === ws.OPEN) {
+        // Count each session the client is subscribed to
+        clientState.sessionIds.forEach(sessionId => {
+          sessionClients.set(sessionId, (sessionClients.get(sessionId) || 0) + 1);
+        });
+      }
+    });
+    return sessionClients;
   }
 }

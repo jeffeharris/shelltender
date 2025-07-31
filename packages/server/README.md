@@ -171,6 +171,12 @@ const wsServer = new WebSocketServer(8080, sessionManager, bufferManager);
 // - disconnect: Disconnect from session
 ```
 
+#### Features
+- **Multi-Session Support**: Single WebSocket connection can subscribe to multiple terminal sessions
+- **Incremental Updates**: Efficient data transmission with sequence tracking
+- **Automatic Reconnection**: Clients can resume from where they left off
+- **Event Subscriptions**: Pattern matching and terminal event notifications
+
 ## Advanced Usage
 
 ### Creating a Restricted Demo Environment

@@ -36,13 +36,16 @@ COPY packages/core/package*.json ./packages/core/
 COPY packages/server/package*.json ./packages/server/
 COPY packages/client/package*.json ./packages/client/
 COPY packages/shelltender/package*.json ./packages/shelltender/
-COPY apps/demo/package*.json ./apps/demo/
+# Skip apps/demo as it doesn't exist in this version
 
 # Install dependencies
 RUN npm install
 
 # Copy all source files
 COPY . .
+
+# Copy minimal-demo separately to ensure it's included
+COPY minimal-demo ./minimal-demo
 
 # Rebuild native modules to ensure they work in the container
 RUN npm rebuild
@@ -52,6 +55,9 @@ RUN npm run build -w @shelltender/core && \
     npm run build -w @shelltender/server && \
     npm run build -w @shelltender/client && \
     npm run build -w shelltender
+
+# Copy the admin UI files into the build output
+RUN cp -r packages/server/src/admin packages/server/dist/
 
 # Create directory for sessions
 RUN mkdir -p /app/sessions /app/ai-monitor-data
@@ -64,10 +70,11 @@ EXPOSE 9090 5174
 
 # Set development environment
 ENV NODE_ENV=development
+ENV PORT=8080
 # Let other env vars come from .env file
 
-# Start in the demo app directory
-WORKDIR /app/apps/demo
+# Start in the minimal-demo directory instead
+WORKDIR /app/minimal-demo
 
-# Use npm run dev which starts both server and client
-CMD ["npm", "run", "dev"]
+# Run the server with admin UI
+CMD ["node", "server-with-admin.js"]

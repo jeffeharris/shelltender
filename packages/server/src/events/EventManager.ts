@@ -318,8 +318,6 @@ export class EventManager extends EventEmitter {
           console.error(`[EventManager] Failed to restore pattern ${id}:`, error);
         }
       }
-
-      console.log(`[EventManager] Loaded ${this.patterns.size} persisted patterns`);
     } catch (error) {
       // File might not exist yet
       if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {

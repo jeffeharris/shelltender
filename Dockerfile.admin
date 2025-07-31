@@ -1,0 +1,51 @@
+# Dockerfile for Shelltender with Admin Monitor
+FROM node:20-slim
+
+# Install dependencies for node-pty
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+COPY packages/core/package*.json ./packages/core/
+COPY packages/server/package*.json ./packages/server/
+COPY packages/client/package*.json ./packages/client/
+COPY packages/shelltender/package*.json ./packages/shelltender/
+
+# Install dependencies
+RUN npm ci
+
+# Copy all source files needed for building
+COPY tsconfig.json ./
+COPY packages/core/ ./packages/core/
+COPY packages/server/ ./packages/server/
+# Create minimal client stubs since server doesn't need full client
+RUN mkdir -p packages/client/dist && \
+    echo '{}' > packages/client/dist/index.js && \
+    echo '{}' > packages/client/dist/index.cjs
+# Create minimal shelltender package stubs
+RUN mkdir -p packages/shelltender/dist && \
+    echo 'export * from "@shelltender/server";' > packages/shelltender/dist/index.js && \
+    echo 'module.exports = require("@shelltender/server");' > packages/shelltender/dist/index.cjs
+
+# Build only what we need
+RUN npm run build -w @shelltender/core -w @shelltender/server
+
+# Copy start script
+COPY start-admin.js ./
+
+# Expose port
+EXPOSE 3000
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV SHELLTENDER_PORT=3000
+
+# Start the server
+CMD ["node", "start-admin.js"]

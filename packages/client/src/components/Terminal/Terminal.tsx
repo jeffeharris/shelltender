@@ -87,6 +87,8 @@ const TerminalComponent = ({
   const isReadyRef = useRef(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionSequencesRef = useRef<Map<string, number>>(new Map());
+  const hasReceivedInitialBufferRef = useRef<Set<string>>(new Set());
   
   // Mobile-specific state
   const { isMobile } = useMobileDetection();
@@ -374,15 +376,34 @@ const TerminalComponent = ({
           }
           break;
         case 'connect':
-          if (data.scrollback) {
-            term.clear();
-            term.write(data.scrollback);
+          if (data.incrementalData) {
+            // Incremental update - just write new data
+            term.write(data.incrementalData);
+            if (data.lastSequence !== undefined && currentSessionIdRef.current) {
+              sessionSequencesRef.current.set(currentSessionIdRef.current, data.lastSequence);
+            }
+          } else if (data.scrollback) {
+            // Full buffer - only write if we haven't received it before
+            if (!hasReceivedInitialBufferRef.current.has(currentSessionIdRef.current || '')) {
+              term.clear();
+              term.write(data.scrollback);
+              if (currentSessionIdRef.current) {
+                hasReceivedInitialBufferRef.current.add(currentSessionIdRef.current);
+              }
+            }
+            if (data.lastSequence !== undefined && currentSessionIdRef.current) {
+              sessionSequencesRef.current.set(currentSessionIdRef.current, data.lastSequence);
+            }
           }
           isReadyRef.current = true;
           break;
         case 'output':
           if (data.data) {
             term.write(data.data);
+            // Track sequence if provided
+            if (data.sequence !== undefined && currentSessionIdRef.current) {
+              sessionSequencesRef.current.set(currentSessionIdRef.current, data.sequence);
+            }
           }
           break;
         case 'resize':
@@ -437,8 +458,14 @@ const TerminalComponent = ({
           ws.send(createMsg);
         }
       } else if (currentSessionIdRef.current) {
-        // On reconnect, reconnect to current session
-        const reconnectMsg = { type: 'connect' as const, sessionId: currentSessionIdRef.current };
+        // On reconnect, use incremental updates if we have a sequence
+        const lastSequence = sessionSequencesRef.current.get(currentSessionIdRef.current);
+        const reconnectMsg = { 
+          type: 'connect' as const, 
+          sessionId: currentSessionIdRef.current,
+          useIncrementalUpdates: true,
+          lastSequence: lastSequence 
+        };
         ws.send(reconnectMsg);
       }
     };
@@ -572,10 +599,21 @@ const TerminalComponent = ({
       // User selected a different existing session
       currentSessionIdRef.current = sessionId;
       isReadyRef.current = true;
-      if (xtermRef.current) {
+      
+      // Check if we need to clear the terminal
+      const hasBuffer = hasReceivedInitialBufferRef.current.has(sessionId);
+      const lastSequence = sessionSequencesRef.current.get(sessionId);
+      
+      if (xtermRef.current && !hasBuffer) {
         xtermRef.current.clear();
       }
-      wsRef.current.send({ type: 'connect', sessionId });
+      
+      wsRef.current.send({ 
+        type: 'connect', 
+        sessionId,
+        useIncrementalUpdates: true,
+        lastSequence: lastSequence
+      });
     }
   }, [sessionId]);
 

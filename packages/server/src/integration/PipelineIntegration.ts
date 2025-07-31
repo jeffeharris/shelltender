@@ -21,29 +21,28 @@ export class PipelineIntegration {
 
   setup(): void {
     // Connect SessionManager to Pipeline
-    const unsubscribeData = this.sessionManager.onData((sessionId, data, metadata) => {
+    const unsubscribeSessionData = this.sessionManager.onData((sessionId, data, metadata) => {
       this.pipeline.processData(sessionId, data, metadata);
     });
-    this.unsubscribers.push(unsubscribeData);
+    this.unsubscribers.push(unsubscribeSessionData);
 
-    // Connect Pipeline to BufferManager
-    const unsubscribeBuffer = this.pipeline.onData((event: ProcessedDataEvent) => {
-      this.bufferManager.addToBuffer(event.sessionId, event.processedData);
+    // Connect Pipeline to BufferManager and WebSocketServer
+    const unsubscribePipelineData = this.pipeline.onData((event: ProcessedDataEvent) => {
+      // Add to buffer and get sequence number
+      const sequence = this.bufferManager.addToBuffer(event.sessionId, event.processedData);
       
-      // Debounce saves to disk to avoid excessive writes
-      this.debounceSave(event.sessionId);
-    });
-    this.unsubscribers.push(unsubscribeBuffer);
-
-    // Connect Pipeline to WebSocketServer
-    const unsubscribeWs = this.pipeline.onData((event: ProcessedDataEvent) => {
+      // Broadcast with sequence number
       this.wsServer.broadcastToSession(event.sessionId, {
         type: 'output',
         sessionId: event.sessionId,
         data: event.processedData,
+        sequence: sequence,
       });
+      
+      // Debounce saves to disk to avoid excessive writes
+      this.debounceSave(event.sessionId);
     });
-    this.unsubscribers.push(unsubscribeWs);
+    this.unsubscribers.push(unsubscribePipelineData);
 
     // Connect Pipeline to EventManager if available
     if (this.eventManager) {
@@ -79,13 +78,6 @@ export class PipelineIntegration {
     if (this.pipeline.options.enableMetrics) {
       this.setupMetrics();
     }
-
-    // Log pipeline configuration
-    console.log('Pipeline integration setup complete');
-    console.log('- Processors:', this.pipeline.getProcessorNames());
-    console.log('- Filters:', this.pipeline.getFilterNames());
-    console.log('- Audit logging:', this.pipeline.options.enableAudit ? 'enabled' : 'disabled');
-    console.log('- Metrics:', this.pipeline.options.enableMetrics ? 'enabled' : 'disabled');
   }
 
   private debounceSave(sessionId: string): void {
