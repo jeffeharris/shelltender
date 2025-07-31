@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WebSocketService } from '../../services/WebSocketService';
 import { AdminTerminal } from './AdminTerminal';
+import '../../styles/admin.css';
 
 interface SessionMetadata {
   id: string;
@@ -15,16 +16,29 @@ export const AdminPanel: React.FC = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [mode, setMode] = useState<'read-only' | 'interactive'>('read-only');
   const [ws, setWs] = useState<WebSocketService | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
-    const wsService = new WebSocketService('ws://localhost:8080');
+    // Use the same WebSocket URL as the current page
+    const wsService = new WebSocketService({ url: '/ws' });
     
     wsService.on('admin-sessions-list', (data) => {
       setSessions(data.sessions);
     });
 
     wsService.on('connect', () => {
+      setIsConnected(true);
+      setLastError(null);
       wsService.send({ type: 'admin-list-sessions' });
+    });
+    
+    wsService.on('disconnect', () => {
+      setIsConnected(false);
+    });
+    
+    wsService.on('error', (error) => {
+      setLastError(error.message || 'Connection error');
     });
 
     wsService.connect();
@@ -32,6 +46,17 @@ export const AdminPanel: React.FC = () => {
 
     return () => wsService.disconnect();
   }, []);
+  
+  // Auto-refresh sessions every 5 seconds
+  useEffect(() => {
+    if (!ws || !isConnected) return;
+    
+    const interval = setInterval(() => {
+      ws.send({ type: 'admin-list-sessions' });
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [ws, isConnected]);
 
   const handleSessionSelect = (sessionId: string) => {
     if (selectedSessionId) {
@@ -56,9 +81,25 @@ export const AdminPanel: React.FC = () => {
     <div className="admin-panel">
       <h1>Shelltender Admin - Session Monitor</h1>
       
+      {lastError && (
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span>{lastError}</span>
+          <button onClick={() => setLastError(null)} className="error-close">×</button>
+        </div>
+      )}
+      
+      <div className="connection-status">
+        <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}></span>
+        <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+      </div>
+      
       <div className="admin-layout">
         <div className="session-list">
-          <h2>Active Sessions</h2>
+          <h2>Active Sessions ({sessions.length})</h2>
+          {sessions.length === 0 && isConnected && (
+            <div className="no-sessions">No active sessions</div>
+          )}
           {sessions.map(session => (
             <div 
               key={session.id}

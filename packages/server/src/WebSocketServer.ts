@@ -13,7 +13,8 @@ import {
   UnregisterPatternMessage,
   SubscribeEventsMessage,
   UnsubscribeEventsMessage,
-  TerminalEventMessage
+  TerminalEventMessage,
+  AdminWebSocketMessage
 } from '@shelltender/core';
 
 export interface WebSocketServerOptions {
@@ -198,7 +199,7 @@ export class WebSocketServer {
   private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
     // Check if it's an admin message first
     if (data.type.startsWith('admin-')) {
-      this.handleAdminMessage(clientId, ws, data as any);
+      this.handleAdminMessage(clientId, ws, data as AdminWebSocketMessage);
       return;
     }
 
@@ -411,7 +412,7 @@ export class WebSocketServer {
   private async handleAdminMessage(
     clientId: string, 
     ws: any, 
-    message: any
+    message: AdminWebSocketMessage
   ): Promise<void> {
     try {
       switch (message.type) {
