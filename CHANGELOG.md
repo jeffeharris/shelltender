@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Admin session monitoring with read-only and interactive modes
+- Visual mode indicators for admin monitoring (green for read-only, orange for interactive)
+- AdminSessionProxy for clean separation of admin access
+- WebSocket admin message types (`admin-attach`, `admin-detach`, `admin-input`)
+- Session creation from admin panel
+- Modal-based terminal monitoring in admin dashboard
+- Cursor visibility management based on monitoring mode
+
+### Fixed
+- Double character display in admin interactive mode
+- Duplicate buffer content when toggling between monitoring modes
+
 ## [0.6.2] - 2025-07-28
 
 ### Fixed
