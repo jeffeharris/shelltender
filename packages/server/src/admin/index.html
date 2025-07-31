@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shelltender Admin</title>
+  
+  <!-- Import xterm CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@xterm/xterm@5/css/xterm.css" />
+  
   <style>
     * {
       box-sizing: border-box;
@@ -203,6 +207,128 @@
       overflow-y: auto;
     }
 
+    /* Terminal modal styles */
+    .terminal-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 2000;
+    }
+
+    .terminal-modal-content {
+      position: relative;
+      background: #1a1a1a;
+      margin: 2% auto;
+      width: 90%;
+      max-width: 1200px;
+      height: 90vh;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      background: #2a2a2a;
+      border-bottom: 1px solid #3a3a3a;
+    }
+
+    .terminal-header h3 {
+      color: #fff;
+      margin: 0;
+    }
+
+    .terminal-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mode-indicator {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .mode-indicator.read-only {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .mode-indicator.interactive {
+      background: #FF9800;
+      color: white;
+    }
+
+    .toggle-mode-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .toggle-mode-btn:hover {
+      background: #1976D2;
+    }
+
+    .terminal-close {
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+      line-height: 1;
+      padding: 0 10px;
+    }
+
+    .terminal-close:hover {
+      color: #fff;
+    }
+
+    #adminTerminal {
+      flex: 1;
+      padding: 10px;
+      background: #000;
+      position: relative;
+    }
+
+    #adminTerminal.read-only-mode {
+      border: 3px solid #4CAF50;
+      box-shadow: inset 0 0 10px rgba(76, 175, 80, 0.3);
+    }
+
+    #adminTerminal.interactive-mode {
+      border: 3px solid #FF9800;
+      box-shadow: inset 0 0 10px rgba(255, 152, 0, 0.3);
+    }
+
+    /* Selection styles for read-only mode */
+    #adminTerminal.read-only-mode .xterm-selection {
+      background-color: rgba(76, 175, 80, 0.4) !important;
+    }
+
+    .monitor-btn {
+      background: #4CAF50;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .monitor-btn:hover {
+      background: #45a049;
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: 150px 1fr;
@@ -303,9 +429,30 @@
     </div>
   </div>
 
+  <div id="terminalModal" class="terminal-modal">
+    <div class="terminal-modal-content">
+      <div class="terminal-header">
+        <h3 id="terminalSessionId">Session Terminal</h3>
+        <div class="terminal-controls">
+          <span class="mode-indicator read-only" id="modeIndicator">👁️ Read Only</span>
+          <button class="toggle-mode-btn" onclick="toggleTerminalMode()">Toggle Mode</button>
+          <span class="terminal-close" onclick="closeTerminalModal()">&times;</span>
+        </div>
+      </div>
+      <div id="adminTerminal"></div>
+    </div>
+  </div>
+
+  <!-- Import xterm -->
+  <script src="https://unpkg.com/@xterm/xterm@5/lib/xterm.js"></script>
+
   <script>
     let sessions = [];
     let selectedSessions = new Set();
+    let ws = null;
+    let terminal = null;
+    let currentSessionId = null;
+    let currentMode = 'read-only';
 
     function formatBytes(bytes) {
       if (!bytes) return '-';
@@ -373,7 +520,8 @@
           <td>${session.clientCount}</td>
           <td>${formatBytes(session.memory)}</td>
           <td>
-            <button class="btn" onclick="viewDetails('${session.id}')" style="padding: 5px 10px; font-size: 12px;">View</button>
+            <button class="btn monitor-btn" onclick="monitorSession('${session.id}')" style="padding: 5px 10px; font-size: 12px;">Monitor</button>
+            <button class="btn" onclick="viewDetails('${session.id}')" style="padding: 5px 10px; font-size: 12px;">Details</button>
             <button class="btn danger" onclick="killSession('${session.id}')" style="padding: 5px 10px; font-size: 12px;">Kill</button>
           </td>
         </tr>
@@ -512,16 +660,258 @@
       document.getElementById('detailModal').style.display = 'none';
     }
 
-    function createSession() {
-      // This would typically open a dialog or redirect to create a new session
-      alert('Create session functionality not implemented yet');
+    async function createSession() {
+      // Connect to WebSocket if not already connected
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        await connectWebSocket();
+      }
+      
+      // Create a new session
+      ws.send(JSON.stringify({
+        type: 'create',
+        rows: 24,
+        cols: 80,
+        command: '/bin/bash'
+      }));
+    }
+
+    function connectWebSocket() {
+      return new Promise((resolve, reject) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          resolve();
+          return;
+        }
+
+        const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          resolve();
+        };
+        
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(error);
+        };
+        
+        ws.onclose = () => {
+          ws = null;
+        };
+      });
+    }
+
+    function handleWebSocketMessage(data) {
+      switch (data.type) {
+        case 'created':
+          // Refresh the session list when a new session is created
+          refreshData();
+          // Optionally, open the monitor for the new session
+          if (data.sessionId) {
+            setTimeout(() => monitorSession(data.sessionId), 500);
+          }
+          break;
+          
+        case 'output':
+          if (terminal && data.sessionId === currentSessionId) {
+            terminal.write(data.data);
+          }
+          break;
+          
+        case 'buffer':
+          if (terminal && data.sessionId === currentSessionId) {
+            terminal.write(data.data);
+          }
+          break;
+          
+        case 'exit':
+          if (data.sessionId === currentSessionId) {
+            terminal?.write('\r\n[Session ended]\r\n');
+            setTimeout(closeTerminalModal, 2000);
+          }
+          refreshData();
+          break;
+          
+        case 'admin-sessions-list':
+          // Update session list if using admin messages
+          if (data.sessions) {
+            sessions = data.sessions;
+            updateSessionTable();
+          }
+          break;
+          
+        case 'error':
+          console.error('WebSocket error:', data.message);
+          break;
+      }
+    }
+
+    async function monitorSession(sessionId) {
+      currentSessionId = sessionId;
+      currentMode = 'read-only';
+      
+      // Connect to WebSocket if needed
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        await connectWebSocket();
+      }
+      
+      // Update modal title
+      document.getElementById('terminalSessionId').textContent = `Session: ${sessionId.substring(0, 8)}...`;
+      
+      // Show modal
+      document.getElementById('terminalModal').style.display = 'block';
+      
+      // Initialize terminal if not already done
+      if (!terminal) {
+        terminal = new Terminal({
+          cursorBlink: currentMode === 'interactive',
+          fontSize: 14,
+          fontFamily: 'Consolas, "Courier New", monospace',
+          theme: {
+            background: '#000',
+            foreground: '#e0e0e0'
+          },
+          cursorStyle: currentMode === 'interactive' ? 'block' : 'underline',
+          // Start with stdin disabled - we'll manage input manually
+          disableStdin: false
+        });
+        
+        terminal.open(document.getElementById('adminTerminal'));
+        
+        // Enable selection in read-only mode
+        terminal.options.selectionStyle = 'word';
+        
+        // Use onKey to intercept before terminal processes it
+        terminal.onKey(({ key, domEvent }) => {
+          if (currentMode === 'interactive' && ws && currentSessionId) {
+            // Prevent default to stop local echo
+            domEvent.preventDefault();
+            
+            // Send the key to server
+            ws.send(JSON.stringify({
+              type: 'admin-input',
+              sessionId: currentSessionId,
+              data: key
+            }));
+          }
+        });
+        
+        // Also handle paste events
+        terminal.onData((data) => {
+          if (currentMode === 'interactive' && ws && currentSessionId) {
+            // For paste events (multi-character), just send it
+            if (data.length > 1) {
+              ws.send(JSON.stringify({
+                type: 'admin-input',
+                sessionId: currentSessionId,
+                data: data
+              }));
+            }
+            // Single characters are handled by onKey above
+          }
+        });
+      }
+      
+      // Clear terminal
+      terminal.clear();
+      
+      // Attach to session
+      ws.send(JSON.stringify({
+        type: 'admin-attach',
+        sessionId: sessionId,
+        mode: currentMode
+      }));
+      
+      // Update mode indicator
+      updateModeIndicator();
+    }
+
+    function toggleTerminalMode() {
+      if (!ws || !currentSessionId) return;
+      
+      // Detach from current session
+      ws.send(JSON.stringify({
+        type: 'admin-detach',
+        sessionId: currentSessionId
+      }));
+      
+      // Toggle mode
+      currentMode = currentMode === 'read-only' ? 'interactive' : 'read-only';
+      
+      // Clear terminal before reattaching to avoid duplicate buffer
+      if (terminal) {
+        terminal.clear();
+        // Update terminal appearance based on mode
+        terminal.options.disableStdin = currentMode === 'read-only';
+        terminal.options.cursorBlink = currentMode === 'interactive';
+        terminal.options.cursorStyle = currentMode === 'interactive' ? 'block' : 'underline';
+        
+        // Hide cursor completely in read-only mode
+        if (currentMode === 'read-only') {
+          terminal.write('\x1b[?25l'); // Hide cursor
+        } else {
+          terminal.write('\x1b[?25h'); // Show cursor
+        }
+      }
+      
+      // Reattach with new mode
+      ws.send(JSON.stringify({
+        type: 'admin-attach',
+        sessionId: currentSessionId,
+        mode: currentMode
+      }));
+      
+      // Update UI
+      updateModeIndicator();
+    }
+
+    function updateModeIndicator() {
+      const indicator = document.getElementById('modeIndicator');
+      const terminalDiv = document.getElementById('adminTerminal');
+      
+      if (currentMode === 'read-only') {
+        indicator.className = 'mode-indicator read-only';
+        indicator.innerHTML = '👁️ Read Only';
+        terminalDiv.className = 'read-only-mode';
+      } else {
+        indicator.className = 'mode-indicator interactive';
+        indicator.innerHTML = '✏️ Interactive';
+        terminalDiv.className = 'interactive-mode';
+      }
+    }
+
+    function closeTerminalModal() {
+      // Detach from session
+      if (ws && currentSessionId) {
+        ws.send(JSON.stringify({
+          type: 'admin-detach',
+          sessionId: currentSessionId
+        }));
+      }
+      
+      // Hide modal
+      document.getElementById('terminalModal').style.display = 'none';
+      
+      // Clear state
+      currentSessionId = null;
+      if (terminal) {
+        terminal.clear();
+      }
     }
 
     // Close modal when clicking outside
     window.onclick = function(event) {
-      const modal = document.getElementById('detailModal');
-      if (event.target === modal) {
+      const detailModal = document.getElementById('detailModal');
+      const terminalModal = document.getElementById('terminalModal');
+      
+      if (event.target === detailModal) {
         closeModal();
+      } else if (event.target === terminalModal) {
+        closeTerminalModal();
       }
     }
 
