@@ -11,32 +11,41 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 COPY packages/core/package*.json ./packages/core/
 COPY packages/server/package*.json ./packages/server/
 COPY packages/client/package*.json ./packages/client/
+COPY packages/shelltender/package*.json ./packages/shelltender/
 
 # Install dependencies
 RUN npm ci
 
-# Copy source files
-COPY . .
+# Copy all source files needed for building
+COPY tsconfig.json ./
+COPY packages/core/ ./packages/core/
+COPY packages/server/ ./packages/server/
+# Create minimal client stubs since server doesn't need full client
+RUN mkdir -p packages/client/dist && \
+    echo '{}' > packages/client/dist/index.js && \
+    echo '{}' > packages/client/dist/index.cjs
+# Create minimal shelltender package stubs
+RUN mkdir -p packages/shelltender/dist && \
+    echo 'export * from "@shelltender/server";' > packages/shelltender/dist/index.js && \
+    echo 'module.exports = require("@shelltender/server");' > packages/shelltender/dist/index.cjs
 
-# Build the packages
-RUN npm run build:core && \
-    npm run build:server
+# Build only what we need
+RUN npm run build -w @shelltender/core -w @shelltender/server
 
-# Expose ports
-EXPOSE 3000 8282
+# Copy start script
+COPY start-admin.js ./
+
+# Expose port
+EXPOSE 3000
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV WS_PORT=8282
-
-# Install tsx for running TypeScript
-RUN npm install -g tsx
+ENV SHELLTENDER_PORT=3000
 
 # Start the server
-CMD ["tsx", "packages/server/src/app.ts"]
+CMD ["node", "start-admin.js"]

@@ -6,35 +6,11 @@ services:
       context: .
       dockerfile: Dockerfile.admin
     ports:
-      - "3000:3000"    # HTTP server
-      - "8282:8282"    # WebSocket server
+      - "3000:3000"    # Single port for both HTTP and WebSocket
     environment:
       - NODE_ENV=production
-      - PORT=3000
-      - WS_PORT=8282
+      - SHELLTENDER_PORT=3000
     volumes:
-      # Mount admin files for hot reload during development
-      - ./packages/server/src/admin:/app/packages/server/src/admin:ro
       # Persist session data
       - ./sessions:/app/sessions
     restart: unless-stopped
-    
-  # Optional: Add a development version with hot reload
-  shelltender-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.admin
-    ports:
-      - "3001:3000"    # HTTP server (different port)
-      - "8283:8282"    # WebSocket server (different port)
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - WS_PORT=8282
-    volumes:
-      # Mount source for development
-      - ./packages:/app/packages
-      - ./sessions-dev:/app/sessions
-    command: ["npx", "tsx", "watch", "packages/server/src/app.ts"]
-    profiles:
-      - dev
