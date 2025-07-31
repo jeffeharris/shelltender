@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session creation from admin panel
 - Modal-based terminal monitoring in admin dashboard
 - Cursor visibility management based on monitoring mode
+- Session metadata methods to SessionManager for better admin tracking
+- Docker configuration for admin features (Dockerfile.admin, docker-compose.admin.yml)
+- Comprehensive admin access documentation
 
 ### Fixed
 - Double character display in admin interactive mode
