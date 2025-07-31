@@ -453,6 +453,7 @@
     let terminal = null;
     let currentSessionId = null;
     let currentMode = 'read-only';
+    let isReceivingBuffer = false;
 
     function formatBytes(bytes) {
       if (!bytes) return '-';
@@ -717,14 +718,20 @@
           break;
           
         case 'output':
-          if (terminal && data.sessionId === currentSessionId) {
+          // Don't write output while receiving initial buffer to avoid duplicates
+          if (terminal && data.sessionId === currentSessionId && !isReceivingBuffer) {
             terminal.write(data.data);
           }
           break;
           
         case 'buffer':
           if (terminal && data.sessionId === currentSessionId) {
+            isReceivingBuffer = true;
             terminal.write(data.data);
+            // Buffer is complete, now we can receive live output
+            setTimeout(() => {
+              isReceivingBuffer = false;
+            }, 100);
           }
           break;
           
@@ -800,24 +807,27 @@
           }
         });
         
-        // Also handle paste events
+        // Handle paste events ONLY
+        // Important: onData fires for all input including single keys on first load
+        // We must only handle multi-character paste to avoid double input
         terminal.onData((data) => {
-          if (currentMode === 'interactive' && ws && currentSessionId) {
-            // For paste events (multi-character), just send it
-            if (data.length > 1) {
-              ws.send(JSON.stringify({
-                type: 'admin-input',
-                sessionId: currentSessionId,
-                data: data
-              }));
-            }
-            // Single characters are handled by onKey above
+          // Only handle paste events (multi-character input)
+          // Single characters are handled by onKey above
+          if (data.length > 1 && currentMode === 'interactive' && ws && currentSessionId) {
+            ws.send(JSON.stringify({
+              type: 'admin-input',
+              sessionId: currentSessionId,
+              data: data
+            }));
           }
         });
       }
       
       // Clear terminal
       terminal.clear();
+      
+      // Reset buffer flag before attaching
+      isReceivingBuffer = false;
       
       // Attach to session
       ws.send(JSON.stringify({
