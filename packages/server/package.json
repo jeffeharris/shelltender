@@ -1,6 +1,6 @@
 {
   "name": "@shelltender/server",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Server-side terminal session management for Shelltender",
   "type": "module",
   "main": "dist/index.cjs",
@@ -51,7 +51,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@shelltender/core": "^0.6.2",
+    "@shelltender/core": "^0.7.0",
     "node-pty": "^1.0.0",
     "uuid": "^11.1.0",
     "ws": "^8.18.2"
