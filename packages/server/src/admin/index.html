@@ -783,8 +783,8 @@
             foreground: '#e0e0e0'
           },
           cursorStyle: currentMode === 'interactive' ? 'block' : 'underline',
-          // Start with stdin disabled - we'll manage input manually
-          disableStdin: false
+          // IMPORTANT: Disable stdin to prevent local echo - we handle all input manually
+          disableStdin: true
         });
         
         terminal.open(document.getElementById('adminTerminal'));
@@ -856,7 +856,8 @@
       if (terminal) {
         terminal.clear();
         // Update terminal appearance based on mode
-        terminal.options.disableStdin = currentMode === 'read-only';
+        // Always keep stdin disabled - we handle all input manually via onKey
+        terminal.options.disableStdin = true;
         terminal.options.cursorBlink = currentMode === 'interactive';
         terminal.options.cursorStyle = currentMode === 'interactive' ? 'block' : 'underline';
         
