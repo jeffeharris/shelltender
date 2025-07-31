@@ -11,7 +11,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch packages/server/src/app.ts",
     "dev:client": "cd client && npm run dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:client\"",
     "build": "npm run build:all && npm run validate:esm",

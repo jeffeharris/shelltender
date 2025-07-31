@@ -78,13 +78,6 @@ export class PipelineIntegration {
     if (this.pipeline.options.enableMetrics) {
       this.setupMetrics();
     }
-
-    // Log pipeline configuration
-    console.log('Pipeline integration setup complete');
-    console.log('- Processors:', this.pipeline.getProcessorNames());
-    console.log('- Filters:', this.pipeline.getFilterNames());
-    console.log('- Audit logging:', this.pipeline.options.enableAudit ? 'enabled' : 'disabled');
-    console.log('- Metrics:', this.pipeline.options.enableMetrics ? 'enabled' : 'disabled');
   }
 
   private debounceSave(sessionId: string): void {
