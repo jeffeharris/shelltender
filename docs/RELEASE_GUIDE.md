@@ -56,10 +56,10 @@ Then determine where to resume based on:
 ## Current Release Status
 
 As of the last update to this guide:
-- Current version: 0.6.1
-- Last release introduced critical fixes for PocketDev integration and admin UI feature
+- Current version: 0.7.0
+- Last release introduced admin shell access features with monitoring capabilities
 - All packages are synchronized at the same version
-- The CHANGELOG.md has the v0.6.1 release documented
+- The CHANGELOG.md has the v0.7.0 release documented
 
 To check if a release has already been created:
 ```bash
