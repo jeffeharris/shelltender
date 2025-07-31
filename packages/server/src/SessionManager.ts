@@ -34,7 +34,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
   }
 
   private async restoreSessions(): Promise<void> {
-    console.log('Restoring saved sessions...');
     const savedSessions = await this.sessionStore.loadAllSessions();
     
     for (const [sessionId, storedSession] of savedSessions) {
@@ -80,7 +79,6 @@ export class SessionManager extends EventEmitter implements ISessionManager {
           this.emit('data', sessionId, storedSession.buffer, { source: 'restored' });
         }
 
-        console.log(`Restored session ${sessionId} with ${storedSession.buffer.length} bytes of history`);
       } catch (error) {
         console.error(`Failed to restore session ${sessionId}:`, error);
         await this.sessionStore.deleteSession(sessionId);
