@@ -72,6 +72,11 @@ export class WebSocketServer {
     this.setupWebSocketHandlers();
   }
 
+  /** Get the underlying WebSocket.Server instance for advanced use cases */
+  get server(): WSServer {
+    return this.wss;
+  }
+
   static create(
     config: number | WebSocketServerOptions,
     sessionManager: SessionManager,

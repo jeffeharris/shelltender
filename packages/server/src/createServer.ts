@@ -1,13 +1,15 @@
 import express from 'express';
-import { createServer, Server } from 'http';
+import { createServer, Server, IncomingMessage } from 'http';
 import { AddressInfo } from 'net';
+import { Duplex } from 'stream';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { 
-  SessionManager, 
-  BufferManager, 
-  SessionStore, 
+import { WebSocket } from 'ws';
+import {
+  SessionManager,
+  BufferManager,
+  SessionStore,
   WebSocketServer,
   EventManager,
   TerminalDataPipeline,
@@ -16,6 +18,7 @@ import {
   CommonFilters
 } from './index.js';
 import { createAdminRouter } from './routes/admin.js';
+import { TerminalSession, SessionOptions, TerminalData } from '@shelltender/core';
 
 export interface ShelltenderConfig {
   port?: number | 'auto';
@@ -35,8 +38,36 @@ export interface ShelltenderConfig {
   staticDir?: string;
   apiRoutes?: boolean;
   defaultDirectory?: (sessionId: string) => string;
-  transformSessionConfig?: (config: any, sessionId: string) => Promise<any>;
+  transformSessionConfig?: (config: SessionOptions, sessionId: string) => Promise<SessionOptions>;
   dataDir?: string;
+}
+
+/** Configuration returned by getConfiguration() */
+export interface ShelltenderConfiguration {
+  port?: number | 'auto';
+  wsPath?: string;
+  enablePipeline?: boolean;
+  enableSecurity?: boolean;
+  host?: string;
+  trustProxy?: boolean;
+  staticDir?: string;
+  apiRoutes?: boolean;
+  dataDir?: string;
+  bufferManager: {
+    maxBufferSize: number;
+  };
+  pipeline: {
+    processors: string[];
+    filters: string[];
+  } | null;
+  security: {
+    enableHelmet: boolean;
+    enableCors: boolean;
+    corsOrigin: string | boolean;
+    enableRateLimiting: boolean;
+    enableSessionTimeout: boolean;
+    sessionTimeoutMs: number;
+  };
 }
 
 export interface ShelltenderInstance {
@@ -52,16 +83,16 @@ export interface ShelltenderInstance {
   url?: string;
   wsUrl?: string;
   config: ShelltenderConfig & { isReady: boolean };
-  
+
   // Convenience methods
-  createSession: (options?: any) => any;
-  getSession: (sessionId: string) => any;
-  getAllSessions: () => any[];
+  createSession: (options?: SessionOptions) => Promise<TerminalSession>;
+  getSession: (sessionId: string) => TerminalSession | null;
+  getAllSessions: () => TerminalSession[];
   resizeSession: (sessionId: string, cols: number, rows: number) => boolean;
   killSession: (sessionId: string) => boolean;
-  broadcast: (message: any) => void;
+  broadcast: (message: TerminalData) => void;
   getActiveSessionCount: () => number;
-  getConfiguration: () => any;
+  getConfiguration: () => ShelltenderConfiguration;
   stop: () => Promise<void>;
 }
 
@@ -127,26 +158,27 @@ export async function createShelltender(
     
     // Monkey-patch app.listen to set up WebSocket when server starts
     const originalListen = app.listen.bind(app);
-    (app as any).listen = function(...args: any[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (app.listen as any) = function(...args: Parameters<typeof originalListen>) {
       const server = originalListen(...args);
-      
+
       // Now set up WebSocket upgrade handling
-      server.on('upgrade', function upgrade(request: any, socket: any, head: any) {
+      server.on('upgrade', function upgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
         socket.on('error', (err: Error) => {
           console.error('Socket error:', err);
         });
-        
+
         const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
-        
+
         if (pathname === wsPath) {
-          (wsServer as any).wss.handleUpgrade(request, socket, head, function done(ws: any) {
-            (wsServer as any).wss.emit('connection', ws, request);
+          wsServer.server.handleUpgrade(request, socket, head, function done(ws: WebSocket) {
+            wsServer.server.emit('connection', ws, request);
           });
         } else {
           socket.destroy();
         }
       });
-      
+
       httpServer = server;
       return server;
     };
@@ -210,14 +242,15 @@ export async function createShelltender(
   // Override session creation to support default directory and transform
   if (defaultDirectory || transformSessionConfig) {
     const originalCreate = sessionManager.createSession.bind(sessionManager);
-    (sessionManager as any).createSession = async (options: any) => {
-      let finalOptions = { ...sessionOptions, ...options };
-      
+    // Override createSession with custom logic
+    const customCreateSession = async (options?: SessionOptions): Promise<TerminalSession> => {
+      let finalOptions: SessionOptions = { ...sessionOptions, ...options };
+
       // Apply default directory if not specified
       if (defaultDirectory && !finalOptions.cwd) {
         finalOptions.cwd = defaultDirectory(finalOptions.id || '');
       }
-      
+
       // Transform config if handler provided - properly await async transform
       if (transformSessionConfig) {
         try {
@@ -227,9 +260,15 @@ export async function createShelltender(
           // Continue with non-transformed options
         }
       }
-      
+
       return originalCreate(finalOptions);
     };
+    // Replace the method on the session manager
+    Object.defineProperty(sessionManager, 'createSession', {
+      value: customCreateSession,
+      writable: true,
+      configurable: true
+    });
   }
   
   // Create convenience instance
@@ -246,26 +285,24 @@ export async function createShelltender(
     config: { ...finalConfig, isReady: true },
     
     // Convenience methods
-    createSession: (options) => sessionManager.createSession({ ...sessionOptions, ...options }),
+    createSession: async (options) => sessionManager.createSession({ ...sessionOptions, ...options }),
     getSession: (sessionId) => sessionManager.getSession(sessionId),
     getAllSessions: () => sessionManager.getAllSessions(),
     resizeSession: (sessionId, cols, rows) => sessionManager.resizeSession(sessionId, cols, rows),
     killSession: (sessionId) => sessionManager.killSession(sessionId),
     broadcast: (message) => {
       // Broadcast to all connected clients
-      if ((wsServer as any).wss) {
-        (wsServer as any).wss.clients.forEach((client: any) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify(message));
-          }
-        });
-      }
+      wsServer.server.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(message));
+        }
+      });
     },
     getActiveSessionCount: () => sessionManager.getAllSessions().length,
     getConfiguration: () => ({
       ...finalConfig,
       bufferManager: {
-        maxBufferSize: (bufferManager as any).maxBufferSize || 1024 * 1024
+        maxBufferSize: bufferManager.maxSize
       },
       pipeline: pipeline ? {
         processors: pipeline.getProcessorNames(),
@@ -284,8 +321,8 @@ export async function createShelltender(
       if (integration) {
         integration.teardown();
       }
-      if (wsServer && (wsServer as any).wss) {
-        (wsServer as any).wss.close();
+      if (wsServer) {
+        wsServer.server.close();
       }
       if (httpServer && httpServer.listening) {
         await new Promise<void>((resolve) => {
@@ -385,26 +422,40 @@ export async function detectEnvironment(options: { app?: express.Application } =
   return env;
 }
 
+/** Input config for validation - can include unknown/legacy fields */
+export type ValidationInput = Record<string, unknown>;
+
+/** Validation result returned by validateConfiguration() */
+export interface ValidationResult {
+  errors: string[];
+  warnings: string[];
+  fixes: Record<string, unknown>;
+  migration?: {
+    from: { websocketPort?: number; httpPort?: number };
+    to: { port: number; wsPath: string };
+  };
+}
+
 /**
  * Validate configuration
  */
-export async function validateConfiguration(config: any) {
+export async function validateConfiguration(config: ValidationInput): Promise<ValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const fixes: any = {};
-  
+  const fixes: Record<string, unknown> = {};
+
   // Check wsPath
-  if (config.wsPath && !config.wsPath.startsWith('/')) {
+  if (typeof config.wsPath === 'string' && !config.wsPath.startsWith('/')) {
     errors.push('wsPath must start with /');
     fixes.wsPath = `/${config.wsPath}`;
   }
-  
+
   // Check port
   if (config.port && typeof config.port === 'string' && config.port !== 'auto') {
     errors.push('port must be a number or "auto"');
     fixes.port = parseInt(config.port);
   }
-  
+
   // Check boolean flags
   const booleanFields = ['enablePipeline', 'enableSecurity', 'enableAudit', 'enableMetrics'];
   for (const field of booleanFields) {
@@ -413,27 +464,29 @@ export async function validateConfiguration(config: any) {
       fixes[field] = config[field] === 'true' || config[field] === 'yes' || config[field] === '1';
     }
   }
-  
+
   // Check maxSessions
-  if (config.maxSessions && config.maxSessions < 0) {
+  if (typeof config.maxSessions === 'number' && config.maxSessions < 0) {
     errors.push('maxSessions must be positive');
     fixes.maxSessions = 10;
   }
-  
+
   // Check for legacy config
   if ('websocketPort' in config || 'httpPort' in config) {
     warnings.push('Using legacy dual-port configuration');
+    const httpPort = typeof config.httpPort === 'number' ? config.httpPort : 3000;
+    const websocketPort = typeof config.websocketPort === 'number' ? config.websocketPort : undefined;
     return {
       errors,
       warnings,
       fixes,
       migration: {
-        from: { websocketPort: config.websocketPort, httpPort: config.httpPort },
-        to: { port: config.httpPort || 3000, wsPath: '/ws' }
+        from: { websocketPort, httpPort },
+        to: { port: httpPort, wsPath: '/ws' }
       }
     };
   }
-  
+
   return { errors, warnings, fixes };
 }
 
