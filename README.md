@@ -7,7 +7,7 @@ A modern web-based terminal that maintains persistent sessions across browser cl
 
 ## 📦 Packages
 
-Shelltender is now a monorepo with modular packages (v0.2.4):
+Shelltender is now a monorepo with modular packages (v0.7.0):
 
 - **[@shelltender/core](packages/core)** - Shared types and interfaces
 - **[@shelltender/server](packages/server)** - Backend terminal session management
@@ -41,7 +41,7 @@ npm install @shelltender/core
 
 ### Important: Initialization Order
 
-Starting with v0.2.4, you must properly initialize the SessionStore:
+Starting with v0.7.0, you must properly initialize the SessionStore:
 
 ```typescript
 import { SessionManager, BufferManager, SessionStore, WebSocketServer } from '@shelltender/server';
@@ -116,14 +116,14 @@ npm run dev
   - Mobile-specific session navigation
 - **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 - **Modular Architecture**: Use only the parts you need
-- **Custom Session IDs**: Create sessions with predictable identifiers (v0.2.4+)
+- **Custom Session IDs**: Create sessions with predictable identifiers (v0.7.0+)
 - **🎯 Robust Resize Handling**: 
   - ResizeObserver-based detection for flexbox containers
   - Imperative API for manual terminal fitting
   - Configurable padding without CSS conflicts
   - Debug mode for troubleshooting resize issues
 
-## 🆕 What's New in v0.2.4
+## 🆕 What's New in v0.7.0
 
 - **Fixed**: Critical SessionStore initialization race condition
 - **Added**: Custom session ID support (`{ id: 'my-custom-id' }`)
