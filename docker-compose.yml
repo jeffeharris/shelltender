@@ -8,11 +8,11 @@ services:
       dockerfile: Dockerfile.dev
     container_name: shelltender-dev
     ports:
-      - "${PORT:-8080}:8080"    # Single port for HTTP + WebSocket
-      - "${VITE_PORT:-5173}:5173"    # Vite dev server (frontend)
+      - "${PORT:-8085}:8085"    # Backend server (HTTP + WebSocket)
+      - "${VITE_PORT:-3000}:3000"    # Vite dev server (frontend)
     environment:
       - NODE_ENV=development
-      - PORT=8080
+      - PORT=8085
       - SINGLE_PORT=${SINGLE_PORT:-true}
       - WS_PORT=${WS_PORT:-8081}  # Only used if SINGLE_PORT=false
       - VITE_WS_URL=${VITE_WS_URL:-}  # Auto-detected by client
