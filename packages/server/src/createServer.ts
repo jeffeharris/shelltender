@@ -25,11 +25,7 @@ export interface ShelltenderConfig {
   wsPath?: string;
   enablePipeline?: boolean;
   enableSecurity?: boolean;
-  sessionOptions?: {
-    defaultCommand?: string;
-    defaultCwd?: string;
-    defaultEnv?: Record<string, string>;
-  };
+  sessionOptions?: Partial<SessionOptions>;
   server?: Server;
   sessionManager?: SessionManager;
   sessionStore?: SessionStore;

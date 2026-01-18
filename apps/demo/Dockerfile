@@ -1,7 +1,7 @@
 FROM node:22-alpine
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++ bash
+# Install build dependencies and useful tools for demo
+RUN apk add --no-cache python3 make g++ bash git curl htop
 
 WORKDIR /shelltender
 
@@ -9,8 +9,9 @@ WORKDIR /shelltender
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Copy packages
+# Copy packages and shared build config
 COPY packages ./packages
+COPY tsup.base.config.ts ./
 
 # Install and build packages in correct order
 RUN npm ci && \
@@ -28,9 +29,12 @@ COPY apps/demo/index.html ./
 COPY apps/demo/src ./src
 COPY apps/demo/public ./public
 
+# Copy bash profile for nice terminal experience
+COPY apps/demo/.bashrc /root/.bashrc
+
 # Update package.json to use the built packages
-RUN sed -i 's|file:../packages/server|file:/shelltender/packages/server|g' package.json && \
-    sed -i 's|file:../packages/client|file:/shelltender/packages/client|g' package.json
+RUN sed -i 's|file:../../packages/server|file:/shelltender/packages/server|g' package.json && \
+    sed -i 's|file:../../packages/client|file:/shelltender/packages/client|g' package.json
 
 # Install demo dependencies
 RUN npm install

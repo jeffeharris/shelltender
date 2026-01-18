@@ -6,9 +6,12 @@ const { url } = await createShelltenderServer({
   host: '0.0.0.0',  // Bind to all interfaces for Docker
   staticDir: './public',
   apiRoutes: true,  // Enable admin API for session management
-  shellArgs: ['-l'],  // Login shell for proper prompt
-  env: {
-    PS1: '\\u@shelltender:\\w\\$ '  // Fallback prompt
+  sessionOptions: {
+    command: '/bin/bash',  // Use bash for nice prompt
+    env: {
+      TERM: 'xterm-256color',
+      LANG: 'C.UTF-8'
+    }
   }
 });
 
