@@ -21,12 +21,12 @@ RUN npm ci && \
 WORKDIR /app
 
 # Copy demo files
-COPY minimal-demo/package*.json ./
-COPY minimal-demo/server.js ./
-COPY minimal-demo/vite.config.js ./
-COPY minimal-demo/index.html ./
-COPY minimal-demo/src ./src
-COPY minimal-demo/public ./public
+COPY apps/demo/package*.json ./
+COPY apps/demo/server.js ./
+COPY apps/demo/vite.config.js ./
+COPY apps/demo/index.html ./
+COPY apps/demo/src ./src
+COPY apps/demo/public ./public
 
 # Update package.json to use the built packages
 RUN sed -i 's|file:../packages/server|file:/shelltender/packages/server|g' package.json && \

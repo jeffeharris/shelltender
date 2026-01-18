@@ -28,7 +28,7 @@ services:
     volumes:
       # Mount source code for hot reloading
       - ./packages:/app/packages:delegated
-      - ./minimal-demo:/app/minimal-demo:delegated
+      - ./apps/demo:/app/apps/demo:delegated
       - ./scripts:/app/scripts:delegated
       
       # Exclude node_modules to avoid conflicts

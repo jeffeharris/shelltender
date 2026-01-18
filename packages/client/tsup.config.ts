@@ -1,12 +1,7 @@
 import { defineConfig } from 'tsup';
+import { baseConfig } from '../../tsup.base.config';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
-  dts: false,
-  sourcemap: true,
-  clean: true,
-  target: 'es2020',
+  ...baseConfig,
   external: ['react', 'react-dom'],
-  tsconfig: './tsconfig.json',
 });

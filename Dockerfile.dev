@@ -44,8 +44,8 @@ RUN npm install
 # Copy all source files
 COPY . .
 
-# Copy minimal-demo separately to ensure it's included
-COPY minimal-demo ./minimal-demo
+# Copy apps/demo separately to ensure it's included
+COPY apps/demo ./apps/demo
 
 # Rebuild native modules to ensure they work in the container
 RUN npm rebuild
@@ -73,8 +73,8 @@ ENV NODE_ENV=development
 ENV PORT=8080
 # Let other env vars come from .env file
 
-# Start in the minimal-demo directory instead
-WORKDIR /app/minimal-demo
+# Start in the apps/demo directory
+WORKDIR /app/apps/demo
 
 # Run the server with admin UI
 CMD ["node", "server-with-admin.js"]

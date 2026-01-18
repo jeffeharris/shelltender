@@ -1,6 +1,6 @@
 {
   "name": "shelltender",
-  "version": "1.0.0",
+  "version": "0.7.0",
   "private": true,
   "description": "A web-based terminal manager that keeps your shell sessions alive and persistent",
   "main": "dist/index.js",
@@ -41,7 +41,6 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/express": "^4.17.23",
-    "@types/minimist": "^1.2.5",
     "@types/node": "^24.0.1",
     "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
@@ -62,9 +61,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
-    "minimist": "^1.2.8",
     "node-pty": "^1.0.0",
-    "puppeteer": "^24.10.2",
     "uuid": "^11.1.0",
     "ws": "^8.18.3"
   }
