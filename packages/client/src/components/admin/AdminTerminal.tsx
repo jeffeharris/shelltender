@@ -25,6 +25,7 @@ export const AdminTerminal: React.FC<AdminTerminalProps> = ({
     // Initialize terminal
     const term = new XTerm({
       cursorBlink: mode === 'interactive',
+      disableStdin: mode === 'read-only',  // Disable local echo, PTY echoes back
       fontSize: 14,
       fontFamily: 'Consolas, Monaco, monospace',
       theme: {

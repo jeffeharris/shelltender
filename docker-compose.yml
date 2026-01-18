@@ -37,6 +37,12 @@ services:
       - /app/packages/server/node_modules
       - /app/packages/client/node_modules
       - /app/packages/shelltender/node_modules
+
+      # Preserve built dist directories from the image
+      - /app/packages/core/dist
+      - /app/packages/server/dist
+      - /app/packages/client/dist
+      - /app/packages/shelltender/dist
       
       # Persist session data
       - shelltender-sessions:/app/sessions
@@ -80,7 +86,13 @@ services:
       - /app/packages/server/node_modules
       - /app/packages/client/node_modules
       - /app/apps/demo/node_modules
-      
+
+      # Preserve built dist directories from the image
+      - /app/packages/core/dist
+      - /app/packages/server/dist
+      - /app/packages/client/dist
+      - /app/packages/shelltender/dist
+
       # Persist AI monitor data
       - ai-monitor-data:/app/ai-monitor-data
     depends_on:
