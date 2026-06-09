@@ -11,8 +11,8 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "tsx watch packages/server/src/app.ts",
-    "dev:client": "cd client && npm run dev",
+    "dev": "tsx watch packages/server/src/cli.ts serve",
+    "dev:client": "npm run dev -w apps/demo",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:client\"",
     "build": "npm run build:all && npm run validate:esm",
     "build:all": "npm run build --workspaces --if-present",
@@ -21,7 +21,7 @@
     "build:server": "npm run build -w @shelltender/server",
     "build:client": "npm run build -w @shelltender/client",
     "validate:esm": "node scripts/validate-esm.js",
-    "start": "node dist/index.js",
+    "start": "node packages/server/dist/cli.js serve",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

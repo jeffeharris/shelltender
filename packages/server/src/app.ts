@@ -1,112 +1,29 @@
-import express from 'express';
-import { createServer } from 'http';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { SessionManager } from './SessionManager.js';
-import { BufferManager } from './BufferManager.js';
-import { SessionStore } from './SessionStore.js';
-import { WebSocketServer } from './WebSocketServer.js';
+/**
+ * DEPRECATED legacy entry point.
+ *
+ * This used to start a *dual-port* server (HTTP on $PORT, a separate WebSocket
+ * server on $WS_PORT) — which conflicted with the single-port server that the
+ * README, QUICKSTART, /api/health, and the rest of the project describe.
+ *
+ * It now delegates to the canonical single-port server so there is exactly one
+ * behavior. Prefer the CLI instead:
+ *
+ *   shelltender serve --port 8080        (or: node packages/server/dist/cli.js serve)
+ *
+ * Kept only so old references / muscle memory don't break.
+ */
+import { createShelltenderServer } from './createServer.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const port = parseInt(process.env.SHELLTENDER_PORT || process.env.PORT || '8080', 10);
+const host = process.env.SHELLTENDER_HOST || '127.0.0.1';
 
-const app = express();
-const server = createServer(app);
-
-// Initialize managers
-const bufferManager = new BufferManager();
-const sessionStore = new SessionStore();
-const sessionManager = new SessionManager(sessionStore);
-
-// Initialize WebSocket server
-const wsPort = parseInt(process.env.WS_PORT || '8282');
-const wsServer = WebSocketServer.create(wsPort, sessionManager, bufferManager);
-
-// Connect session output to WebSocket broadcasting
-sessionManager.on('data', (sessionId: string, data: string) => {
-  // Add to buffer and get sequence number
-  const sequence = bufferManager.addToBuffer(sessionId, data);
-  
-  // Broadcast to connected clients
-  wsServer.broadcastToSession(sessionId, {
-    type: 'output',
-    sessionId,
-    data,
-    sequence
+createShelltenderServer({ port, host })
+  .then(({ url, wsUrl }) => {
+    console.log('[deprecated app.ts — use `shelltender serve`] single-port server started');
+    console.log(`  HTTP:      ${url}`);
+    console.log(`  WebSocket: ${wsUrl}`);
+  })
+  .catch((err) => {
+    console.error('Failed to start Shelltender:', err);
+    process.exit(1);
   });
-});
-
-// Handle session end events
-sessionManager.on('sessionEnd', (sessionId: string) => {
-  wsServer.broadcastToSession(sessionId, {
-    type: 'exit',
-    sessionId,
-    exitCode: 0
-  });
-});
-
-// Serve static files from the client build
-app.use(express.static(path.join(__dirname, '../../client/dist')));
-
-// API endpoints
-app.get('/api/sessions', (req, res) => {
-  const sessions = sessionManager.getAllSessions();
-  res.json(sessions);
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', wsPort });
-});
-
-// Delete a session
-app.delete('/api/sessions/:id', (req, res) => {
-  const sessionId = req.params.id;
-  const success = sessionManager.killSession(sessionId);
-  
-  if (success) {
-    res.json({ success: true, message: 'Session killed' });
-  } else {
-    res.status(404).json({ success: false, message: 'Session not found' });
-  }
-});
-
-// Serve admin monitor UI
-app.get('/admin/monitor', (req, res) => {
-  const monitorPath = path.join(__dirname, 'admin', 'session-monitor.html');
-  res.sendFile(monitorPath);
-});
-
-// Serve test terminal
-app.get('/test', (req, res) => {
-  const testPath = path.join(__dirname, 'admin', 'test-terminal.html');
-  res.sendFile(testPath);
-});
-
-// Serve WebSocket debug tool
-app.get('/debug', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin', 'debug-websocket.html'));
-});
-
-// Default route
-app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head><title>Shelltender</title></head>
-      <body style="font-family: Arial; padding: 20px;">
-        <h1>Shelltender Server</h1>
-        <p>Available endpoints:</p>
-        <ul>
-          <li><a href="/test">Test Terminal</a> - Create and interact with terminal sessions</li>
-          <li><a href="/admin/monitor">Admin Monitor</a> - Monitor all active sessions</li>
-          <li><a href="/api/health">API Health</a> - Check server status</li>
-        </ul>
-      </body>
-    </html>
-  `);
-});
-
-const httpPort = parseInt(process.env.PORT || '3000');
-server.listen(httpPort, () => {
-  console.log(`HTTP server listening on port ${httpPort}`);
-  console.log(`WebSocket server listening on port ${wsPort}`);
-});
