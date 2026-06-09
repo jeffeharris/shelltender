@@ -219,7 +219,7 @@ service.send({
 ## Next Steps
 
 - Check out the [full documentation](https://github.com/jeffh/shelltender)
-- See the [demo application](../minimal-demo/) for a complete example
+- See the [demo application](../apps/demo/) for a complete example
 - Explore [mobile support](./MOBILE.md) for touch gestures
 - Learn about [security features](./SECURITY.md) for production use
 

@@ -8,11 +8,11 @@ services:
       dockerfile: Dockerfile.dev
     container_name: shelltender-dev
     ports:
-      - "${PORT:-8080}:8080"    # Single port for HTTP + WebSocket
-      - "${VITE_PORT:-5173}:5173"    # Vite dev server (frontend)
+      - "${PORT:-8085}:8085"    # Backend server (HTTP + WebSocket)
+      - "${VITE_PORT:-3000}:3000"    # Vite dev server (frontend)
     environment:
       - NODE_ENV=development
-      - PORT=8080
+      - PORT=8085
       - SINGLE_PORT=${SINGLE_PORT:-true}
       - WS_PORT=${WS_PORT:-8081}  # Only used if SINGLE_PORT=false
       - VITE_WS_URL=${VITE_WS_URL:-}  # Auto-detected by client
@@ -28,7 +28,7 @@ services:
     volumes:
       # Mount source code for hot reloading
       - ./packages:/app/packages:delegated
-      - ./minimal-demo:/app/minimal-demo:delegated
+      - ./apps/demo:/app/apps/demo:delegated
       - ./scripts:/app/scripts:delegated
       
       # Exclude node_modules to avoid conflicts
@@ -37,6 +37,12 @@ services:
       - /app/packages/server/node_modules
       - /app/packages/client/node_modules
       - /app/packages/shelltender/node_modules
+
+      # Preserve built dist directories from the image
+      - /app/packages/core/dist
+      - /app/packages/server/dist
+      - /app/packages/client/dist
+      - /app/packages/shelltender/dist
       
       # Persist session data
       - shelltender-sessions:/app/sessions
@@ -80,7 +86,13 @@ services:
       - /app/packages/server/node_modules
       - /app/packages/client/node_modules
       - /app/apps/demo/node_modules
-      
+
+      # Preserve built dist directories from the image
+      - /app/packages/core/dist
+      - /app/packages/server/dist
+      - /app/packages/client/dist
+      - /app/packages/shelltender/dist
+
       # Persist AI monitor data
       - ai-monitor-data:/app/ai-monitor-data
     depends_on:

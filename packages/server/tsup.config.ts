@@ -1,11 +1,8 @@
 import { defineConfig } from 'tsup';
+import { baseConfig } from '../../tsup.base.config';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
-  dts: false,
-  sourcemap: true,
-  clean: true,
-  target: 'es2020',
-  tsconfig: './tsconfig.json',
+  ...baseConfig,
+  // Build the library entry plus the `shelltender` CLI (see package.json "bin").
+  entry: ['src/index.ts', 'src/cli.ts'],
 });

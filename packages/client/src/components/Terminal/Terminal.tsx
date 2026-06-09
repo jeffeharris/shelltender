@@ -597,19 +597,25 @@ const TerminalComponent = ({
       }
     } else if (sessionId !== currentSessionIdRef.current) {
       // User selected a different existing session
+      const oldSessionId = currentSessionIdRef.current;
+
+      // Unsubscribe from old session first
+      if (oldSessionId) {
+        wsRef.current.send({ type: 'disconnect', sessionId: oldSessionId });
+      }
+
       currentSessionIdRef.current = sessionId;
-      isReadyRef.current = true;
-      
-      // Check if we need to clear the terminal
-      const hasBuffer = hasReceivedInitialBufferRef.current.has(sessionId);
-      const lastSequence = sessionSequencesRef.current.get(sessionId);
-      
-      if (xtermRef.current && !hasBuffer) {
+      isReadyRef.current = false;  // Wait for connect response before accepting input
+
+      // Always clear terminal when switching sessions
+      if (xtermRef.current) {
         xtermRef.current.clear();
       }
-      
-      wsRef.current.send({ 
-        type: 'connect', 
+
+      const lastSequence = sessionSequencesRef.current.get(sessionId);
+
+      wsRef.current.send({
+        type: 'connect',
         sessionId,
         useIncrementalUpdates: true,
         lastSequence: lastSequence

@@ -1,4 +1,4 @@
-import { WebSocketServer as WSServer } from 'ws';
+import { WebSocketServer as WSServer, WebSocket } from 'ws';
 import { Server as HTTPServer } from 'http';
 import { Server as HTTPSServer } from 'https';
 import { SessionManager } from './SessionManager.js';
@@ -42,13 +42,13 @@ export class WebSocketServer {
   private bufferManager: BufferManager;
   private sessionStore?: SessionStore;
   private eventManager?: EventManager;
-  private clients: Map<string, any> = new Map();
+  private clients: Map<string, WebSocket> = new Map();
   private clientStates: Map<string, ClientState> = new Map();
   private clientPatterns = new Map<string, Set<string>>();
   private clientEventSubscriptions = new Map<string, Set<string>>();
   private monitorClients = new Set<string>();
   private adminProxy: AdminSessionProxy;
-  private adminClients: Map<string, Set<any>> = new Map();
+  private adminClients: Map<string, Set<WebSocket>> = new Map();
 
   private constructor(
     wss: WSServer,
@@ -70,6 +70,11 @@ export class WebSocketServer {
     }
 
     this.setupWebSocketHandlers();
+  }
+
+  /** Get the underlying WebSocket.Server instance for advanced use cases */
+  get server(): WSServer {
+    return this.wss;
   }
 
   static create(
@@ -196,24 +201,24 @@ export class WebSocketServer {
     });
   }
 
-  private handleMessage(clientId: string, ws: any, data: WebSocketMessage): void {
+  private handleMessage(clientId: string, ws: WebSocket, data: WebSocketMessage): void {
     // Check if it's an admin message first
     if (data.type.startsWith('admin-')) {
       this.handleAdminMessage(clientId, ws, data as AdminWebSocketMessage);
       return;
     }
 
-    const handlers: Record<string, (clientId: string, ws: any, data: any) => void> = {
-      'create': this.handleCreateSession.bind(this),
-      'connect': this.handleConnectSession.bind(this),
-      'input': this.handleSessionInput.bind(this),
-      'resize': this.handleSessionResize.bind(this),
-      'disconnect': this.handleSessionDisconnect.bind(this),
-      'register-pattern': this.handleRegisterPattern.bind(this),
-      'unregister-pattern': this.handleUnregisterPattern.bind(this),
-      'subscribe-events': this.handleSubscribeEvents.bind(this),
-      'unsubscribe-events': this.handleUnsubscribeEvents.bind(this),
-      'monitor-all': this.handleMonitorAll.bind(this),
+    const handlers: Record<string, (clientId: string, ws: WebSocket, data: WebSocketMessage) => void | Promise<void>> = {
+      'create': (cid, socket, msg) => this.handleCreateSession(cid, socket, msg as TerminalData & { requestId?: string }),
+      'connect': (cid, socket, msg) => this.handleConnectSession(cid, socket, msg as TerminalData & { incremental?: boolean }),
+      'input': (cid, socket, msg) => this.handleSessionInput(cid, socket, msg as TerminalData),
+      'resize': (cid, socket, msg) => this.handleSessionResize(cid, socket, msg as TerminalData),
+      'disconnect': (cid, socket, msg) => this.handleSessionDisconnect(cid, socket, msg as TerminalData),
+      'register-pattern': (cid, socket, msg) => this.handleRegisterPattern(cid, socket, msg as RegisterPatternMessage),
+      'unregister-pattern': (cid, socket, msg) => this.handleUnregisterPattern(cid, socket, msg as UnregisterPatternMessage),
+      'subscribe-events': (cid, socket, msg) => this.handleSubscribeEvents(cid, socket, msg as SubscribeEventsMessage),
+      'unsubscribe-events': (cid, socket, msg) => this.handleUnsubscribeEvents(cid, socket, msg as UnsubscribeEventsMessage),
+      'monitor-all': (cid, socket, msg) => this.handleMonitorAll(cid, socket, msg as TerminalData & { authKey?: string; auth?: string; requestId?: string }),
     };
 
     const handler = handlers[data.type];
@@ -227,33 +232,49 @@ export class WebSocketServer {
     }
   }
 
-  private handleCreateSession(clientId: string, ws: any, data: any): void {
+  private handleCreateSession(clientId: string, ws: WebSocket, data: TerminalData & { requestId?: string }): void {
     try {
-      const options = data.options || {};
+      const options = { ...(data.options || {}) };
       if (data.cols) options.cols = data.cols;
       if (data.rows) options.rows = data.rows;
-      
+
+      // Session config may arrive under `options` OR at the top level of the
+      // message (the React client spreads sessionConfig at the top level).
+      // Accept both; an explicit `options.<field>` wins.
+      const topLevel = data as unknown as Record<string, unknown>;
+      const opts = options as Record<string, unknown>;
+      for (const key of ['command', 'args', 'cwd', 'env', 'locked',
+        'restrictToPath', 'allowUpwardNavigation', 'blockedCommands', 'readOnlyMode']) {
+        if (topLevel[key] !== undefined && opts[key] === undefined) {
+          opts[key] = topLevel[key];
+        }
+      }
+
       // Handle sessionId from either location
       const requestedSessionId = data.sessionId || (data.options && data.options.id);
       if (requestedSessionId) {
         options.id = requestedSessionId;
-        
+
         // Check if session already exists
         const existingSession = this.sessionManager.getSession(requestedSessionId);
         if (existingSession) {
           // Session already exists, just connect to it
           this.sessionManager.addClient(requestedSessionId, clientId);
-          
+
           // Add session to client's subscribed sessions
           const clientState = this.clientStates.get(clientId);
           if (clientState) {
             clientState.sessionIds.add(requestedSessionId);
           }
-          
+
+          // Include current scrollback so a create-to-attach renders history
+          // without a separate connect round-trip.
+          const scrollback = this.bufferManager.getBuffer(requestedSessionId);
           const response = {
             type: 'created',
             sessionId: requestedSessionId,
             session: existingSession,
+            scrollback: scrollback || undefined,
           };
           ws.send(JSON.stringify(response));
           return;
@@ -286,7 +307,7 @@ export class WebSocketServer {
     }
   }
 
-  private handleConnectSession(clientId: string, ws: any, data: any): void {
+  private handleConnectSession(clientId: string, ws: WebSocket, data: TerminalData & { incremental?: boolean }): void {
     if (!data.sessionId) {
       ws.send(JSON.stringify({
         type: 'error',
@@ -315,7 +336,7 @@ export class WebSocketServer {
       const useIncremental = data.useIncrementalUpdates === true || data.incremental === true;
       clientState.isIncrementalClient = useIncremental;
 
-      let response: any = {
+      let response: TerminalData = {
         type: 'connect',
         sessionId: data.sessionId,
         session,
@@ -359,7 +380,7 @@ export class WebSocketServer {
     }
   }
 
-  private handleSessionInput(clientId: string, ws: any, data: any): void {
+  private handleSessionInput(clientId: string, ws: WebSocket, data: TerminalData): void {
     if (!data.sessionId || !data.data) {
       ws.send(JSON.stringify({
         type: 'error',
@@ -378,7 +399,7 @@ export class WebSocketServer {
     }
   }
 
-  private handleSessionResize(clientId: string, ws: any, data: any): void {
+  private handleSessionResize(clientId: string, ws: WebSocket, data: TerminalData): void {
     if (!data.sessionId || !data.cols || !data.rows) {
       ws.send(JSON.stringify({
         type: 'error',
@@ -396,7 +417,7 @@ export class WebSocketServer {
     });
   }
 
-  private handleSessionDisconnect(clientId: string, ws: any, data: any): void {
+  private handleSessionDisconnect(clientId: string, ws: WebSocket, data: TerminalData): void {
     if (data.sessionId) {
       this.sessionManager.removeClient(data.sessionId, clientId);
       
@@ -410,8 +431,8 @@ export class WebSocketServer {
   }
 
   private async handleAdminMessage(
-    clientId: string, 
-    ws: any, 
+    clientId: string,
+    ws: WebSocket,
     message: AdminWebSocketMessage
   ): Promise<void> {
     try {
@@ -457,15 +478,15 @@ export class WebSocketServer {
           await this.adminProxy.writeToSession(message.sessionId, message.data);
           break;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       ws.send(JSON.stringify({
         type: 'error',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Unknown error'
       }));
     }
   }
 
-  public broadcastToSession(sessionId: string, data: any): void {
+  public broadcastToSession(sessionId: string, data: TerminalData): void {
     // Send to clients connected to this session
     this.clients.forEach((ws, clientId) => {
       const clientState = this.clientStates.get(clientId);
@@ -529,7 +550,7 @@ export class WebSocketServer {
     });
   }
 
-  private async handleRegisterPattern(clientId: string, ws: any, message: RegisterPatternMessage): Promise<void> {
+  private async handleRegisterPattern(clientId: string, ws: WebSocket, message: RegisterPatternMessage): Promise<void> {
     if (!this.eventManager) {
       ws.send(JSON.stringify({ 
         type: 'error', 
@@ -562,7 +583,7 @@ export class WebSocketServer {
     }
   }
 
-  private async handleUnregisterPattern(clientId: string, ws: any, message: UnregisterPatternMessage): Promise<void> {
+  private async handleUnregisterPattern(clientId: string, ws: WebSocket, message: UnregisterPatternMessage): Promise<void> {
     if (!this.eventManager) {
       ws.send(JSON.stringify({ 
         type: 'error', 
@@ -595,7 +616,7 @@ export class WebSocketServer {
     }
   }
 
-  private handleSubscribeEvents(clientId: string, ws: any, message: SubscribeEventsMessage): void {
+  private handleSubscribeEvents(clientId: string, ws: WebSocket, message: SubscribeEventsMessage): void {
     if (!this.clientEventSubscriptions.has(clientId)) {
       this.clientEventSubscriptions.set(clientId, new Set());
     }
@@ -611,7 +632,7 @@ export class WebSocketServer {
     }));
   }
 
-  private handleUnsubscribeEvents(clientId: string, ws: any, message: UnsubscribeEventsMessage): void {
+  private handleUnsubscribeEvents(clientId: string, ws: WebSocket, message: UnsubscribeEventsMessage): void {
     const subscriptions = this.clientEventSubscriptions.get(clientId);
     if (subscriptions) {
       for (const eventType of message.eventTypes) {
@@ -625,7 +646,7 @@ export class WebSocketServer {
     }));
   }
 
-  private handleMonitorAll(clientId: string, ws: any, data: any): void {
+  private handleMonitorAll(clientId: string, ws: WebSocket, data: TerminalData & { authKey?: string; auth?: string; requestId?: string }): void {
     // Check authentication
     const authKey = data.authKey || data.auth;
     const expectedAuthKey = process.env.SHELLTENDER_MONITOR_AUTH_KEY || 'default-monitor-key';
@@ -641,7 +662,7 @@ export class WebSocketServer {
 
     // Add to monitor clients
     this.monitorClients.add(clientId);
-    ws.isMonitor = true;
+    (ws as WebSocket & { isMonitor?: boolean }).isMonitor = true;
 
     ws.send(JSON.stringify({
       type: 'monitor-mode-enabled',

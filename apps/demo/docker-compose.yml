@@ -2,7 +2,7 @@ services:
   shelltender-demo:
     build:
       context: ..
-      dockerfile: minimal-demo/Dockerfile
+      dockerfile: apps/demo/Dockerfile
     ports:
       - "8085:8085"
       - "3000:3000"

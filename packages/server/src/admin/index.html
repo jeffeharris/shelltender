@@ -792,12 +792,18 @@
         // Enable selection in read-only mode
         terminal.options.selectionStyle = 'word';
         
+        // Track last key sent to prevent double-sending
+        let lastKeySentTime = 0;
+
         // Use onKey to intercept before terminal processes it
         terminal.onKey(({ key, domEvent }) => {
           if (currentMode === 'interactive' && ws && currentSessionId) {
             // Prevent default to stop local echo
             domEvent.preventDefault();
-            
+
+            // Track when we sent this key
+            lastKeySentTime = Date.now();
+
             // Send the key to server
             ws.send(JSON.stringify({
               type: 'admin-input',
@@ -806,19 +812,20 @@
             }));
           }
         });
-        
-        // Handle paste events ONLY
-        // Important: onData fires for all input including single keys on first load
-        // We must only handle multi-character paste to avoid double input
-        terminal.onData((data) => {
-          // Only handle paste events (multi-character input)
-          // Single characters are handled by onKey above
-          if (data.length > 1 && currentMode === 'interactive' && ws && currentSessionId) {
-            ws.send(JSON.stringify({
-              type: 'admin-input',
-              sessionId: currentSessionId,
-              data: data
-            }));
+
+        // Handle paste events via browser paste event
+        // This avoids the onData double-firing issue
+        document.getElementById('adminTerminal').addEventListener('paste', (e) => {
+          if (currentMode === 'interactive' && ws && currentSessionId) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text');
+            if (text) {
+              ws.send(JSON.stringify({
+                type: 'admin-input',
+                sessionId: currentSessionId,
+                data: text
+              }));
+            }
           }
         });
       }

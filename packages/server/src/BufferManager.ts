@@ -22,6 +22,11 @@ export class BufferManager {
     this.maxBufferSize = maxBufferSize;
   }
 
+  /** Get the maximum buffer size */
+  get maxSize(): number {
+    return this.maxBufferSize;
+  }
+
   /**
    * Set the event manager for pattern matching
    */

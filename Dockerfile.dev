@@ -44,8 +44,8 @@ RUN npm install
 # Copy all source files
 COPY . .
 
-# Copy minimal-demo separately to ensure it's included
-COPY minimal-demo ./minimal-demo
+# Copy apps/demo separately to ensure it's included
+COPY apps/demo ./apps/demo
 
 # Rebuild native modules to ensure they work in the container
 RUN npm rebuild
@@ -59,22 +59,25 @@ RUN npm run build -w @shelltender/core && \
 # Copy the admin UI files into the build output
 RUN cp -r packages/server/src/admin packages/server/dist/
 
+# Install apps/demo dependencies (separate from workspace)
+RUN cd apps/demo && npm install
+
 # Create directory for sessions
 RUN mkdir -p /app/sessions /app/ai-monitor-data
 
 # In development, we'll run as root to avoid permission issues
 # USER node
 
-# Expose all development ports
-EXPOSE 9090 5174
+# Expose development ports (8085 backend, 3000 Vite)
+EXPOSE 8085 3000
 
 # Set development environment
 ENV NODE_ENV=development
-ENV PORT=8080
+ENV PORT=8085
 # Let other env vars come from .env file
 
-# Start in the minimal-demo directory instead
-WORKDIR /app/minimal-demo
+# Start in the apps/demo directory
+WORKDIR /app/apps/demo
 
-# Run the server with admin UI
-CMD ["node", "server-with-admin.js"]
+# Run both backend server and Vite dev server
+CMD ["npx", "concurrently", "--names", "server,vite", "--prefix-colors", "green,blue", "node server.js", "npx vite --host"]

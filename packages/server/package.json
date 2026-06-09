@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
+  "bin": {
+    "shelltender": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

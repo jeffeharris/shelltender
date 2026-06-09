@@ -11,6 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: true,
+    allowedHosts: ['homehub', 'localhost'],
     proxy: {
       '/ws': {
         target: 'ws://localhost:8085',

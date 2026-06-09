@@ -1,13 +1,16 @@
 import express from 'express';
-import { createServer, Server } from 'http';
+import { createServer, Server, IncomingMessage } from 'http';
 import { AddressInfo } from 'net';
+import { Duplex } from 'stream';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import fs from 'fs';
-import { 
-  SessionManager, 
-  BufferManager, 
-  SessionStore, 
+import { WebSocket } from 'ws';
+import {
+  SessionManager,
+  BufferManager,
+  SessionStore,
   WebSocketServer,
   EventManager,
   TerminalDataPipeline,
@@ -16,17 +19,63 @@ import {
   CommonFilters
 } from './index.js';
 import { createAdminRouter } from './routes/admin.js';
+import { TerminalSession, SessionOptions, TerminalData } from '@shelltender/core';
+
+// Optional cross-package resolution for the built-in /terminal page assets.
+// The embeddable terminal lives in @shelltender/client; serve it if installed,
+// otherwise the page degrades gracefully (server-only installs still work).
+const shelltenderRequire = createRequire(import.meta.url);
+function resolveOptional(spec: string): string | null {
+  try {
+    return shelltenderRequire.resolve(spec);
+  } catch {
+    return null;
+  }
+}
+
+// Self-contained terminal page. Loads the embed bundle + xterm.css from this
+// same server and calls Shelltender.mountTerminal() from query parameters.
+// Query params: sessionId, cwd, command, args (JSON array), label, and the
+// convenience `tmux=<name>` (runs `tmux new-session -A -s <name>`).
+const TERMINAL_PAGE_HTML = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal</title>
+<link rel="stylesheet" href="terminal/xterm.css">
+<style>html,body{margin:0;height:100%;background:#0b1120}#term{position:absolute;inset:0;padding:6px;box-sizing:border-box}</style>
+</head><body>
+<div id="term"></div>
+<script src="terminal/embed.global.js"></script>
+<script>
+  (function () {
+    var p = new URLSearchParams(location.search);
+    var opts = {};
+    if (p.get('sessionId')) opts.sessionId = p.get('sessionId');
+    if (p.get('cwd')) opts.cwd = p.get('cwd');
+    if (p.get('command')) opts.command = p.get('command');
+    if (p.get('args')) { try { opts.args = JSON.parse(p.get('args')); } catch (e) {} }
+    if (p.get('tmux')) {
+      opts.command = 'tmux';
+      opts.args = ['new-session', '-A', '-s', p.get('tmux')];
+      if (!opts.sessionId) opts.sessionId = 'tmux:' + p.get('tmux');
+    }
+    if (p.get('label')) document.title = p.get('label') + ' — terminal';
+    if (!window.Shelltender || !window.Shelltender.mountTerminal) {
+      document.getElementById('term').innerText =
+        'Terminal unavailable: @shelltender/client is not installed on the server.';
+      return;
+    }
+    window.Shelltender.mountTerminal(document.getElementById('term'), opts);
+  })();
+</script>
+</body></html>`;
 
 export interface ShelltenderConfig {
   port?: number | 'auto';
   wsPath?: string;
   enablePipeline?: boolean;
   enableSecurity?: boolean;
-  sessionOptions?: {
-    defaultCommand?: string;
-    defaultCwd?: string;
-    defaultEnv?: Record<string, string>;
-  };
+  sessionOptions?: Partial<SessionOptions>;
   server?: Server;
   sessionManager?: SessionManager;
   sessionStore?: SessionStore;
@@ -35,8 +84,36 @@ export interface ShelltenderConfig {
   staticDir?: string;
   apiRoutes?: boolean;
   defaultDirectory?: (sessionId: string) => string;
-  transformSessionConfig?: (config: any, sessionId: string) => Promise<any>;
+  transformSessionConfig?: (config: SessionOptions, sessionId: string) => Promise<SessionOptions>;
   dataDir?: string;
+}
+
+/** Configuration returned by getConfiguration() */
+export interface ShelltenderConfiguration {
+  port?: number | 'auto';
+  wsPath?: string;
+  enablePipeline?: boolean;
+  enableSecurity?: boolean;
+  host?: string;
+  trustProxy?: boolean;
+  staticDir?: string;
+  apiRoutes?: boolean;
+  dataDir?: string;
+  bufferManager: {
+    maxBufferSize: number;
+  };
+  pipeline: {
+    processors: string[];
+    filters: string[];
+  } | null;
+  security: {
+    enableHelmet: boolean;
+    enableCors: boolean;
+    corsOrigin: string | boolean;
+    enableRateLimiting: boolean;
+    enableSessionTimeout: boolean;
+    sessionTimeoutMs: number;
+  };
 }
 
 export interface ShelltenderInstance {
@@ -52,16 +129,16 @@ export interface ShelltenderInstance {
   url?: string;
   wsUrl?: string;
   config: ShelltenderConfig & { isReady: boolean };
-  
+
   // Convenience methods
-  createSession: (options?: any) => any;
-  getSession: (sessionId: string) => any;
-  getAllSessions: () => any[];
+  createSession: (options?: SessionOptions) => Promise<TerminalSession>;
+  getSession: (sessionId: string) => TerminalSession | null;
+  getAllSessions: () => TerminalSession[];
   resizeSession: (sessionId: string, cols: number, rows: number) => boolean;
   killSession: (sessionId: string) => boolean;
-  broadcast: (message: any) => void;
+  broadcast: (message: TerminalData) => void;
   getActiveSessionCount: () => number;
-  getConfiguration: () => any;
+  getConfiguration: () => ShelltenderConfiguration;
   stop: () => Promise<void>;
 }
 
@@ -110,7 +187,10 @@ export async function createShelltender(
   const bufferManager = new BufferManager();
   const eventManager = new EventManager();
   const sessionManager = config.sessionManager || new SessionManager(sessionStore);
-  
+  // Wait for the store to initialize and saved sessions to restore before the
+  // server starts serving, so there's no init-order race for consumers.
+  await sessionManager.ready;
+
   // Don't create HTTP server when using Express - let user call app.listen()
   let httpServer = server;
   let wsServer: WebSocketServer;
@@ -127,26 +207,27 @@ export async function createShelltender(
     
     // Monkey-patch app.listen to set up WebSocket when server starts
     const originalListen = app.listen.bind(app);
-    (app as any).listen = function(...args: any[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (app.listen as any) = function(...args: Parameters<typeof originalListen>) {
       const server = originalListen(...args);
-      
+
       // Now set up WebSocket upgrade handling
-      server.on('upgrade', function upgrade(request: any, socket: any, head: any) {
+      server.on('upgrade', function upgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
         socket.on('error', (err: Error) => {
           console.error('Socket error:', err);
         });
-        
+
         const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
-        
+
         if (pathname === wsPath) {
-          (wsServer as any).wss.handleUpgrade(request, socket, head, function done(ws: any) {
-            (wsServer as any).wss.emit('connection', ws, request);
+          wsServer.server.handleUpgrade(request, socket, head, function done(ws: WebSocket) {
+            wsServer.server.emit('connection', ws, request);
           });
         } else {
           socket.destroy();
         }
       });
-      
+
       httpServer = server;
       return server;
     };
@@ -207,17 +288,19 @@ export async function createShelltender(
     app.use(express.static(staticDir));
   }
   
-  // Override session creation to support default directory and transform
-  if (defaultDirectory || transformSessionConfig) {
+  // Override session creation to support default directory, transform, or session options
+  const hasSessionOptions = sessionOptions && Object.keys(sessionOptions).length > 0;
+  if (defaultDirectory || transformSessionConfig || hasSessionOptions) {
     const originalCreate = sessionManager.createSession.bind(sessionManager);
-    (sessionManager as any).createSession = async (options: any) => {
-      let finalOptions = { ...sessionOptions, ...options };
-      
+    // Override createSession with custom logic
+    const customCreateSession = async (options?: SessionOptions): Promise<TerminalSession> => {
+      let finalOptions: SessionOptions = { ...sessionOptions, ...options };
+
       // Apply default directory if not specified
       if (defaultDirectory && !finalOptions.cwd) {
         finalOptions.cwd = defaultDirectory(finalOptions.id || '');
       }
-      
+
       // Transform config if handler provided - properly await async transform
       if (transformSessionConfig) {
         try {
@@ -227,9 +310,15 @@ export async function createShelltender(
           // Continue with non-transformed options
         }
       }
-      
+
       return originalCreate(finalOptions);
     };
+    // Replace the method on the session manager
+    Object.defineProperty(sessionManager, 'createSession', {
+      value: customCreateSession,
+      writable: true,
+      configurable: true
+    });
   }
   
   // Create convenience instance
@@ -246,26 +335,24 @@ export async function createShelltender(
     config: { ...finalConfig, isReady: true },
     
     // Convenience methods
-    createSession: (options) => sessionManager.createSession({ ...sessionOptions, ...options }),
+    createSession: async (options) => sessionManager.createSession({ ...sessionOptions, ...options }),
     getSession: (sessionId) => sessionManager.getSession(sessionId),
     getAllSessions: () => sessionManager.getAllSessions(),
     resizeSession: (sessionId, cols, rows) => sessionManager.resizeSession(sessionId, cols, rows),
     killSession: (sessionId) => sessionManager.killSession(sessionId),
     broadcast: (message) => {
       // Broadcast to all connected clients
-      if ((wsServer as any).wss) {
-        (wsServer as any).wss.clients.forEach((client: any) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify(message));
-          }
-        });
-      }
+      wsServer.server.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(message));
+        }
+      });
     },
     getActiveSessionCount: () => sessionManager.getAllSessions().length,
     getConfiguration: () => ({
       ...finalConfig,
       bufferManager: {
-        maxBufferSize: (bufferManager as any).maxBufferSize || 1024 * 1024
+        maxBufferSize: bufferManager.maxSize
       },
       pipeline: pipeline ? {
         processors: pipeline.getProcessorNames(),
@@ -284,8 +371,8 @@ export async function createShelltender(
       if (integration) {
         integration.teardown();
       }
-      if (wsServer && (wsServer as any).wss) {
-        (wsServer as any).wss.close();
+      if (wsServer) {
+        wsServer.server.close();
       }
       if (httpServer && httpServer.listening) {
         await new Promise<void>((resolve) => {
@@ -385,26 +472,40 @@ export async function detectEnvironment(options: { app?: express.Application } =
   return env;
 }
 
+/** Input config for validation - can include unknown/legacy fields */
+export type ValidationInput = Record<string, unknown>;
+
+/** Validation result returned by validateConfiguration() */
+export interface ValidationResult {
+  errors: string[];
+  warnings: string[];
+  fixes: Record<string, unknown>;
+  migration?: {
+    from: { websocketPort?: number; httpPort?: number };
+    to: { port: number; wsPath: string };
+  };
+}
+
 /**
  * Validate configuration
  */
-export async function validateConfiguration(config: any) {
+export async function validateConfiguration(config: ValidationInput): Promise<ValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const fixes: any = {};
-  
+  const fixes: Record<string, unknown> = {};
+
   // Check wsPath
-  if (config.wsPath && !config.wsPath.startsWith('/')) {
+  if (typeof config.wsPath === 'string' && !config.wsPath.startsWith('/')) {
     errors.push('wsPath must start with /');
     fixes.wsPath = `/${config.wsPath}`;
   }
-  
+
   // Check port
   if (config.port && typeof config.port === 'string' && config.port !== 'auto') {
     errors.push('port must be a number or "auto"');
     fixes.port = parseInt(config.port);
   }
-  
+
   // Check boolean flags
   const booleanFields = ['enablePipeline', 'enableSecurity', 'enableAudit', 'enableMetrics'];
   for (const field of booleanFields) {
@@ -413,27 +514,29 @@ export async function validateConfiguration(config: any) {
       fixes[field] = config[field] === 'true' || config[field] === 'yes' || config[field] === '1';
     }
   }
-  
+
   // Check maxSessions
-  if (config.maxSessions && config.maxSessions < 0) {
+  if (typeof config.maxSessions === 'number' && config.maxSessions < 0) {
     errors.push('maxSessions must be positive');
     fixes.maxSessions = 10;
   }
-  
+
   // Check for legacy config
   if ('websocketPort' in config || 'httpPort' in config) {
     warnings.push('Using legacy dual-port configuration');
+    const httpPort = typeof config.httpPort === 'number' ? config.httpPort : 3000;
+    const websocketPort = typeof config.websocketPort === 'number' ? config.websocketPort : undefined;
     return {
       errors,
       warnings,
       fixes,
       migration: {
-        from: { websocketPort: config.websocketPort, httpPort: config.httpPort },
-        to: { port: config.httpPort || 3000, wsPath: '/ws' }
+        from: { websocketPort, httpPort },
+        to: { port: httpPort, wsPath: '/ws' }
       }
     };
   }
-  
+
   return { errors, warnings, fixes };
 }
 
@@ -474,7 +577,53 @@ function setupApiRoutes(
     }));
     res.json(sessions);
   });
-  
+
+  // Create a session over REST (mirrors the WebSocket `create` message), so
+  // non-JS / server-to-server consumers can pre-create a session with a known
+  // id/cwd/command and then connect a terminal to it by id over the WebSocket.
+  // Accepts SessionOptions; `sessionId` is honored as an alias for `id`. The
+  // response shape ({id, sessionId, status}) matches the pattern consumers
+  // (e.g. PocketDev) were hand-rolling before this route existed.
+  app.post('/api/sessions', (req, res) => {
+    try {
+      const body = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
+      if (body.sessionId && !body.id) body.id = body.sessionId;
+      delete body.sessionId;
+      const session = sessionManager.createSession(body);
+      res.json({
+        id: session.id,
+        sessionId: session.id,
+        status: 'active',
+        createdAt: session.createdAt
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'failed to create session' });
+    }
+  });
+
+  // Built-in embeddable terminal page (drop-in via <iframe src="/terminal?...">).
+  // Serves the @shelltender/client embed bundle + xterm.css from this server, so
+  // the browser only talks to one origin. Degrades gracefully if the client
+  // package isn't installed (server-only deployments).
+  app.get('/terminal', (_req, res) => {
+    res.type('html').send(TERMINAL_PAGE_HTML);
+  });
+  app.get('/terminal/embed.global.js', (_req, res) => {
+    const file = resolveOptional('@shelltender/client/embed.global.js');
+    if (!file) {
+      return res.status(503).type('application/javascript')
+        .send('console.error("Shelltender /terminal page requires @shelltender/client to be installed.");');
+    }
+    res.type('application/javascript').sendFile(file);
+  });
+  app.get('/terminal/xterm.css', (_req, res) => {
+    const pkg = resolveOptional('@xterm/xterm/package.json');
+    if (!pkg) {
+      return res.status(503).type('text/css').send('/* @xterm/xterm not found */');
+    }
+    res.type('text/css').sendFile(path.join(path.dirname(pkg), 'css', 'xterm.css'));
+  });
+
   // Shelltender status
   app.get('/api/shelltender/status', (req, res) => {
     res.json({
