@@ -14,17 +14,58 @@ Shelltender is now a monorepo with modular packages (v0.7.0):
 - **[@shelltender/client](packages/client)** - React components and hooks
 - **[shelltender](packages/shelltender)** - All-in-one package
 
-## 🚀 Quick Start
+## 🏃 Run a server (no code)
 
-### Using the Combined Package
+The fastest way to get a working terminal server (HTTP + WebSocket on one port):
 
 ```bash
-npm install shelltender
+npm install -g @shelltender/server   # or run via npx, below
+shelltender serve --port 8080
 ```
 
-```typescript
-import { SessionManager, Terminal } from 'shelltender';
+```bash
+# no global install:
+npx @shelltender/server serve --port 8080
 ```
+
+```text
+  Shelltender listening on 127.0.0.1:8080
+  HTTP:      http://localhost:8080
+  WebSocket: ws://localhost:8080/ws
+```
+
+Binds to `127.0.0.1` by default. To expose it on your network pass
+`--host 0.0.0.0` — but note this grants shell access to anyone who can reach the
+port, so put authentication or a reverse proxy in front. Port/host also read
+from `$SHELLTENDER_PORT` / `$SHELLTENDER_HOST`.
+
+From a clone of this repo:
+
+```bash
+npm install && npm run build
+npm start                              # single-port server on :8080
+# or for development with reload:
+npm run dev
+```
+
+## 🚀 Quick Start (library)
+
+### Installing
+
+```bash
+# Server-side (Node): session management, PTYs, WebSocket
+npm install @shelltender/server
+
+# Client-side (React): Terminal component and hooks
+npm install @shelltender/client
+
+# Shared types only
+npm install @shelltender/core
+```
+
+> Install the server and client packages on the side where they run. The
+> server package pulls in `node-pty` (a native, server-only module) and the
+> client package pulls in React — so don't import both from a single bundle.
 
 ### Using Individual Packages
 
