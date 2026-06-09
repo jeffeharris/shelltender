@@ -234,31 +234,47 @@ export class WebSocketServer {
 
   private handleCreateSession(clientId: string, ws: WebSocket, data: TerminalData & { requestId?: string }): void {
     try {
-      const options = data.options || {};
+      const options = { ...(data.options || {}) };
       if (data.cols) options.cols = data.cols;
       if (data.rows) options.rows = data.rows;
-      
+
+      // Session config may arrive under `options` OR at the top level of the
+      // message (the React client spreads sessionConfig at the top level).
+      // Accept both; an explicit `options.<field>` wins.
+      const topLevel = data as unknown as Record<string, unknown>;
+      const opts = options as Record<string, unknown>;
+      for (const key of ['command', 'args', 'cwd', 'env', 'locked',
+        'restrictToPath', 'allowUpwardNavigation', 'blockedCommands', 'readOnlyMode']) {
+        if (topLevel[key] !== undefined && opts[key] === undefined) {
+          opts[key] = topLevel[key];
+        }
+      }
+
       // Handle sessionId from either location
       const requestedSessionId = data.sessionId || (data.options && data.options.id);
       if (requestedSessionId) {
         options.id = requestedSessionId;
-        
+
         // Check if session already exists
         const existingSession = this.sessionManager.getSession(requestedSessionId);
         if (existingSession) {
           // Session already exists, just connect to it
           this.sessionManager.addClient(requestedSessionId, clientId);
-          
+
           // Add session to client's subscribed sessions
           const clientState = this.clientStates.get(clientId);
           if (clientState) {
             clientState.sessionIds.add(requestedSessionId);
           }
-          
+
+          // Include current scrollback so a create-to-attach renders history
+          // without a separate connect round-trip.
+          const scrollback = this.bufferManager.getBuffer(requestedSessionId);
           const response = {
             type: 'created',
             sessionId: requestedSessionId,
             session: existingSession,
+            scrollback: scrollback || undefined,
           };
           ws.send(JSON.stringify(response));
           return;
