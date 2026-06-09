@@ -4,6 +4,7 @@ import { AddressInfo } from 'net';
 import { Duplex } from 'stream';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import fs from 'fs';
 import { WebSocket } from 'ws';
 import {
@@ -19,6 +20,55 @@ import {
 } from './index.js';
 import { createAdminRouter } from './routes/admin.js';
 import { TerminalSession, SessionOptions, TerminalData } from '@shelltender/core';
+
+// Optional cross-package resolution for the built-in /terminal page assets.
+// The embeddable terminal lives in @shelltender/client; serve it if installed,
+// otherwise the page degrades gracefully (server-only installs still work).
+const shelltenderRequire = createRequire(import.meta.url);
+function resolveOptional(spec: string): string | null {
+  try {
+    return shelltenderRequire.resolve(spec);
+  } catch {
+    return null;
+  }
+}
+
+// Self-contained terminal page. Loads the embed bundle + xterm.css from this
+// same server and calls Shelltender.mountTerminal() from query parameters.
+// Query params: sessionId, cwd, command, args (JSON array), label, and the
+// convenience `tmux=<name>` (runs `tmux new-session -A -s <name>`).
+const TERMINAL_PAGE_HTML = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal</title>
+<link rel="stylesheet" href="terminal/xterm.css">
+<style>html,body{margin:0;height:100%;background:#0b1120}#term{position:absolute;inset:0;padding:6px;box-sizing:border-box}</style>
+</head><body>
+<div id="term"></div>
+<script src="terminal/embed.global.js"></script>
+<script>
+  (function () {
+    var p = new URLSearchParams(location.search);
+    var opts = {};
+    if (p.get('sessionId')) opts.sessionId = p.get('sessionId');
+    if (p.get('cwd')) opts.cwd = p.get('cwd');
+    if (p.get('command')) opts.command = p.get('command');
+    if (p.get('args')) { try { opts.args = JSON.parse(p.get('args')); } catch (e) {} }
+    if (p.get('tmux')) {
+      opts.command = 'tmux';
+      opts.args = ['new-session', '-A', '-s', p.get('tmux')];
+      if (!opts.sessionId) opts.sessionId = 'tmux:' + p.get('tmux');
+    }
+    if (p.get('label')) document.title = p.get('label') + ' — terminal';
+    if (!window.Shelltender || !window.Shelltender.mountTerminal) {
+      document.getElementById('term').innerText =
+        'Terminal unavailable: @shelltender/client is not installed on the server.';
+      return;
+    }
+    window.Shelltender.mountTerminal(document.getElementById('term'), opts);
+  })();
+</script>
+</body></html>`;
 
 export interface ShelltenderConfig {
   port?: number | 'auto';
@@ -235,8 +285,9 @@ export async function createShelltender(
     app.use(express.static(staticDir));
   }
   
-  // Override session creation to support default directory and transform
-  if (defaultDirectory || transformSessionConfig) {
+  // Override session creation to support default directory, transform, or session options
+  const hasSessionOptions = sessionOptions && Object.keys(sessionOptions).length > 0;
+  if (defaultDirectory || transformSessionConfig || hasSessionOptions) {
     const originalCreate = sessionManager.createSession.bind(sessionManager);
     // Override createSession with custom logic
     const customCreateSession = async (options?: SessionOptions): Promise<TerminalSession> => {
@@ -523,7 +574,53 @@ function setupApiRoutes(
     }));
     res.json(sessions);
   });
-  
+
+  // Create a session over REST (mirrors the WebSocket `create` message), so
+  // non-JS / server-to-server consumers can pre-create a session with a known
+  // id/cwd/command and then connect a terminal to it by id over the WebSocket.
+  // Accepts SessionOptions; `sessionId` is honored as an alias for `id`. The
+  // response shape ({id, sessionId, status}) matches the pattern consumers
+  // (e.g. PocketDev) were hand-rolling before this route existed.
+  app.post('/api/sessions', (req, res) => {
+    try {
+      const body = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
+      if (body.sessionId && !body.id) body.id = body.sessionId;
+      delete body.sessionId;
+      const session = sessionManager.createSession(body);
+      res.json({
+        id: session.id,
+        sessionId: session.id,
+        status: 'active',
+        createdAt: session.createdAt
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'failed to create session' });
+    }
+  });
+
+  // Built-in embeddable terminal page (drop-in via <iframe src="/terminal?...">).
+  // Serves the @shelltender/client embed bundle + xterm.css from this server, so
+  // the browser only talks to one origin. Degrades gracefully if the client
+  // package isn't installed (server-only deployments).
+  app.get('/terminal', (_req, res) => {
+    res.type('html').send(TERMINAL_PAGE_HTML);
+  });
+  app.get('/terminal/embed.global.js', (_req, res) => {
+    const file = resolveOptional('@shelltender/client/embed.global.js');
+    if (!file) {
+      return res.status(503).type('application/javascript')
+        .send('console.error("Shelltender /terminal page requires @shelltender/client to be installed.");');
+    }
+    res.type('application/javascript').sendFile(file);
+  });
+  app.get('/terminal/xterm.css', (_req, res) => {
+    const pkg = resolveOptional('@xterm/xterm/package.json');
+    if (!pkg) {
+      return res.status(503).type('text/css').send('/* @xterm/xterm not found */');
+    }
+    res.type('text/css').sendFile(path.join(path.dirname(pkg), 'css', 'xterm.css'));
+  });
+
   // Shelltender status
   app.get('/api/shelltender/status', (req, res) => {
     res.json({

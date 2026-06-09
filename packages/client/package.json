@@ -11,6 +11,12 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./embed": {
+      "types": "./dist/embed.d.ts",
+      "import": "./dist/embed.js",
+      "require": "./dist/embed.cjs"
+    },
+    "./embed.global.js": "./dist/embed.global.js",
     "./styles.css": {
       "import": "./dist/styles.css",
       "require": "./dist/styles.css"
@@ -44,7 +50,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -f tsconfig.tsbuildinfo && tsup && tsc --emitDeclarationOnly && npm run verify:build",
+    "build": "rm -f tsconfig.tsbuildinfo && tsup && npm run build:embed && tsc --emitDeclarationOnly && npm run verify:build",
+    "build:embed": "tsup --config tsup.embed.config.ts",
     "build:js": "tsup --no-dts",
     "build:types": "rm -f tsconfig.tsbuildinfo && tsc --emitDeclarationOnly",
     "build:tsc": "tsc && node ../../scripts/transform-imports.js client",
