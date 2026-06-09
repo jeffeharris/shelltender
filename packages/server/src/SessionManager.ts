@@ -26,11 +26,26 @@ export class SessionManager extends EventEmitter implements ISessionManager {
   private sessionStore: SessionStore;
   private restoredSessions: Set<string> = new Set();
 
+  /**
+   * Resolves once the session store is initialized and saved sessions have been
+   * restored. The high-level server factory (`createShelltender`) awaits this,
+   * so manually calling `sessionStore.initialize()` before constructing a
+   * SessionManager is no longer required — the manager owns it.
+   */
+  public readonly ready: Promise<void>;
+
   constructor(sessionStore: SessionStore) {
     super();
     this.sessionStore = sessionStore;
     this.setMaxListeners(100);
-    this.restoreSessions();
+    this.ready = this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    // Initialize the store first (idempotent), then restore sessions, so there
+    // is no ordering footgun for callers.
+    await this.sessionStore.initialize();
+    await this.restoreSessions();
   }
 
   private async restoreSessions(): Promise<void> {

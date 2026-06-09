@@ -156,6 +156,10 @@ document the required `create` → `connect` sequence.
 ## Security / defaults
 
 ### 10. Default bind is `0.0.0.0` with unauthenticated shell access
+**Resolved (CLI):** `shelltender serve` defaults to `127.0.0.1` and warns when
+`--host 0.0.0.0` is passed. The library `createShelltenderServer` default was
+intentionally left at `0.0.0.0` to avoid breaking existing embedders.
+
 `startShelltender` / `start-admin.js` listen on all interfaces (observed:
 `0.0.0.0:8083`) with no built-in auth — full shell to anyone on the network. The
 README's Security section warns about it, but the *default* is wide open.
@@ -167,6 +171,10 @@ our own token + reverse proxy; a direct hit to `host:8083` still bypasses that.
 offer optional built-in token/bearer auth on `/ws` and `/api/*`.
 
 ### 11. SessionStore init race requires manual ordering
+**Resolved:** `SessionManager` now initializes the store and restores sessions
+on construction, exposing a `ready` promise; `createShelltender` awaits it. The
+manual `sessionStore.initialize()` step is no longer required.
+
 The README's "Important: Initialization Order" and the 0.7.0 changelog ("Fixed
 critical SessionStore initialization race") mean consumers must
 `await sessionStore.initialize()` *before* `new SessionManager(store)` or hit a

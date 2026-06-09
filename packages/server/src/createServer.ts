@@ -187,7 +187,10 @@ export async function createShelltender(
   const bufferManager = new BufferManager();
   const eventManager = new EventManager();
   const sessionManager = config.sessionManager || new SessionManager(sessionStore);
-  
+  // Wait for the store to initialize and saved sessions to restore before the
+  // server starts serving, so there's no init-order race for consumers.
+  await sessionManager.ready;
+
   // Don't create HTTP server when using Express - let user call app.listen()
   let httpServer = server;
   let wsServer: WebSocketServer;

@@ -80,40 +80,35 @@ npm install @shelltender/client
 npm install @shelltender/core
 ```
 
-### Important: Initialization Order
+### Manual server setup
 
-Starting with v0.7.0, you must properly initialize the SessionStore:
+Most apps should use the CLI above or `createShelltenderServer()`. If you wire
+the pieces yourself, `SessionManager` now initializes its store and restores
+saved sessions on construction — `await manager.ready` if you need restoration
+to be complete before serving. (You no longer have to call
+`sessionStore.initialize()` first; the manager owns it.)
 
 ```typescript
 import { SessionManager, BufferManager, SessionStore, WebSocketServer } from '@shelltender/server';
 import { createServer } from 'http';
 import express from 'express';
 
-// Create Express app and HTTP server
 const app = express();
 const server = createServer(app);
 
-// Initialize components in the correct order
 const bufferManager = new BufferManager();
 const sessionStore = new SessionStore();
-
-// CRITICAL: Initialize SessionStore before creating SessionManager
-await sessionStore.initialize();
-
 const sessionManager = new SessionManager(sessionStore);
+await sessionManager.ready; // optional: wait for saved sessions to be restored
 
-// Create WebSocket server attached to HTTP server (single port mode)
 const wsServer = WebSocketServer.create(
   { server, path: '/ws' },
   sessionManager,
   bufferManager
 );
 
-// Start the server
 server.listen(8080, () => {
-  console.log('Server running on port 8080');
-  console.log('HTTP API: http://localhost:8080');
-  console.log('WebSocket: ws://localhost:8080/ws');
+  console.log('HTTP + WebSocket on http://localhost:8080 (ws: /ws)');
 });
 ```
 
