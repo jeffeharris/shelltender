@@ -209,8 +209,13 @@ export class SessionManager extends EventEmitter implements ISessionManager {
     // Set up PTY handlers
     this.setupPtyHandlers(sessionId, ptyProcess);
     
-    // Save the new session with the actual cwd
-    this.sessionStore.saveSession(sessionId, session, '', cwd);
+    // Save the new session with the actual cwd — unless it's ephemeral. The
+    // ongoing buffer/pattern writes (updateSessionBuffer, saveSessionPatterns)
+    // are read-modify-write that no-op when the file is absent, so skipping this
+    // single initial write makes the session fully non-persistent.
+    if (options.persist !== false) {
+      this.sessionStore.saveSession(sessionId, session, '', cwd);
+    }
 
     return session;
   }

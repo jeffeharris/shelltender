@@ -243,7 +243,7 @@ export class WebSocketServer {
       // Accept both; an explicit `options.<field>` wins.
       const topLevel = data as unknown as Record<string, unknown>;
       const opts = options as Record<string, unknown>;
-      for (const key of ['command', 'args', 'cwd', 'env', 'locked',
+      for (const key of ['command', 'args', 'cwd', 'env', 'locked', 'persist',
         'restrictToPath', 'allowUpwardNavigation', 'blockedCommands', 'readOnlyMode']) {
         if (topLevel[key] !== undefined && opts[key] === undefined) {
           opts[key] = topLevel[key];

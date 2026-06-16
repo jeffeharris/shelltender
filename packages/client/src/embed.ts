@@ -27,6 +27,12 @@ export interface MountTerminalOptions {
   cwd?: string;
   /** Extra environment variables. */
   env?: Record<string, string>;
+  /**
+   * Persist the session server-side (default true). Set false when the
+   * session's durability is owned elsewhere — e.g. a `tmux attach`, where
+   * persisting on top just leaves a stale buffer after a server restart.
+   */
+  persist?: boolean;
   fontSize?: number;
   fontFamily?: string;
   theme?: ITheme;
@@ -100,6 +106,7 @@ export function mountTerminal(element: HTMLElement, options: MountTerminalOption
     if (options.args) sessionOptions.args = options.args;
     if (options.cwd) sessionOptions.cwd = options.cwd;
     if (options.env) sessionOptions.env = options.env;
+    if (options.persist === false) sessionOptions.persist = false;
     ws.send({ type: 'create', cols: term.cols, rows: term.rows, options: sessionOptions } as any);
   });
 

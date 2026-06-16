@@ -7,7 +7,14 @@ export interface SessionOptions {
   locked?: boolean;
   cols?: number;
   rows?: number;
-  
+  /**
+   * Persist this session to the SessionStore (default true). Set false for
+   * sessions whose durability is owned elsewhere — e.g. a `tmux attach`, where
+   * tmux is the real persistence layer. Ephemeral sessions are never written to
+   * disk, so a server restart can't restore a stale, dead-PTY buffer for them.
+   */
+  persist?: boolean;
+
   // Filesystem restrictions
   restrictToPath?: string;          // Can't navigate outside this path
   allowUpwardNavigation?: boolean;  // Default false when restrictToPath is set
